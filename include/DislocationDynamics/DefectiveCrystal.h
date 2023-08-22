@@ -20,7 +20,6 @@
 #include <ClusterDynamics.h>
 
 
-
 namespace model
 {
     
