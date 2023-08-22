@@ -776,7 +776,7 @@ namespace model
         insideReferencePoint/=centralPlane->meshIntersections.size();
         if(!lastPatch->contains(insideReferencePoint))
         {
-            throw std::runtime_error("lasatPatch does not cointain insideReferencePoint");
+            throw std::runtime_error("lastPatch does not cointain insideReferencePoint");
         }
 //        assert(lastPatch->contains(insideReferencePoint));
         

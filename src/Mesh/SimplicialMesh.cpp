@@ -709,12 +709,6 @@ namespace model
     }
 
     template<int dim>
-    typename SimplicialMesh<dim>::MeshRegionBoundaryContainerType& SimplicialMesh<dim>::regionBoundaries()
-    {
-        return *this;
-    }
-
-    template<int dim>
     const typename SimplicialMesh<dim>::MeshRegionBoundaryType& SimplicialMesh<dim>::regionBoundary(const int& i,const int& j) const
     {
         return regionBoundaries().at(std::make_pair(std::min(i,j),std::max(i,j)));
