@@ -65,8 +65,14 @@ namespace model
         
         const double normN1(N1.norm());
         const double normN2(N2.norm());
-        assert(normN1>tol);
-        assert(normN2>tol);
+        if (normN1 <= tol)
+        {
+           throw std::runtime_error("normN1 <= tol");
+        }
+        if (normN2 <= tol)
+        {
+           throw std::runtime_error("normN2 <= tol");
+        }
         
         const VectorDimD n1(N1/normN1);
         const VectorDimD n2(N2/normN2);
@@ -90,7 +96,10 @@ namespace model
             b(dim+1)=p2.dot(n2);
             
             const VectorDimD C=M.ldlt().solve(b).template segment<dim>(0);
-            assert(checkIntersection(C,p1,n1,p2,n2,tol) && "PlanePlaneIntersection FAILED.");
+            if (! checkIntersection(C,p1,n1,p2,n2,tol) )
+            {
+               throw std::runtime_error("PlanePlaneIntersection FAILED.");
+            }
 
             return std::make_tuple(INCIDENT,C,D/normD);
         }

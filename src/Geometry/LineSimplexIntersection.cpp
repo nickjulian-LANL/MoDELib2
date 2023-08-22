@@ -32,7 +32,11 @@ namespace model
         
         VectorDim n(v12.cross(v13)); // right-handed norm to triangle P1->P2->P3
         const double nNorm(n.norm());
-        assert(nNorm>FLT_EPSILON && "n has zero norm");
+        //assert(nNorm>FLT_EPSILON && "n has zero norm");
+        if (nNorm <= FLT_EPSILON)
+        {
+          throw std::runtime_error("n has zero norm");
+        }
         n/=nNorm; // normalize
         const double nDots(n.dot(s));
         

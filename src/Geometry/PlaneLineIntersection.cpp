@@ -28,7 +28,10 @@ namespace model
     {
         
         const double normN(N.norm());
-        assert(normN>FLT_EPSILON && "PLANE MUST HAVE NON-ZERO NORMAL");
+        if (normN <= FLT_EPSILON)
+        {
+           throw std::runtime_error("PLANE MUST HAVE NON-ZERO NORMAL");
+        }
         const VectorDimD n(N/normN); // unit plane normal
         
         const double normD(D.norm());

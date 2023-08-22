@@ -1,7 +1,6 @@
-# cmake .. -DCMAKE_CXX_COMPILER=/opt/local/bin/g++-mp-11
 
 # https://mcilloni.ovh/2021/02/09/cxx-cross-clang/
-#export LDFLAGS=-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib 
+#export LDFLAGS=-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
 #LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system"
 
 
@@ -10,8 +9,19 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(MoDELib VERSION 2.0.0 LANGUAGES CXX)
 
-set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
-list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
+if(Eigen3_FOUND)
+   message(STATUS "Eigen3 found, Eigen3_VERSION:" ${Eigen3_VERSION})
+   include_directories(${Eigen3_INCLUDE_DIRS})
+	message(STATUS "Eigen3_INCLUDE_DIRS:" ${Eigen3_INCLUDE_DIRS})
+	message(STATUS "Eigen3_INCLUDE_DIR:" ${Eigen3_INCLUDE_DIR})
+   message(STATUS "Eigen3_LIBRARY_DIR:" ${Eigen3_LIBRARY_DIR})
+	message(STATUS "Eigen3_DIR:" ${Eigen3_DIR})
+else()
+	message(WARNING "Eigen3 not found")
+endif()
+#set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
+#list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
 
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 20)
@@ -21,7 +31,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-### Boost ### 
+### Boost ###
 find_package(Boost)
 if(Boost_FOUND)
 	message(STATUS "Boost_VERSION:" ${Boost_VERSION})
@@ -31,30 +41,40 @@ else()
 endif()
 
 ### Qt ###
-find_package(Qt6 COMPONENTS Widgets OpenGL REQUIRED)
+find_package(Qt6 COMPONENTS Widgets OpenGL)
 message (STATUS "Qt6_VERSION: ${Qt6_VERSION}")
+message (STATUS "Qt6Widgets_INCLUDE_DIRS: ${Qt6Widgets_INCLUDE_DIRS}")
+#message (STATUS "Qt6_DIR: ${Qt6_DIR}")
+#message (STATUS "Qt6_ROOT_DIR: ${Qt6_ROOT_DIR}")
+#message (STATUS "Qt6_LIBRARIES: ${Qt6_LIBRARIES}")
+#find_package(Qt6Core)
+#message (STATUS "Qt6Core_VERSION: ${Qt6_VERSION}")
+#message (STATUS "Qt6Core_INCLUDE_DIRS: ${Qt6_INCLUDE_DIRS}")
+include_directories(${Qt6Widgets_INCLUDE_DIRS})
 if (NOT Qt6_FOUND)
-  message("Skipping DDvtk: ${Qt6_NOT_FOUND_MESSAGE}")
-  return()
+  message("Skipping Qt6: ${Qt6_NOT_FOUND_MESSAGE}")
 endif()
 
 ### VTK ###
 find_package(VTK REQUIRED)
-message (STATUS "VTK_VERSION: ${VTK_VERSION}")
 if (NOT VTK_FOUND)
-  message("Skipping DDvtk: ${VTK_NOT_FOUND_MESSAGE}")
-  return()
+  message("Skipping DDVTK: ${VTK_NOT_FOUND_MESSAGE}")
+else()
+   message("VTK_INCLUDE_DIR: ${VTK_INCLUDE_DIR}")
+   message("VTK_LIBRARIES: ${VTK_LIBRARIES}")
+   message("VTK_DIR: ${VTK_DIR}")
+   message (STATUS "VTK_VERSION: ${VTK_VERSION}")
+   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
 ### fftw3 ### find_package is currently broken. Workaround using find_library
-find_library(FFTW3_LIBRARIES fftw3)  
+#find_library(FFTW3_LIBRARIES fftw3)
 if(FFTW3_LIBRARIES)
 	cmake_path(GET FFTW3_LIBRARIES PARENT_PATH FFTW3_LIBRARY_DIRS)
 	set(FFTW3_INCLUDE_DIRS ${FFTW3_LIBRARY_DIRS}/../include)
 	message(STATUS "FFTW3_LIBRARIES:" ${FFTW3_LIBRARIES})
 	message(STATUS "FFTW3_LIBRARY_DIRS:" ${FFTW3_LIBRARY_DIRS})
 	message(STATUS "FFTW3_INCLUDE_DIRS:" ${FFTW3_INCLUDE_DIRS})
-	include_directories(${BOOST_INCLUDE_DIRS})
 	include_directories(${FFTW3_INCLUDE_DIRS})
 	add_definitions(-D _MODEL_GLIDE_PLANE_NOISE_GENERATOR_)
 else()
@@ -81,7 +101,9 @@ endif()
 add_library(MoDELib "")
 set(MoDELib_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-include_directories ( ${EIGEN3_INCLUDE_DIRS} )
+#include_directories ( ${EIGEN3_INCLUDE_DIRS} )
+message(STATUS "Eigen3_INCLUDE_DIRS:" ${Eigen3_INCLUDE_DIRS})
+include_directories(${Eigen3_INCLUDE_DIRS})
 #add_subdirectory(${MoDELib_INCLUDE_DIR} include)
 include_directories(${MoDELib_INCLUDE_DIR}/Utilities/)
 include_directories(${MoDELib_INCLUDE_DIR}/IO/)
@@ -106,10 +128,13 @@ include_directories(${MoDELib_INCLUDE_DIR}/ElasticDeformation/)
 include_directories(${MoDELib_INCLUDE_DIR}/InclusionMicrostructure/)
 include_directories(${MoDELib_INCLUDE_DIR}/DislocationDynamics/)
 include_directories(${MoDELib_INCLUDE_DIR}/DefectsFields/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/vtk/)
+if (VTK_FOUND)
+   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/vtk/)
+endif()
 
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/ src)
 
 target_link_libraries(MoDELib ${FFTW3_LIBRARIES} ${VTK_LIBRARIES} Qt6::Widgets Qt6::OpenGL Qt6::Core ${pybind11_LIBRARIES})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools tools)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools/DDomp DDomp)

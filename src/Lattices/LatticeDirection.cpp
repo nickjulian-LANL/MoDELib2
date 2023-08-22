@@ -60,7 +60,10 @@ namespace model
     {
         VectorDimD dc(this->cartesian());
         const double dNorm(dc.norm());
-        assert(dNorm > FLT_EPSILON);
+        if (dNorm <= FLT_EPSILON)
+        {
+           throw std::runtime_error("dNorm <= FLT_EPSILON");
+        }
         dc /= dNorm;
         return dP.dot(dc) * dc;
     }

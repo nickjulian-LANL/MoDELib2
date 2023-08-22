@@ -68,7 +68,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType& LatticeVector<dim>::operator=(const LatticeVectorType &other)
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         base() = other.base();
         return *this;
     }
@@ -77,7 +80,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType& LatticeVector<dim>::operator=(LatticeVectorType &&other)
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         base() = other.base();
         return *this;
     }
@@ -86,7 +92,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType LatticeVector<dim>::operator+(const LatticeVectorType &other) const
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         return LatticeVectorType(static_cast<VectorDimI>(*this) + static_cast<VectorDimI>(other), lattice);
     }
 
@@ -94,7 +103,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType& LatticeVector<dim>::operator+=(const LatticeVectorType &other)
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         base() += other.base();
         return *this;
     }
@@ -103,7 +115,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType LatticeVector<dim>::operator-(const LatticeVectorType &other) const
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         return LatticeVectorType(static_cast<VectorDimI>(*this) - static_cast<VectorDimI>(other), lattice);
     }
 
@@ -111,7 +126,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::LatticeVectorType& LatticeVector<dim>::operator-=(const LatticeVectorType &other)
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         base() -= other.base();
         return *this;
     }
@@ -127,7 +145,10 @@ namespace model
     template <int dim>
     long int LatticeVector<dim>::dot(const ReciprocalLatticeVectorType &other) const
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         return static_cast<VectorDimI>(*this).dot(static_cast<VectorDimI>(other));
     }
 
@@ -142,7 +163,10 @@ namespace model
     template <int dim>
     typename LatticeVector<dim>::ReciprocalLatticeDirectionType LatticeVector<dim>::cross(const LatticeVectorType &other) const
     {
-        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
+        if (&lattice != &other.lattice)
+        {
+          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
+        }
         return ReciprocalLatticeDirectionType(ReciprocalLatticeVectorType(static_cast<VectorDimI>(*this).cross(static_cast<VectorDimI>(other)), lattice));
     }
 
@@ -165,7 +189,7 @@ namespace model
         {
             std::cout << "d2contra, nd=" << nd.transpose() << std::endl;
             std::cout << "d2contra, rd=" << rd.transpose() << std::endl;
-            assert(0 && "Input vector is not a lattice vector");
+            throw std::runtime_error( "Input vector is not a lattice vector");
         }
         return rd.template cast<long int>();
     }
