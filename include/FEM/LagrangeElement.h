@@ -69,7 +69,6 @@ namespace model
         constexpr static int dofPerNode(int c) { return c; }
         
         typedef LagrangeNode<ElementType> NodeType;
-        typedef Eigen::Matrix<double,1,dim+1> BaryType;
         
     private:
         
@@ -110,7 +109,7 @@ namespace model
         }
         
         /**********************************************************************/
-        static Eigen::Matrix<double,dim+1,degree+1>  getSFcoeffs(const Eigen::Matrix<int,1,dim+1>& bary)
+        static Eigen::Matrix<double,dim+1,degree+1>  getSFcoeffs(const Eigen::Matrix<int,1,dim+1> bary)
         {/*!@param[in] bary baricenric coordinates of a LagrangeElement
           *\returns A matrix whose k-th row is the coefficients of polynomial
           * of the the k-th baricentric coordinate.
@@ -137,7 +136,7 @@ namespace model
         }
         
         /**********************************************************************/
-        static Eigen::Matrix<double,1,dim+1> sfcTimesBary(const int& n, const BaryType& bary)
+        static Eigen::Matrix<double,1,dim+1> sfcTimesBary(const int& n, const Eigen::Matrix<double,1,dim+1>& bary)
         {
             Eigen::Matrix<double,1,dim+1> temp(Eigen::Matrix<double,1,dim+1>::Zero());
             for(int d=0;d<dim+1;++d) // this loop can be parallelized
@@ -154,7 +153,7 @@ namespace model
         }
         
         /**********************************************************************/
-        static Eigen::Matrix<double,1,dim+1> sfcTimesBaryDiff(const int& n, const BaryType& bary)
+        static Eigen::Matrix<double,1,dim+1> sfcTimesBaryDiff(const int& n, const Eigen::Matrix<double,1,dim+1>& bary)
         {
             Eigen::Matrix<double,1,dim+1> temp(Eigen::Matrix<double,1,dim+1>::Zero());
             for(int d=0;d<dim+1;++d) // this loop can be parallelized
@@ -244,18 +243,14 @@ namespace model
                     const bool success(nodeFinder.insert(std::make_pair(P,pN)).second); // insert pointer in nodeFinder
                     if(!success)
                     {
-                        throw std::runtime_error("NODE NOT INSERTED in nodeFinder");
+                        throw std::runtime_error("NODE NOT INSERTED");
                     }
                     
                     size_t maxID=0;
                     const double maxVal(baryNodalCoordinates.row(n).maxCoeff(&maxID));
                     if(maxVal==1.0)
-                    {// A FEM node coinciding with a mesh node
-                        mesh2femIDmap.emplace(simplex.vertices()[maxID]->xID(0),pN);
-                    }
-                    else
                     {
-//                        std::cout<<"maxVal="<<maxVal<<std::endl;
+                        mesh2femIDmap.emplace(simplex.vertices()[maxID]->xID(0),pN);
                     }
                     
                 }
@@ -283,7 +278,7 @@ namespace model
         
         /**********************************************************************/
         //template<typename TrialFunctionType>
-        static Eigen::Matrix<double,1,nodesPerElement> sf(const BaryType& bary)
+        static Eigen::Matrix<double,1,nodesPerElement> sf(const Eigen::Matrix<double,1,dim+1>& bary)
         {/*!\param[in] bary the vector of barycentric coordinates
           *\returns a row vector of the the shape-functions, evaluated at bary.
           * This is:
@@ -301,7 +296,7 @@ namespace model
         
         /**********************************************************************/
         template<typename TrialFunctionType>
-        static typename TypeTraits<TrialFunctionType>::ShapeFunctionMatrixType sfm(const BaryType& bary)
+        static typename TypeTraits<TrialFunctionType>::ShapeFunctionMatrixType sfm(const Eigen::Matrix<double,1,dim+1>& bary)
         {/*!\param[in] bary the vector of barycentric coordinates
           *\returns a row vector of the the shape-functions, evaluated at bary.
           * This is:
@@ -313,7 +308,7 @@ namespace model
         }
         
         /**********************************************************************/
-        static Eigen::Matrix<double,dim+1,nodesPerElement> diff(const BaryType& bary)
+        static Eigen::Matrix<double,dim+1,nodesPerElement> diff(const Eigen::Matrix<double,1,dim+1>& bary)
         {/*!\param[in] bary the barycentric coordinate
           *\returns the value of the derivatives of this shape-function
           * with respect to the baricentric coordinates, computed at bary. This is:
@@ -338,7 +333,7 @@ namespace model
         }
         
         /**********************************************************************/
-        static Eigen::Matrix<double,dim,nodesPerElement> gradS(const BaryType& bary)
+        static Eigen::Matrix<double,dim,nodesPerElement> gradS(const Eigen::Matrix<double,1,dim+1>& bary)
         {/*!\param[in] bary the barycentric coordinate
           *\returns the gradient of this shape-function
           * with respect to the standard coordinates, computed at bary. This is:
@@ -351,7 +346,7 @@ namespace model
         
         /**********************************************************************/
         template<typename TrialFunctionType>
-        typename TypeTraits<TrialFunctionType>::ShapeFunctionGradMatrixType sfmGrad(const BaryType& bary) const
+        typename TypeTraits<TrialFunctionType>::ShapeFunctionGradMatrixType sfmGrad(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!\param[in] bary the vector of barycentric coordinates
           *\returns the gradient of the shape-functions, evaluated at bary.
           * This is the matrix :
@@ -366,7 +361,7 @@ namespace model
         
         /**********************************************************************/
         template<typename TrialFunctionType>
-        typename TypeTraits<TrialFunctionType>::ShapeFunctionDefMatrixType sfmDef(const BaryType& bary) const
+        typename TypeTraits<TrialFunctionType>::ShapeFunctionDefMatrixType sfmDef(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!\param[in] bary the vector of barycentric coordinates
           * \returns A matrix of the symmetric gradient of the shape-functions,
           * evaluated at bary. Symmetric gradients are interpreted in egineering sense.
@@ -395,7 +390,7 @@ namespace model
         }
         
         /**********************************************************************/
-        Eigen::Matrix<double,dim,1> position(const BaryType& bary) const
+        Eigen::Matrix<double,dim,1> position(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!@param[in] bary the vector of barycentric coordinate
           * \returns the position vector corresponding to bary
           */
@@ -403,7 +398,7 @@ namespace model
         }
         
         /**********************************************************************/
-        Eigen::Matrix<double,_dim,_dim> Fs(const BaryType& bary) const
+        Eigen::Matrix<double,_dim,_dim> Fs(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!@param bary the vector of baricentric coordinates
           * \returns the Jacobian matrix dx_i / ds_j, evaulated at bary.
           */
@@ -411,7 +406,7 @@ namespace model
         }
         
         /**********************************************************************/
-        double absJ(const BaryType& bary) const
+        double absJ(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!@param bary the vector of baricentric coordinates
           * \returns the absolute value of the determinant of the Jacobian
           * matrix dx_i / ds_j, evaulated at bary.
@@ -420,7 +415,7 @@ namespace model
         }
         
         /**********************************************************************/
-        Eigen::Matrix<double,_dim,_dim> Gs(const BaryType& bary) const
+        Eigen::Matrix<double,_dim,_dim> Gs(const Eigen::Matrix<double,1,dim+1>& bary) const
         {/*!@param bary the vector of baricentric coordinates
           * \returns the inverse Jacobian matrix ds_i / dx_j, evaulated at bary.
           */
@@ -428,7 +423,7 @@ namespace model
         }
 
         /**********************************************************************/
-        Eigen::Matrix<double,dim,1> jGN(const BaryType& bary, const int& n) const
+        Eigen::Matrix<double,dim,1> jGN(const Eigen::Matrix<double,1,dim+1>& bary, const int& n) const
         {
             return MappingType<ElementType>(*this).jGN(bary,n);
         }

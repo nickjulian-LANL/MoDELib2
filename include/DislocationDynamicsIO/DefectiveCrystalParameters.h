@@ -26,21 +26,19 @@ namespace model
     {
         
         const DDtraitsIO traitsIO;
-        const int useFEM;
-        const bool useElasticDeformation;
+        const int simulationType;
         const bool useDislocations;
-        const bool useClusterDynamics;
         const bool useCracks;
-        const bool useInclusions;
+        const std::vector<int> periodicImageSize;
         const long int Nsteps;
+        const int timeIntegrationMethod;
         const int useSubCycling;
         const std::set<int> subcyclingBins; 
-//        const std::string externalLoadControllerName;
+        const std::string externalLoadControllerName;
+        const double virtualSegmentDistance;
         const bool use_stochasticForce;
         const std::set<int> periodicFaceIDs;
-        const double dtMax;
-        const int outputFrequency;
-        const bool outputBinary;
+
         long int runID;
         double totalTime;
         double dt;
@@ -54,6 +52,7 @@ namespace model
     public:
         
         DefectiveCrystalParameters(const std::string& folderName) ;
+        bool isPeriodicSimulation() const;
         
     };
 }

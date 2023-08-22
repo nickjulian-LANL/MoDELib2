@@ -26,11 +26,8 @@ namespace model
         std::shared_ptr<DislocationMobilityBase> DislocationMobilitySelector::getMobility(const std::string& dislocationMobilityType,
                                                                                           const PolycrystallineMaterialBase& material) const
         {
-            if(dislocationMobilityType=="default" || dislocationMobilityType=="Default" || dislocationMobilityType=="DEFAULT")
-            {
-                return getMobility(defaultStr,material);
-            }
-            else if(dislocationMobilityType=="FCC")
+            
+            if(dislocationMobilityType=="FCC")
             {
                 return std::shared_ptr<DislocationMobilityBase>(new DislocationMobilityFCC(material));
             }
@@ -51,8 +48,8 @@ namespace model
                 return std::shared_ptr<DislocationMobilityBase>(new DislocationMobilityHEXpyramidal(material));
             }
             else
-            {// Attempt to generate DislocationMobilityPy using dislocationMobilityType as py file
-                return std::shared_ptr<DislocationMobilityBase>(new DislocationMobilityPy(material,dislocationMobilityType));
+            {
+                return getMobility(defaultStr,material);
             }
         }
 }

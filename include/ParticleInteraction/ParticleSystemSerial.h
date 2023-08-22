@@ -15,6 +15,7 @@
 
 #ifdef _OPENMP
 #include <omp.h>
+#define EIGEN_DONT_PARALLELIZE // disable Eigen Internal openmp Parallelization
 #endif
 
 

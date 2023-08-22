@@ -103,7 +103,7 @@ CatmullRomSplineSegment<dim> DislocationLoopLink<dim,corder>::spline() const
     template <int dim, short unsigned int corder>
     void DislocationLoopLink<dim,corder>::initFromFile(const std::string& fileName)
     {
-        verboseDislocationLoopLink=TextFileParser(fileName).readScalar<int>("verboseDislocationLoopLink",false);
+        verboseDislocationLoopLink=TextFileParser(fileName).readScalar<int>("verboseDislocationLoopLink",true);
     }
     
     template <int dim, short unsigned int corder>

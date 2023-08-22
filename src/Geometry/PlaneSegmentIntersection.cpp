@@ -27,10 +27,7 @@ namespace model
                                          const VectorDimD& v1)
     {
         const double nNorm(Normal.norm());
-        if (nNorm <= FLT_EPSILON)
-        {
-          throw std::runtime_error("PLANE MUST HAVE NON-ZERO NORMAL");
-        }
+        assert(nNorm>FLT_EPSILON && "PLANE MUST HAVE NON-ZERO NORMAL");
         const VectorDimD n(Normal/nNorm);
 
         // check intersection of v0->v1 with plane

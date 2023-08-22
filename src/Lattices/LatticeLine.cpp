@@ -20,10 +20,7 @@ namespace model
     /* init */ P(P_in),
     /* init */ d(d_in)
     {
-        if (&P.lattice != &d.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors have different bases.");
-        }
+        assert(&P.lattice==&d.lattice && "LatticeVectors have different bases.");
 
     }
 
@@ -48,10 +45,7 @@ namespace model
         VectorDimD dc(d.cartesian());
         const VectorDimD Pc(P.cartesian());
         const double dNorm(dc.norm());
-        if (dNorm <= FLT_EPSILON)
-        {
-           throw std::runtime_error("dNorm <= FLT_EPSILON");
-        }
+        assert(dNorm > FLT_EPSILON);
         dc /= dNorm;
         return Pc + (P0 - Pc).dot(dc) * dc;
     }
@@ -59,10 +53,7 @@ namespace model
     /**********************************************************************/
     bool LatticeLine::contains(const LatticeVectorType &P0) const
     {
-        if (&P.lattice != &P0.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors have different bases.");
-        }
+        assert(&P.lattice == &P0.lattice && "LatticeVectors have different bases.");
 
         //            assert(&P.covBasis==&P0.covBasis && "LatticeVectors have different bases.");
         //            assert(&P.contraBasis==&P0.contraBasis && "LatticeVectors have different bases.");

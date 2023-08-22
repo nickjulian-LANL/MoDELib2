@@ -15,10 +15,8 @@
 #include <assert.h>
 #include <utility>      // std::pair, std::make_pair
 #include <set>
+
 #include <map>
-
-#include <Eigen/LU>
-
 //#include <VertexReader.h>
 #include <TerminalColors.h>
 #include <SimplexTraits.h>
@@ -36,14 +34,22 @@
 
 namespace model
 {
-
+    
+    
+    
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::createMesh(const std::set<int>& periodicFaceIDs)
     {/*!
       */
         
-        const auto t0= std::chrono::system_clock::now();
         vol0=0.0;
+        
+        
+        const auto t0= std::chrono::system_clock::now();
+        
+        //            std::cout<<greenBoldColor<<"Creating mesh"<<defaultColor<<std::flush;
         size_t eleConter=0;
         for (const auto& eIter : this->simplexReader().elements())
         {
@@ -52,6 +58,7 @@ namespace model
             std::cout<<greenBoldColor<<"\r"<<"Creating mesh "<<eleConter*100/this->simplexReader().elements().size()<<"%"<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<std::flush;
         }
         std::cout<<defaultColor<<std::endl;
+        //            std::cout<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
         
         this->info(); // print mesh info
         
@@ -74,7 +81,6 @@ namespace model
                     }
                 }
             }
-            _xC=0.5*(_xMax+_xMin);
         }
         else
         {
@@ -82,10 +88,11 @@ namespace model
         }
         std::cout<<"  xMin="<< std::setprecision(15)<<std::scientific<<_xMin.transpose()<<std::endl;
         std::cout<<"  xMax="<< std::setprecision(15)<<std::scientific<<_xMax.transpose()<<std::endl;
-        std::cout<<"  xCenter="<< std::setprecision(15)<<std::scientific<<_xC.transpose()<<std::endl;
+        
         
         // Populate typename SimplicialMesh<dim>::MeshRegionBoundaryContainerType
         regionBoundaries().clear();
+        
         
         size_t bndSimplexCount=0;
         size_t rgnBndSimplexCount=0;
@@ -117,6 +124,7 @@ namespace model
         updateRegions();
         updateRegionBoundaries();
         identifyParallelFaces(periodicFaceIDs);
+        
         
         size_t bndFaceSimplexSum=0;
         for(auto region : MeshRegionObserverType::regions())
@@ -150,40 +158,47 @@ namespace model
         
         if(bndFaceSimplexSum!=bndSimplexCount)
         {
+            std::cout<<"WRONG NUMBER OF BOUNDAY FACE SIMPLICES"<<std::endl;
             std::cout<<"boundary simplices="<<bndSimplexCount<<std::endl;
             std::cout<<"simplices in external faces="<<bndFaceSimplexSum<<std::endl;
-            throw std::runtime_error("WRONG NUMBER OF BOUNDAY FACE SIMPLICES");
+            exit(EXIT_FAILURE);
+            
         }
         
         if(rgnBndFaceSimplexSum!=rgnBndSimplexCount)
         {
+            std::cout<<"WRONG NUMBER OF REGION-BOUNDARY FACE SIMPLICES"<<std::endl;
             std::cout<<"region-boundary simplices="<<rgnBndSimplexCount<<std::endl;
             std::cout<<"simplices in internal faces="<<rgnBndFaceSimplexSum<<std::endl;
-            throw std::runtime_error("WRONG NUMBER OF REGION-BOUNDARY FACE SIMPLICES");
+            exit(EXIT_FAILURE);
         }
+        
+        
     }
-
+    
+    
+    /**********************************************************************/
     template<int dim>
     SimplicialMesh<dim>::SimplicialMesh() :
     /* init */ _xMin(Eigen::Matrix<double,dim,1>::Zero())
     /* init */,_xMax(Eigen::Matrix<double,dim,1>::Zero())
-    /* init */,_xC(Eigen::Matrix<double,dim,1>::Zero())
     /* init */,vol0(0.0)
     {
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     SimplicialMesh<dim>::SimplicialMesh(const std::string& meshFileName,const Eigen::Matrix<double,dim,dim>& A,const Eigen::Matrix<double,dim,1>& x0,const std::set<int>& periodicFaceIDs) :
     /* init */ _xMin(Eigen::Matrix<double,dim,1>::Zero())
     /* init */,_xMax(Eigen::Matrix<double,dim,1>::Zero())
-    /* init */,_xC(Eigen::Matrix<double,dim,1>::Zero())
     /* init */,vol0(0.0)
     {
         this->read(meshFileName,A,x0);
         createMesh(periodicFaceIDs);
         this->simplexReader().clear();
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::readMesh(const std::string& meshFileName,const Eigen::Matrix<double,dim,dim>& A,const Eigen::Matrix<double,dim,1>& x0,const std::set<int>& periodicFaceIDs)
     {
@@ -192,19 +207,22 @@ namespace model
         createMesh(periodicFaceIDs);
         this->simplexReader().clear();
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const typename SimplicialMesh<dim>::SimplexMapType& SimplicialMesh<dim>::simplices() const
     {
         return *this;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     typename SimplicialMesh<dim>::SimplexMapType& SimplicialMesh<dim>::simplices()
     {
         return *this;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::updateRegions()
     {
@@ -213,7 +231,8 @@ namespace model
             region.second->update();
         }
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::updateRegionBoundaries()
     {
@@ -230,227 +249,105 @@ namespace model
             }
         }
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::identifyParallelFaces(const std::set<int>& periodicFaceIDs)
     {
-        
-        typedef std::map<VectorDim,PlanarMeshFace<dim>*,CompareVectorsByComponent<double,dim,float>> MultipleShiftMapType;
-        
-        std::map<PlanarMeshFace<dim>*,MultipleShiftMapType> faceShiftsMap;
-        for(const auto& region1 : this->regions())
+        for(auto region : MeshRegionObserverType::regions())
         {
-            for(const auto& face1 : region1.second->faces())
-            {
-                if(face1.second->isExternal())
-                {
-                    for(const auto& region2 : this->regions())
-                    {
-                        for(const auto& face2 : region2.second->faces())
-                        {
-                            if(face2.second->isExternal() && face2.second!=face1.second && face1.second->convexHull().size()==face2.second->convexHull().size())
-                            {
-                                //                                std::cout<<"face pair "<<face1.second->sID<<" ("<<face1.second->convexHull().size()<<"), "<<face2.second->sID<<" ("<<face2.second->convexHull().size()<<")"<<std::endl;
-                                if(abs(face1.second->outNormal().dot(face2.second->outNormal())+1.0)<FLT_EPSILON)
-                                {// distinct parallel external faces
-                                    const VectorDim shift(face1.second->center()-face2.second->center());
-                                    std::set<const Simplex<dim,0>*> secondFaceVertices;
-                                    
-                                    for(const auto& face2Vertex : face2.second->convexHull())
-                                    {
-                                        secondFaceVertices.insert(face2Vertex);
-                                    }
-                                    for(const auto& face1Vertex : face1.second->convexHull())
-                                    {
-                                        for(const auto& face2Vertex : secondFaceVertices)
-                                        {
-                                            //                                            std::cout<<(face1Vertex->P0-face2Vertex->P0-shift).norm()<<std::endl;
-                                            if((face1Vertex->P0-face2Vertex->P0-shift).norm()<FLT_EPSILON)
-                                            {
-                                                secondFaceVertices.erase(face2Vertex);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    //                                    std::cout<<secondFaceVertices.size()<<std::endl;
-                                    if(secondFaceVertices.size()==0)
-                                    {//all vertices of face1 have been paired to a single vertex of face2 in a translation by shift
-                                        const bool success(faceShiftsMap[face1.second.get()].emplace(-shift,face2.second.get()).second);
-                                        if(!success)
-                                        {
-                                            throw std::runtime_error("Cannot insert shift for face "+std::to_string(face1.second->sID));
-                                        }
-                                        //                                    std::cout<<"Detected periodic face pair "<<pair.first<<"-"<<pair.second<<std::endl;
-                                        //                                    faces()[pair.first] ->periodicFacePair=std::make_pair(-shift,faces()[pair.second].get());
-                                        //                                    faces()[pair.second]->periodicFacePair=std::make_pair( shift,faces()[pair.first ].get());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        std::map<PlanarMeshFace<dim>*,std::pair<VectorDim,PlanarMeshFace<dim>*>> uniqueFaceShiftMap;
-        for(const auto& pair : faceShiftsMap)
-        {
-            //            std::cout<<"Face "<<pair.first->sID<<" has "<<pair.second.size()<<" parallel faces"<<std::endl;
-            //            std::cout<<pair.second.begin()->first.transpose()<<std::endl;
-            if(pair.second.size()==1)
-            {
-                uniqueFaceShiftMap.emplace(pair.first,std::make_pair(pair.second.begin()->first,pair.second.begin()->second));
-            }
-            else
-            {
-                MultipleShiftMapType allowedShifts; // allowedShifts for current face
-                for(const auto& currentShift : pair.second)
-                {
-                    bool shiftAllowed(true);
-                    for(const auto& otherPair : faceShiftsMap)
-                    {
-                        if(pair.first!=otherPair.first)
-                        {
-                            const bool shiftIsParallel(std::fabs(otherPair.first->outNormal().dot(currentShift.first))<FLT_EPSILON);
-                            const bool shiftIsSame(otherPair.second.find(currentShift.first)!=otherPair.second.end() || otherPair.second.find(-currentShift.first)!=otherPair.second.end());
-                            //                        std::cout<<" face "<<otherPair.first->sID<<" "<<shiftIsParallel<<" "<<shiftIsSame<<std::endl;
-                            shiftAllowed= shiftAllowed && (shiftIsParallel || shiftIsSame);
-                        }
-                    }
-                    if(shiftAllowed)
-                    {
-                        allowedShifts.emplace(currentShift.first,currentShift.second);
-                    }
-                }
-                if(allowedShifts.size())
-                {
-                    if(allowedShifts.size()==1)
-                    {
-                        uniqueFaceShiftMap.emplace(pair.first,std::make_pair(allowedShifts.begin()->first,allowedShifts.begin()->second));
-                    }
-                    else
-                    {
-                        throw std::runtime_error("Multiple periodic shift for face "+std::to_string(pair.first->sID));
-                    }
-                }
-                else
-                {
-                    //            std::cout<<"Face non periodic"
-                }
-            }
-            
-        }
-        
-        for(auto& pair : uniqueFaceShiftMap)
-        {
-            const auto parallelIter(uniqueFaceShiftMap.find(pair.second.second));
-            if(parallelIter!=uniqueFaceShiftMap.end())
-            {// the parallel face is also in the map
-                if((parallelIter->second.first+pair.second.first).norm()<FLT_EPSILON)
-                {
-                    if(   periodicFaceIDs.find(pair.first->sID)!=periodicFaceIDs.end()
-                       || periodicFaceIDs.find(parallelIter->first->sID)!=periodicFaceIDs.end()
-                       || periodicFaceIDs.find(-1)!=periodicFaceIDs.end()
-                       )
-                    {
-                        pair.first->periodicFacePair=std::make_pair(pair.second.first,pair.second.second);
-                        std::cout<<"Face "<<pair.first->sID<<" found periodic face "<<pair.first->periodicFacePair.second->sID<<", shift="<<pair.first->periodicFacePair.first.transpose()<<std::endl;
-                    }
-                    else
-                    {
-                        std::cout<<"Face not labelled periodic"<<std::endl;
-                    }
-                }
-                else
-                {
-                    std::cout<<"face "<< pair.first->sID<<" shift="<<pair.second.first.transpose()<<std::endl;
-                    std::cout<<"parallel face "<<parallelIter->first->sID<<" shift="<<parallelIter->second.first.transpose()<<std::endl;
-                    throw std::runtime_error("Parallel Face shift not opposite");
-                }
-            }
-            else
-            {
-                std::cout<<"face "<< pair.first->sID<<" parallel to "<< pair.second.second->sID<<", shift="<<pair.second.first.transpose()<<std::endl;
-                throw std::runtime_error("Parallel Face not in map");
-            }
-        }
-        
-        // Check that periodic faces have been correclty identified
-        for(const auto& region1 : this->regions())
-        {
-            for(const auto& face1 : region1.second->faces())
-            {
-                if(face1.second->isExternal())
-                {
-                    if(face1.second->periodicFacePair.second)
-                    {// a parallel face found
-                        if(   periodicFaceIDs.find(face1.second->sID)!=periodicFaceIDs.end()
-                           || periodicFaceIDs.find(face1.second->periodicFacePair.second->sID)!=periodicFaceIDs.end()
-                           || periodicFaceIDs.find(-1)!=periodicFaceIDs.end())
-                        {// all good, ID found
-                            
-                        }
-                        else
-                        {
-                            std::cout<<"Face "<<face1.second->sID<<std::endl;
-                            std::cout<<"Parallel pace "<<face1.second->periodicFacePair.second->sID<<std::endl;
-                            throw std::runtime_error("Found parallel faces but their IDs are not in periodicFaceIDs");
-                        }
-                    }
-                    else
-                    {// a parallel face not found
-                        if(   periodicFaceIDs.find(face1.second->sID)!=periodicFaceIDs.end()
-                           || periodicFaceIDs.find(-1)!=periodicFaceIDs.end())
-                        {// all good, ID found
-                            std::cout<<"Face "<<face1.second->sID<<std::endl;
-                            throw std::runtime_error("Face in periodicFaceIDs but no parallel face found");
-                        }
-                        else
-                        {// all good, not a periodic face
-                            
-                        }
-                    }
-                }
-            }
+            region.second->identifyParallelFaces(periodicFaceIDs);
         }
     }
 
+
+
     template<int dim>
-    typename SimplicialMesh<dim>::PeriodicBasisType SimplicialMesh<dim>::periodicBasis() const
+    std::vector<typename SimplicialMesh<dim>::VectorDim> SimplicialMesh<dim>::periodicBasis() const
     {
-        const VectorDim meshSize(xMax()-xMin());
-        PeriodicBasisType basis(PeriodicBasisType::Zero(dim,0));
-        size_t basisRank(0);
-        
+        std::map<size_t,const PlanarMeshFace<dim>* const> periodicMeshFaces;
         for(const auto& region : this->regions())
         {
             for(const auto& face : region.second->faces())
             {
                 if(face.second->periodicFacePair.second)
                 {// face is a periodic face
-                    PeriodicBasisType newBasis(PeriodicBasisType::Zero(dim,basis.cols()+1));
-                    newBasis.block(0,0,dim,basis.cols())=basis;
-                    if(meshSize.dot(face.second->periodicFacePair.first)>0.0)
-                    {
-                        newBasis.col(basis.cols())=face.second->periodicFacePair.first;
-                    }
-                    else
-                    {
-                        newBasis.col(basis.cols())=-face.second->periodicFacePair.first;
-                    }
-                    Eigen::FullPivLU<Eigen::Matrix<double,dim,Eigen::Dynamic>> lu(newBasis);
-                    const size_t newBasisRank(lu.rank());
-                    if(newBasisRank>basisRank)
-                    {
-                        basis=newBasis;
-                        basisRank=newBasisRank;
+                    if(   periodicMeshFaces.find(face.second->sID)==periodicMeshFaces.end()
+                       && periodicMeshFaces.find(face.second->periodicFacePair.second->sID)==periodicMeshFaces.end())
+                    {// neither faces has been added
+                        periodicMeshFaces.emplace(face.second->sID,face.second.get());
                     }
                 }
             }
         }
-        return basis;
+        
+        std::vector<typename SimplicialMesh<dim>::VectorDim> temp;
+        const typename SimplicialMesh<dim>::VectorDim meshSize(xMax()-xMin());
+        for(const auto& face : periodicMeshFaces)
+        {
+            if(meshSize.dot(face.second->periodicFacePair.first)>0.0)
+            {
+                temp.push_back(face.second->periodicFacePair.first);
+            }
+            else
+            {
+                temp.push_back(-1.0*face.second->periodicFacePair.first);
+            }
+        }
+        return temp;
     }
 
+template <int dim>
+std::vector<typename SimplicialMesh<dim>::VectorDim> SimplicialMesh<dim>::periodicShifts(const std::vector<int>& periodicImageSize) const
+{
+    // Set up periodic shifts
+    std::vector<VectorDim> temp;
+    temp.push_back(VectorDim::Zero());
+    if(periodicImageSize.size())
+    {
+        const auto shiftVectors(periodicBasis());
+        std::cout<<"Box periodicity vectors ("<<shiftVectors.size()<<"):"<<std::endl;
+        for(const auto& shift : shiftVectors)
+        {
+            std::cout<<shift.transpose()<<std::endl;
+        }
+        
+        if(shiftVectors.size()!=periodicImageSize.size())
+        {
+            std::cout<<"shiftVectors.size()="<<shiftVectors.size()<<std::endl;
+            std::cout<<"periodicImageSize.size()="<<periodicImageSize.size()<<std::endl;
+            throw std::runtime_error("shiftVectors.size() must equal periodicImageSize.size()");
+        }
+        
+        
+        for(size_t k=0;k<shiftVectors.size();++k)
+        {
+            const auto shiftVector(shiftVectors[k]);
+            const int imageSize(std::abs(periodicImageSize[k]));
+            std::vector<VectorDim> newTemp;
+            for(const auto& v:temp)
+            {// grab existing shift vectors
+                for(int i=-imageSize;i<=imageSize;++i)
+                {// add current shift times corresponding image size
+                    newTemp.push_back(v+i*shiftVector);
+                }
+            }
+            temp.swap(newTemp);
+        }
+    }
+    
+    std::cout<<"Image shift vectors ("<<temp.size()<<"):"<<std::endl;
+    for(const auto& shift : temp)
+    {
+        std::cout<<shift.transpose()<<std::endl;
+    }
+    
+    return temp;
+    
+}
+
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::insertSimplex(const typename SimplexTraits<dim,dim>::SimplexIDType& xIN,const int& regionID)
     {/*!@param[in] xIN the (unsorted) array of mesh node IDs defining a simplex
@@ -465,7 +362,8 @@ namespace model
         assert(pair.second);
         vol0+=pair.first->second.vol0;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::search(const Eigen::Matrix<double,dim,1>& P) const
     {/*!@param[in] P position to search for
@@ -478,10 +376,11 @@ namespace model
       */
         return searchWithGuess(P,&(simplices().begin()->second));
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::searchWithGuess(const Eigen::Matrix<double,dim,1>& P,
-                                                                                 const Simplex<dim,dim>* const guess) const
+                                                            const Simplex<dim,dim>* const guess) const
     {/*!@param[in] P position to search for
       * @param[in] guess Simplex* where the search starts
       *\returns a pair, where:
@@ -491,19 +390,13 @@ namespace model
       */
         
         std::set<const Simplex<dim,dim>*> searchSet;
-        if(guess)
-        {
-            return searchWithGuess(true,P,guess,searchSet);
-        }
-        else
-        {
-            return searchWithGuess(true,P,&(simplices().begin()->second),searchSet);
-        }
+        return searchWithGuess(true,P,guess,searchSet);
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::searchRegion(const int& regionID,
-                                                                              const Eigen::Matrix<double,dim,1>& P) const
+                                                         const Eigen::Matrix<double,dim,1>& P) const
     {/*!@param[in] P position to search for
       *\returns a pair, where:
       * -pair.first is a boolean indicating whether the
@@ -514,10 +407,11 @@ namespace model
       */
         return searchRegionWithGuess(P,*this->region(regionID)->simplices().begin());
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::searchRegionWithGuess(const Eigen::Matrix<double,dim,1>& P,
-                                                                                       const Simplex<dim,dim>* const guess) const
+                                                                  const Simplex<dim,dim>* const guess) const
     {/*!@param[in] P position to search for
       * @param[in] guess Simplex* where the search starts
       *\returns a pair, where:
@@ -528,12 +422,13 @@ namespace model
         std::set<const Simplex<dim,dim>*> searchSet;
         return searchWithGuess(false,P,guess,searchSet);
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::searchWithGuess(const bool& searchAllRegions,
-                                                                                 const Eigen::Matrix<double,dim,1>& P,
-                                                                                 const Simplex<dim,dim>* const guess,
-                                                                                 std::set<const Simplex<dim,dim>*>& searchSet) const
+                                                            const Eigen::Matrix<double,dim,1>& P,
+                                                            const Simplex<dim,dim>* const guess,
+                                                            std::set<const Simplex<dim,dim>*>& searchSet) const
     {/*!@param[in] P position to search for
       * @param[in] guess Simplex* where the search starts. If searchAllRegions=false, only the region of guess is searched
       *\returns a pair, where:
@@ -601,12 +496,13 @@ namespace model
         
         return lastSearched;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     void SimplicialMesh<dim>::checkSearch(const bool& searchAllRegions,
-                                          const Eigen::Matrix<double,dim,1>& P,
-                                          const Simplex<dim,dim>* const guess,
-                                          const std::pair<bool,const Simplex<dim,dim>*>& lastSearched) const
+                     const Eigen::Matrix<double,dim,1>& P,
+                     const Simplex<dim,dim>* const guess,
+                     const std::pair<bool,const Simplex<dim,dim>*>& lastSearched) const
     {
         if(searchAllRegions)
         {// Check that search was successful, or that it ended on a boundary (point outside)
@@ -629,11 +525,12 @@ namespace model
             }
         }
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::isStrictlyInsideMesh(const Eigen::Matrix<double,dim,1>& P,
-                                                                                      const Simplex<dim,dim>* const guess,
-                                                                                      const double& tol) const
+                                                                 const Simplex<dim,dim>* const guess,
+                                                                 const double& tol) const
     {
         std::pair<bool,const Simplex<dim,dim>*> temp(searchWithGuess(P,guess));
         if(temp.first)
@@ -648,7 +545,8 @@ namespace model
         }
         return temp;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     std::pair<bool,const Simplex<dim,dim>*> SimplicialMesh<dim>::isOnMeshBoundary(const Eigen::Matrix<double,dim,1>& P, const Simplex<dim,dim>* const guess, const double& tol) const
     {
@@ -665,55 +563,77 @@ namespace model
         }
         return temp;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const Eigen::Matrix<double,dim,1>& SimplicialMesh<dim>::xMin() const
     {
         return _xMin;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const double& SimplicialMesh<dim>::xMin(const int& k) const
     {
         return _xMin(k);
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const Eigen::Matrix<double,dim,1>& SimplicialMesh<dim>::xMax() const
     {
         return _xMax;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const double& SimplicialMesh<dim>::xMax(const int& k) const
     {
         return _xMax(k);
     }
-
-    template<int dim>
-    const Eigen::Matrix<double,dim,1>& SimplicialMesh<dim>::xCenter() const
-    {
-        return _xC;
-    }
-
+    
+    /**********************************************************************/
     template<int dim>
     const double& SimplicialMesh<dim>::volume() const
     {
         return vol0;
     }
-
+    
+    /**********************************************************************/
     template<int dim>
     const typename SimplicialMesh<dim>::MeshRegionBoundaryContainerType& SimplicialMesh<dim>::regionBoundaries() const
     {
         return *this;
     }
-
+    
+    /**********************************************************************/
+    template<int dim>
+    typename SimplicialMesh<dim>::MeshRegionBoundaryContainerType& SimplicialMesh<dim>::regionBoundaries()
+    {
+        return *this;
+    }
+    
+    //        const MeshFacesContainerType& faces() const
+    //        {
+    //            return *this;
+    //        }
+    //
+    //        MeshFacesContainerType& faces()
+    //        {
+    //            return *this;
+    //        }
+    
+    /**********************************************************************/
     template<int dim>
     const typename SimplicialMesh<dim>::MeshRegionBoundaryType& SimplicialMesh<dim>::regionBoundary(const int& i,const int& j) const
     {
         return regionBoundaries().at(std::make_pair(std::min(i,j),std::max(i,j)));
     }
-
+    
+    
+    
+    
     template class SimplicialMesh<3>;
+    
 }
 #endif

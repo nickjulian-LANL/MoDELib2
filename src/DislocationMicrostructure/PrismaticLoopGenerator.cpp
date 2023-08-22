@@ -159,15 +159,15 @@ double PrismaticLoopGenerator::generateSingle(MicrostructureGenerator& mg,const 
             
             
             //Create glissile loops on prism planes
-            const auto periodicShifts(mg.ddBase.periodicLatticeBasis);
+            const auto periodicShifts(mg.ddBase.mesh.periodicBasis());
             Eigen::Matrix<double,3,3> box(Eigen::Matrix<double,3,3>::Zero());
             Eigen::Matrix<double,3,3> invBox(Eigen::Matrix<double,3,3>::Zero());
             
-            if(periodicShifts.cols()==3)
+            if(periodicShifts.size()==3)
             {
                 for(int k=0;k<3;++k)
                 {
-                    box.col(k)=periodicShifts.col(k);
+                    box.col(k)=periodicShifts[k];
                 }
                 invBox=box.inverse();
             }
@@ -176,6 +176,7 @@ double PrismaticLoopGenerator::generateSingle(MicrostructureGenerator& mg,const 
                 throw std::runtime_error("Cannot determine periodic box size.");
             }
             
+//            const double L(50.0);
             const VectorDimD step(L*b.cartesian());
             for(size_t k1=0;k1<planes.size();++k1)
             {

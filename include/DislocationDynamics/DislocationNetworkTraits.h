@@ -43,7 +43,7 @@ namespace model
     class DislocationNode;
     
     template <int dim, short unsigned int corder>
-    class DislocationSegment;
+    struct DislocationSegment;
     
     template <typename DislocationNetworkType>
     class DislocationNetworkRemesh;

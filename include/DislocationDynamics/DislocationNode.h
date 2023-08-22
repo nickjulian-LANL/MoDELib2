@@ -43,7 +43,7 @@ namespace model
         typedef typename TraitsType::FlowType FlowType;
         typedef typename TraitsType::VectorDim VectorDim;
         typedef SplineNode<DislocationNode<dim,corder>,dim,corder,Hermite> SplineNodeType;
-//        typedef ConfinedDislocationObject<dim> ConfinedDislocationObjectType;
+        typedef ConfinedDislocationObject<dim> ConfinedDislocationObjectType;
         typedef typename TypeTraits<NetworkNodeType>::MeshLocation MeshLocation;
         typedef std::vector<VectorDim> VectorOfNormalsType;
         typedef GlidePlane<dim> GlidePlaneType;
@@ -52,10 +52,8 @@ namespace model
         typedef std::set<const PlanarMeshFaceType *> PlanarMeshFaceContainerType;
         typedef Grain<dim> GrainType;
         typedef std::set<const GrainType*> GrainContainerType;
-        typedef Eigen::Array<double,1,ClusterDynamicsParameters<dim>::mSize> ClimbVelocityScalarType;
 
         const Simplex<dim,dim>* p_Simplex;
-        ClimbVelocityScalarType climbVelocityScalar;
         VectorDim velocity;
         VectorDim vOld;         //! The previous velocity vector of *this PlanarDislocationNode
         double velocityReductionCoeff;
@@ -63,8 +61,7 @@ namespace model
 //        NetworkNodeType* const masterNode;
         static int totalCappedNodes; //gives the fraction of the capped velocities
         
-        DislocationNode(LoopNetworkType* const,const VectorDim&,const VectorDim&,const ClimbVelocityScalarType&,const double&);
-        DislocationNode(LoopNetworkType* const,const VectorDim&);
+        DislocationNode(LoopNetworkType* const,const VectorDim&,const VectorDim&,const double&);
         ~DislocationNode();
         std::shared_ptr<DislocationNode> clone() const;
         const Simplex<dim,dim>* get_includingSimplex(const VectorDim&,const Simplex<dim,dim>* const) const;
@@ -92,7 +89,6 @@ namespace model
         VectorDim bndNormal() const;
         VectorDim snapToGlidePlanesinPeriodic(const VectorDim& P) const;
         GrainContainerType grains() const;
-        VectorDim climbDirection() const;
     };
     
 }

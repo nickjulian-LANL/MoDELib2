@@ -11,45 +11,62 @@
 #define model_DefectiveCrystal_H_
 
 #include <iostream>
-#include <MicrostructureContainer.h>
-#include <ElasticDeformation.h>
-#include <DislocationDynamicsBase.h>
+#include <vector>
+#include <memory>
+
+#include <DDtimeIntegrator.h>
 #include <DefectiveCrystalParameters.h>
 #include <DislocationDynamicsModule.h>
 #include <CrackSystem.h>
-#include <ClusterDynamics.h>
-
-
+#include <UniformExternalLoadController.h>
 
 namespace model
 {
     
-    template <int _dim>
-    class DefectiveCrystal : public MicrostructureContainer<_dim>
+    template <int _dim, short unsigned int corder>
+    class DefectiveCrystal
     {
         
-        std::ofstream f_file;
-        std::ofstream F_labels;
-
     public:
         static constexpr int dim=_dim; // make dim available outside class
-        typedef typename MicrostructureBase<dim>::MatrixDim MatrixDim;
-        typedef typename MicrostructureBase<dim>::VectorDim VectorDim;
-        typedef MicrostructureContainer<_dim> MicrostructureContainerType;
+        typedef DefectiveCrystal<dim,corder> DefectiveCrystalType;
+        typedef DislocationNetwork<dim,corder> DislocationNetworkType;
+        typedef CrackSystem<dim> CrackSystemType;
+        typedef Eigen::Matrix<double,dim,1> VectorDim;
+        typedef Eigen::Matrix<double,dim,dim> MatrixDim;
+        typedef BVPsolver<dim,2> BVPsolverType;
+        typedef typename BVPsolverType::ElementType ElementType;
         
-        typedef InclusionMicrostructure<dim> InclusionMicrostructureType;
-        typedef DislocationNetwork<dim,0> DislocationNetworkType;
-        typedef ClusterDynamics<dim> ClusterDynamicsType;
-        typedef ElasticDeformation<dim> ElasticDeformationType;
+        DefectiveCrystalParameters simulationParameters;
         
-        DefectiveCrystal(DislocationDynamicsBase<_dim>& ddBase_in) ;
-        using MicrostructureContainer<_dim>::initializeConfiguration;
-        void initializeConfiguration(const DDconfigIO<dim>& configIO);
-        void runSteps();
-        void runSingleStep();
+        const std::set<int> periodicFaceIDs;
+        const SimplicialMesh<dim> mesh;
+        const std::vector<VectorDim> periodicShifts;
+        const Polycrystal<dim> poly;
+        const std::unique_ptr<DislocationNetworkType> DN;
+        const std::unique_ptr<CrackSystemType> CS;
+        const std::unique_ptr<BVPsolverType> bvpSolver;
+        const std::unique_ptr<ExternalLoadControllerBase<dim>> externalLoadController;
         
-        const DislocationNetwork<_dim,0>& dislocationNetwork() const;
         
+        
+        static std::unique_ptr<ExternalLoadControllerBase<dim>> getExternalLoadController(const DefectiveCrystalParameters& params,
+                                                                                          const DefectiveCrystalType& dc,
+                                                                                          const long int& rID);
+                
+//        static std::vector<VectorDim> getPeriodicShifts(const SimplicialMesh<dim>& m,const DefectiveCrystalParameters& params);
+        void updateLoadControllers(const long int& runID, const bool& isClimbStep);
+        
+    public:
+        
+        DefectiveCrystal(const std::string& folderName) ;
+        void singleGlideStep();;
+        void runGlideSteps();
+        MatrixDim plasticDistortion() const;
+        MatrixDim plasticDistortionRate() const;
+        MatrixDim plasticStrainRate() const;
+        MatrixDim plasticStrain() const;
+        double getMaxVelocity() const;
     };
 }
 #endif

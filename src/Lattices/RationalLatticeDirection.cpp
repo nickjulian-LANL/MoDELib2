@@ -69,10 +69,7 @@ namespace model
     template <int dim>
     RationalLatticeDirection<dim> RationalLatticeDirection<dim>::operator+(const RationalLatticeDirection<dim> &other) const
     {
-        if (&dir.lattice != &other.dir.lattice)
-        {
-          throw std::runtime_error( "ReciprocalLatticeVectorType belong to different Lattices.");
-        }
+        assert(&dir.lattice == &other.dir.lattice && "ReciprocalLatticeVectorType belong to different Lattices.");
         const VectorDimI temp(rat.n * other.rat.d * dir + other.rat.n * rat.d * other.dir);
         const long int gcd(LatticeGCD<dim>::gcd(temp));
         const LatticeVector<dim> v(temp / gcd, dir.lattice);
@@ -83,10 +80,7 @@ namespace model
     template <int dim>
     RationalLatticeDirection<dim> RationalLatticeDirection<dim>::operator-(const RationalLatticeDirection<dim> &other) const
     {
-        if (&dir.lattice != &other.dir.lattice)
-        {
-          throw std::runtime_error( "ReciprocalLatticeVectorType belong to different Lattices.");
-        }
+        assert(&dir.lattice == &other.dir.lattice && "ReciprocalLatticeVectorType belong to different Lattices.");
         const VectorDimI temp(rat.n * other.rat.d * dir - other.rat.n * rat.d * other.dir);
         const long int gcd(LatticeGCD<dim>::gcd(temp));
         const LatticeVector<dim> v(temp / gcd, dir.lattice);
@@ -97,10 +91,7 @@ namespace model
     template <int dim>
     RationalLatticeDirection<dim> RationalLatticeDirection<dim>::operator+(const LatticeVector<dim> &other) const
     {
-        if (&dir.lattice != &other.lattice)
-        {
-          throw std::runtime_error( "ReciprocalLatticeVectorType belong to different Lattices.");
-        }
+        assert(&dir.lattice == &other.lattice && "ReciprocalLatticeVectorType belong to different Lattices.");
         const long int gcd(LatticeGCD<dim>::gcd(other));
         return this->operator+(RationalLatticeDirection<dim>(Rational(gcd, 1), LatticeDirection<dim>(other)));
     }
@@ -109,10 +100,7 @@ namespace model
     template <int dim>
     RationalLatticeDirection<dim> RationalLatticeDirection<dim>::operator-(const LatticeVector<dim> &other) const
     {
-        if (&dir.lattice != &other.lattice)
-        {
-          throw std::runtime_error( "ReciprocalLatticeVectorType belong to different Lattices.");
-        }
+        assert(&dir.lattice == &other.lattice && "ReciprocalLatticeVectorType belong to different Lattices.");
         const long int gcd(LatticeGCD<dim>::gcd(other));
         return this->operator-(RationalLatticeDirection<dim>(Rational(gcd, 1), LatticeDirection<dim>(other)));
     }

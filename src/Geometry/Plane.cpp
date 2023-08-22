@@ -99,10 +99,7 @@ bool Plane<dim>::isBelow(const VectorDim& P0) const
         {
             //            const double xNorm(x.norm());
             const double zNorm(z.norm());
-            if (zNorm <= FLT_EPSILON)
-            {
-               throw std::runtime_error("zNorm <= FLT_EPSILON");
-            }
+            assert(zNorm>FLT_EPSILON);
             z/=zNorm;
             
             VectorDim x(VectorDim::UnitX().cross(z));
@@ -134,18 +131,9 @@ bool Plane<dim>::isBelow(const VectorDim& P0) const
                 }
             }
             
-            if (std::fabs(x.norm()-1.0) >= FLT_EPSILON)
-            {
-               throw std::runtime_error("std::fabs(x.norm()-1.0) >= FLT_EPSILON");
-            }
-            if (std::fabs(z.norm()-1.0) >= FLT_EPSILON)
-            {
-               throw std::runtime_error("std::fabs(z.norm()-1.0) >= FLT_EPSILON");
-            }
-            if (fabs(x.dot(z) >= FLT_EPSILON))
-            {
-               throw std::runtime_error("fabs(x.dot(z) >= FLT_EPSILON)");
-            }
+            assert(std::fabs(x.norm()-1.0)<FLT_EPSILON);
+            assert(std::fabs(z.norm()-1.0)<FLT_EPSILON);
+            assert(fabs(x.dot(z)<FLT_EPSILON));
             MatrixDim temp(Eigen::Matrix3d::Identity());
             temp.col(2)=z;
             temp.col(0)=x;

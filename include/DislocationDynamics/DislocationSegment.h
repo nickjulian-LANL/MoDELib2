@@ -19,7 +19,7 @@
 #include <TypeTraits.h>
 #include <NetworkLink.h>
 #include <SplineSegment.h>
-//#include <ConfinedDislocationObject.h>
+#include <ConfinedDislocationObject.h>
 #include <DislocationQuadraturePoint.h>
 #include <DislocationLoopIO.h>
 #include <PlaneLineIntersection.h>
@@ -51,7 +51,7 @@ namespace model
         typedef typename TraitsType::VectorDim VectorDim;
         typedef typename TraitsType::MatrixDim MatrixDim;
         typedef typename TraitsType::MeshLocation MeshLocation;
-//        typedef ConfinedDislocationObject<dim> ConfinedDislocationObjectType;
+        typedef ConfinedDislocationObject<dim> ConfinedDislocationObjectType;
         typedef SplineSegment<dim,corder> SplineSegmentType;
         typedef typename SplineSegmentType::VectorNdof VectorNdof;
         typedef typename SplineSegmentType::MatrixNdof MatrixNdof;
@@ -71,8 +71,8 @@ namespace model
 //        /*    */ std::less<size_t>
 //        /*    */ > h2posMap;
 //        Eigen::Matrix<double, Ndof, Eigen::Dynamic> Mseg;
-//        MatrixNdof Kqq; //! Segment Stiffness Matrix
-//        VectorNdof Fq; //! Segment Nodal Force Vector
+        MatrixNdof Kqq; //! Segment Stiffness Matrix
+        VectorNdof Fq; //! Segment Nodal Force Vector
         VectorDim Burgers; //! The Burgers vector
         double BurgersNorm;
         StraightDislocationSegment<dim> straight;
@@ -105,12 +105,11 @@ namespace model
 //        bool isVirtualBoundarySegment() const;
         bool isGlissile() const;        
         bool isSessile() const;
-//        void assembleGlide(const bool&);
+        void assembleGlide(const bool&);
         const VectorDim& burgers() const;
         const VectorDim& glidePlaneNormal() const;
         void addToGlobalAssembly(std::deque<Eigen::Triplet<double> >& kqqT,Eigen::VectorXd& FQ) const;
-        void createQuadraturePoints(const bool& isClimbStep);
-        void updateQuadraturePoints(const bool& isClimbStep);
+        void updateQuadraturePointsSeg();
         int velocityGroup(const double &maxVelocity, const std::set<int> &subcyclingBins) const;
         GlidePlaneContainerType glidePlanes() const;
         PlanarMeshFaceContainerType meshFaces() const;
@@ -121,7 +120,6 @@ namespace model
         GrainContainerType grains() const;
         std::vector<std::pair<const GlidePlane<dim> *const, const GlidePlane<dim> *const>> parallelAndCoincidentGlidePlanes(const GlidePlaneContainerType &other) const;
         VectorDim snapToGlidePlanes(const VectorDim &P) const;
-        VectorDim climbDirection() const;
         
     };
 }

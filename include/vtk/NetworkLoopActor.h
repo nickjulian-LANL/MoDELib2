@@ -40,17 +40,21 @@
 #include <vtkFloatArray.h>
 #include <vtkTriangleFilter.h>
 #include <IDreader.h>
-//#include <PlanarPolygon.h>
+#include <PlanarPolygon.h>
 #include <DDconfigIO.h>
 #include <MeshPlane.h>
 #include <PeriodicGlidePlaneFactory.h>
 //#include <DislocationLoopPatches.h>
-#include <DefectiveCrystal.h>
+#include <DDconfigFields.h>
 
 namespace model
 {
     struct NetworkLoopActor : public QWidget
+//    /*                     */,private std::map<size_t,DislocationLoopPatches<3>>
     {
+//        static constexpr int dim=3;
+//        enum ColorScheme {colorBurgers=0,colorSessile=1,colorNormal=2,colorEdgeScrew=3,colorComponent=4};
+//        typedef Eigen::Matrix<double,dim,1>  VectorDim;
         
         Q_OBJECT
         private slots:
@@ -78,10 +82,10 @@ namespace model
         
         public:
                 
-        const DefectiveCrystal<3>& defectiveCrystal;
-        const DislocationNetwork<3,0>* const dislocationNetwork;
-
-        NetworkLoopActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const DefectiveCrystal<3>& defectiveCrystal_in);
+        const DDconfigFields<3>& configFields;
+        
+        NetworkLoopActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,
+                         const DDconfigFields<3>& configFields_in);
         void updateConfiguration();
         
     };

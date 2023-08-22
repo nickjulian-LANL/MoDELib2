@@ -12,364 +12,283 @@
 
 #include <DefectiveCrystal.h>
 
-
 namespace model
 {
-    template <int _dim>
-    DefectiveCrystal<_dim>::DefectiveCrystal(DislocationDynamicsBase<_dim>& ddBase_in) :
-    /* init */ MicrostructureContainerType(ddBase_in)
-    /* init */,f_file(this->ddBase.simulationParameters.traitsIO.fFile,std::ios_base::app)
-    /* init */,F_labels(this->ddBase.simulationParameters.traitsIO.flabFile,std::ios_base::app)
-    {
-        if (!f_file.is_open())
-        {
-            throw std::runtime_error("Cannot open file "+this->ddBase.simulationParameters.traitsIO.fFile);
-        }
-        if (!F_labels.is_open())
-        {
-            throw std::runtime_error("Cannot open file "+this->ddBase.simulationParameters.traitsIO.flabFile);
-        }
         
-        if(this->ddBase.simulationParameters.useInclusions)
-        {
-            this->emplace_back(new InclusionMicrostructureType(*this));
-        }
-        if(this->ddBase.simulationParameters.useClusterDynamics)
-        {
-            this->emplace_back(new ClusterDynamicsType(*this));
-        }
-        if(this->ddBase.simulationParameters.useDislocations)
-        {
-            this->emplace_back(new DislocationNetworkType(*this));
-        }
-        if(this->ddBase.simulationParameters.useElasticDeformation)
-        {
-            this->emplace_back(new ElasticDeformationType(*this));
-        }
-
-        DDconfigIO<dim> configIO(this->ddBase.simulationParameters.traitsIO.evlFolder);
-        configIO.read(this->ddBase.simulationParameters.runID);
-        this->initializeConfiguration(configIO);
-    }
-
-    template <int _dim>
-    void DefectiveCrystal<_dim>::initializeConfiguration(const DDconfigIO<dim>& configIO)
-    {
-        this->initializeConfiguration(configIO,f_file,F_labels);
-
-    }
-
-    template <int _dim>
-    void DefectiveCrystal<_dim>::runSingleStep()
-    {
-        std::cout<<"\n"<<blueBoldColor<< "runID="<<this->ddBase.simulationParameters.runID<<" (of "<<this->ddBase.simulationParameters.Nsteps<<")"
-        /*                    */<< ", time="<<this->ddBase.simulationParameters.totalTime<<defaultColor<<std::endl;
         
-        this->solve();
-        this->ddBase.simulationParameters.dt=this->getDt();
-                
-        if (!(this->ddBase.simulationParameters.runID%this->ddBase.simulationParameters.outputFrequency))
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        std::unique_ptr<ExternalLoadControllerBase<DefectiveCrystal<_dim,corder>::dim>> DefectiveCrystal<_dim,corder>::getExternalLoadController(const DefectiveCrystalParameters& params,
+                                                                                          const DefectiveCrystalType& dc,
+                                                                                          const long int& rID)
         {
-            DDconfigIO<dim> configIO(this->ddBase.simulationParameters.traitsIO.evlFolder);
-            DDauxIO<dim> auxIO(this->ddBase.simulationParameters.traitsIO.auxFolder);
-            
-            f_file<< this->ddBase.simulationParameters.runID<<" "<<std::setprecision(15)<<std::scientific<<this->ddBase.simulationParameters.totalTime<<" "<<this->ddBase.simulationParameters.dt<<" ";
-
-            const Eigen::Matrix<double,dim,dim>& pD(this->averagePlasticDistortion());
-            f_file<<pD.row(0)<<" "<<pD.row(1)<<" "<<pD.row(2)<<" "<<pD.trace()<<" "<<pD.norm()<<" ";
-
-            const Eigen::Matrix<double,dim,dim>& pDR(this->averagePlasticDistortionRate());
-            f_file<<pDR.row(0)<<" "<<pDR.row(1)<<" "<<pDR.row(2)<<" "<<pDR.trace()<<" "<<pDR.norm()<<" ";
-            
-            if(this->ddBase.simulationParameters.runID==0)
+                     
+            if(params.simulationType==DDtraitsIO::FINITE_FEM)
             {
-                F_labels<<"runID\n";
-                F_labels<<"time [b/cs]\n";
-                F_labels<<"dt [b/cs]\n";
-                
-                F_labels<<"betaP_11\n";
-                F_labels<<"betaP_12\n";
-                F_labels<<"betaP_13\n";
-                F_labels<<"betaP_21\n";
-                F_labels<<"betaP_22\n";
-                F_labels<<"betaP_23\n";
-                F_labels<<"betaP_31\n";
-                F_labels<<"betaP_32\n";
-                F_labels<<"betaP_33\n";
-                F_labels<<"tr(betaP)\n";
-                F_labels<<"norm(betaP)\n";
-                
-                F_labels<<"dotBetaP_11 [cs/b]\n";
-                F_labels<<"dotBetaP_12 [cs/b]\n";
-                F_labels<<"dotBetaP_13 [cs/b]\n";
-                F_labels<<"dotBetaP_21 [cs/b]\n";
-                F_labels<<"dotBetaP_22 [cs/b]\n";
-                F_labels<<"dotBetaP_23 [cs/b]\n";
-                F_labels<<"dotBetaP_31 [cs/b]\n";
-                F_labels<<"dotBetaP_32 [cs/b]\n";
-                F_labels<<"dotBetaP_33 [cs/b]\n";
-                F_labels<<"tr(dotBetaP) [cs/b]\n";
-                F_labels<<"norm(dotBetaP) [cs/b]\n";
+                return std::unique_ptr<ExternalLoadControllerBase<DefectiveCrystal<_dim,corder>::dim>>(nullptr);
+            }
+            else
+            {
+                if(params.externalLoadControllerName=="UniformExternalLoadController")
+                {
+                    return std::unique_ptr<ExternalLoadControllerBase<DefectiveCrystal<_dim,corder>::dim>>(new UniformExternalLoadController<DefectiveCrystalType>(dc,rID));
+                }
+//                else if(params.externalLoadControllerName=="None")
+//                {
+//                    return std::unique_ptr<ExternalLoadControllerBase<DefectiveCrystal<_dim,corder>::dim>>(nullptr);
+//                }
+                else
+                {
+                    std::cout<<"Unknown externalLoadController name "<<params.externalLoadControllerName<<"No controller applied."<<std::endl;
+                    return std::unique_ptr<ExternalLoadControllerBase<DefectiveCrystal<_dim,corder>::dim>>(nullptr);
+                }
             }
             
-            this->output(configIO,auxIO,f_file,F_labels);
-            f_file<<std::endl;
             
-            if(this->ddBase.simulationParameters.runID==0)
+        }
+        
+//        /**********************************************************************/
+//        template <int _dim, short unsigned int corder>
+//        std::vector<typename DefectiveCrystal<_dim,corder>::VectorDim> DefectiveCrystal<_dim,corder>::getPeriodicShifts(const SimplicialMesh<DefectiveCrystal<_dim,corder>::dim>& m,
+//                                                        const DefectiveCrystalParameters& params)
+//        {
+//            // Set up periodic shifts
+//            std::vector<VectorDim> temp;
+//            temp.push_back(VectorDim::Zero());
+//            if(params.simulationType==DDtraitsIO::PERIODIC_IMAGES)
+//            {
+//                const auto shiftVectors(m.periodicBasis());
+//                std::cout<<"Box periodicity vectors ("<<shiftVectors.size()<<"):"<<std::endl;
+//                for(const auto& shift : shiftVectors)
+//                {
+//                    std::cout<<shift.transpose()<<std::endl;
+//                }
+//                
+//                if(shiftVectors.size()!=params.periodicImageSize.size())
+//                {
+//                    std::cout<<"shiftVectors.size()="<<shiftVectors.size()<<std::endl;
+//                    std::cout<<"periodicImageSize.size()="<<params.periodicImageSize.size()<<std::endl;
+//                    throw std::runtime_error("shiftVectors.size() must equal periodicImageSize.size()");
+//                }
+//                
+//                
+//                for(size_t k=0;k<shiftVectors.size();++k)
+//                {
+//                    const auto shiftVector(shiftVectors[k]);
+//                    const int imageSize(std::abs(params.periodicImageSize[k]));
+//                    std::vector<VectorDim> newTemp;
+//                    for(const auto& v:temp)
+//                    {// grab existing shift vectors
+//                        for(int i=-imageSize;i<=imageSize;++i)
+//                        {// add current shift times corresponding image size
+//                            newTemp.push_back(v+i*shiftVector);
+//                        }
+//                    }
+//                    temp.swap(newTemp);
+//                }
+//            }
+//
+//
+//
+//            
+//            std::cout<<"Image shift vectors ("<<temp.size()<<"):"<<std::endl;
+//            for(const auto& shift : temp)
+//            {
+//                std::cout<<shift.transpose()<<std::endl;
+//            }
+//            
+//            return temp;
+//            
+//        }
+        
+        
+        
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        void DefectiveCrystal<_dim,corder>::updateLoadControllers(const long int& runID, const bool& isClimbStep)
+        {/*! Updates bvpSolver using the stress and displacement fields of the
+          *  current DD configuration.
+          */
+            const int quadraturePerTriangle=37;
+            if(bvpSolver)
             {
-                F_labels<<std::flush;
+                if (!(runID%bvpSolver->stepsBetweenBVPupdates))
+                {// enter the if statement if use_bvp!=0 and runID is a multiple of use_bvp
+                    std::cout<<"Updating bvpSolver ... "<<std::endl;
+                    bvpSolver->template assembleAndSolve<DislocationNetworkType,quadraturePerTriangle>(*DN, isClimbStep);
+                }
             }
-            configIO.write(this->ddBase.simulationParameters.runID,this->ddBase.simulationParameters.outputBinary);
-            auxIO.write(this->ddBase.simulationParameters.runID,this->ddBase.simulationParameters.outputBinary);
+            if (externalLoadController)
+            {
+                std::cout<<"Updating externalLoadController... "<<std::endl;
+                externalLoadController->update(runID);
+            }
         }
         
-        // updateConfiguration
-        this->updateConfiguration();
+    
         
-        // Increment runID and time
-        this->ddBase.simulationParameters.totalTime+=this->ddBase.simulationParameters.dt;
-        ++this->ddBase.simulationParameters.runID;
-    }
-
-    template <int _dim>
-    void DefectiveCrystal<_dim>::runSteps()
-    {/*! Runs a number of simulation time steps defined by simulationParameters.Nsteps
-      */
-        const auto t0= std::chrono::system_clock::now();
-        while (this->ddBase.simulationParameters.runID<this->ddBase.simulationParameters.Nsteps)
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        DefectiveCrystal<_dim,corder>::DefectiveCrystal(const std::string& folderName) :
+        /* init */ simulationParameters(folderName)
+        /* init */,periodicFaceIDs(TextFileParser(simulationParameters.traitsIO.polyFile).template readSet<int>("periodicFaceIDs",true))
+        /* init */,mesh(simulationParameters.traitsIO.meshFile,
+                        TextFileParser(simulationParameters.traitsIO.polyFile).readMatrix<double>("A",3,3,true),
+                        TextFileParser(simulationParameters.traitsIO.polyFile).readMatrix<double>("x0",1,3,true).transpose(),periodicFaceIDs)
+//        /* init */,periodicShifts(getPeriodicShifts(mesh,simulationParameters))
+        /* init */,periodicShifts(mesh.periodicShifts(simulationParameters.periodicImageSize))
+        /* init */,poly(simulationParameters.traitsIO.polyFile,mesh)
+        /* init */,DN(simulationParameters.useDislocations? new DislocationNetworkType(simulationParameters,mesh,poly,bvpSolver,externalLoadController,periodicShifts,simulationParameters.runID) : nullptr)
+        /* init */,CS(simulationParameters.useCracks? new CrackSystemType() : nullptr)
+        //        /* init */,DN(argc,argv,simulationParameters,mesh,poly,bvpSolver,externalLoadController,periodicShifts,simulationParameters.runID)
+        /* init */,bvpSolver(simulationParameters.simulationType==DDtraitsIO::FINITE_FEM? new BVPsolverType(mesh,*DN) : nullptr)
+        /* init */,externalLoadController(getExternalLoadController(simulationParameters,*this,simulationParameters.runID))
         {
-            runSingleStep();
+            
+            if(!mesh.simplices().size())
+            {
+                throw std::runtime_error("Mesh is empty");
+            }
+          
         }
-        std::cout<<greenBoldColor<<std::setprecision(3)<<std::scientific<<this->ddBase.simulationParameters.Nsteps<< " simulation steps completed in "<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" [sec]"<<defaultColor<<std::endl;
-    }
 
-    template <int _dim>
-    const DislocationNetwork<_dim,0>& DefectiveCrystal<_dim>::dislocationNetwork() const
-    {
-        const auto ptrDN(this->template getUniqueTypedMicrostructure<DislocationNetwork<_dim,0>>());
-        if(ptrDN)
+        template <int _dim, short unsigned int corder>
+        double DefectiveCrystal<_dim,corder>::getMaxVelocity() const
         {
-            return *ptrDN;
+            double vmax = 0.0;
+
+            for (const auto &nodeIter : DN->networkNodes())
+            {
+                    const double vNorm(nodeIter.second.lock()->get_V().norm());
+                    if (vNorm > vmax)
+                    {
+                        vmax = vNorm;
+                    }
+            }
+            return vmax;
         }
-        else
+        
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        void DefectiveCrystal<_dim,corder>::singleGlideStep()
         {
-            throw std::runtime_error("Unique DislocationNetwork<_dim,0> does not exist");
-            return *ptrDN;
+            std::cout<<blueBoldColor<< "runID="<<simulationParameters.runID<<" (of "<<simulationParameters.Nsteps<<")"
+            /*                    */<< ", time="<<simulationParameters.totalTime;
+            if(DN)
+            {
+                std::cout<< ": networkNodes="<<DN->networkNodes().size()
+                /*                    */<< ", networkSegments="<<DN->networkLinks().size()
+                /*                    */<< ", loopNodes="<<DN->loopNodes().size()
+                /*                    */<< ", loopSegments="<<DN->loopLinks().size()
+                /*                    */<< ", loops="<<DN->loops().size();
+            }
+            std::cout<< defaultColor<<std::endl;
+
+            if(DN)
+            {
+                DislocationNode<dim,corder>::totalCappedNodes=0;
+                DN->updateGeometry();
+                updateLoadControllers(simulationParameters.runID, false);
+                const double maxVelocity(getMaxVelocity());
+                DN->assembleGlide(simulationParameters.runID, maxVelocity);
+                DN->storeSingleGlideStepDiscreteEvents(simulationParameters.runID);
+                DN->solveGlide(simulationParameters.runID);
+                simulationParameters.dt=DN->timeIntegrator.getGlideTimeIncrement(*DN); // TO DO: MAKE THIS std::min between DN and CrackSystem
+                DN->updateRates();
+                DN->io().output(simulationParameters.runID);
+                DN->moveGlide(simulationParameters.dt);
+                DN->executeSingleGlideStepDiscreteEvents(simulationParameters.runID);
+                if (DN->capMaxVelocity)
+                {
+                    std::cout<<redBoldColor<<"( "<<(DislocationNode<dim,corder>::totalCappedNodes)<<" total nodes capped "<<defaultColor<<std::endl;
+                    std::cout<<redBoldColor<<", "<<(double(DislocationNode<dim,corder>::totalCappedNodes)/double(DN->networkNodes().size()))<<" fraction of nodes capped "
+                    <<defaultColor<<" )"<<std::endl;
+                }
+            }
+            simulationParameters.totalTime+=simulationParameters.dt;
+            ++simulationParameters.runID;
         }
-    }
+//
+//        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        void DefectiveCrystal<_dim,corder>::runGlideSteps()
+        {/*! Runs a number of simulation time steps defined by simulationParameters.Nsteps
+          */
+            const auto t0= std::chrono::system_clock::now();
+            while (simulationParameters.runID<simulationParameters.Nsteps)
+            {
+                std::cout<<std::endl; // leave a blank line
+                singleGlideStep();
+            }
+            if(DN)
+            {
+                DN->updateGeometry();
+            }
+            std::cout<<greenBoldColor<<std::setprecision(3)<<std::scientific<<simulationParameters.Nsteps<< " simulation steps completed in "<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" [sec]"<<defaultColor<<std::endl;
+        }
+
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        typename DefectiveCrystal<_dim,corder>::MatrixDim DefectiveCrystal<_dim,corder>::plasticDistortion() const
+        {/*!\param[in] P position vector
+          * \returns The stress field in the DefectiveCrystal at P
+          * Note:
+          */
+            MatrixDim temp(MatrixDim::Zero());
+            if(DN)
+            {
+                temp+=DN->plasticDistortion();
+            }
+            if(CS)
+            {
+                temp+=CS->plasticDistortion();
+            }
+            return temp;
+        }
+
+template <int _dim, short unsigned int corder>
+typename DefectiveCrystal<_dim,corder>::MatrixDim DefectiveCrystal<_dim,corder>::plasticStrain() const
+{/*!\param[in] P position vector
+  * \returns The stress field in the DefectiveCrystal at P
+  * Note:
+  */
+    MatrixDim temp(plasticDistortion());
+    return 0.5*(temp+temp.transpose());
+}
+
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        typename DefectiveCrystal<_dim,corder>::MatrixDim DefectiveCrystal<_dim,corder>::plasticDistortionRate() const
+        {/*!\param[in] P position vector
+          * \returns The stress field in the DefectiveCrystal at P
+          * Note:
+          */
+            MatrixDim temp(MatrixDim::Zero());
+            if(DN)
+            {
+                temp+=DN->plasticDistortionRate();
+            }
+            if(CS)
+            {
+                temp+=CS->plasticDistortionRate();
+            }
+            return temp;
+        }
+
+        /**********************************************************************/
+        template <int _dim, short unsigned int corder>
+        typename DefectiveCrystal<_dim,corder>::MatrixDim DefectiveCrystal<_dim,corder>::plasticStrainRate() const
+        {/*!\param[in] P position vector
+          * \returns The stress field in the DefectiveCrystal at P
+          * Note:
+          */
+            MatrixDim temp(plasticDistortionRate());
+            return 0.5*(temp+temp.transpose());
+        }
 
 
-    template class DefectiveCrystal<3>;
+//
+template class DefectiveCrystal <3,0>;
+    
 }
 #endif
-
-//    template <int _dim>
-//    typename DefectiveCrystal<_dim>::MatrixDim DefectiveCrystal<_dim>::averagePlasticDistortion() const
-//    {/*!\param[in] P position vector
-//      * \returns The stress field in the DefectiveCrystal at P
-//      * Note:
-//      */
-//        MatrixDim temp(MatrixDim::Zero());
-//        for(const auto& pair : microstructures())
-//        {
-//            temp+pair.second->averagePlasticDistortion();
-//        }
-//        return temp;
-//    }
-
-//    template <int _dim>
-//    typename DefectiveCrystal<_dim>::MatrixDim DefectiveCrystal<_dim>::averagePlasticStrain() const
-//    {/*!\param[in] P position vector
-//      * \returns The stress field in the DefectiveCrystal at P
-//      * Note:
-//      */
-//        MatrixDim temp(averagePlasticDistortion());
-//        return 0.5*(temp+temp.transpose());
-//    }
-
-//    template <int _dim>
-//    typename DefectiveCrystal<_dim>::MatrixDim DefectiveCrystal<_dim>::averagePlasticDistortionRate() const
-//    {/*!\param[in] P position vector
-//      * \returns The stress field in the DefectiveCrystal at P
-//      * Note:
-//      */
-//
-//        MatrixDim temp(MatrixDim::Zero());
-//        for(const auto& pair : microstructures())
-//        {
-//            temp+pair.second->averagePlasticDistortionRate();
-//        }
-//        return temp;
-//    }
-
-//    template <int _dim>
-//    typename DefectiveCrystal<_dim>::MatrixDim DefectiveCrystal<_dim>::averagePlasticStrainRate() const
-//    {/*!\param[in] P position vector
-//      * \returns The stress field in the DefectiveCrystal at P
-//      * Note:
-//      */
-//        MatrixDim temp(averagePlasticDistortionRate());
-//        return 0.5*(temp+temp.transpose());
-//    }
-
-//    template <int _dim>
-//    const typename DefectiveCrystal<_dim>::MicrostructureContainerType& DefectiveCrystal<_dim>::microstructures() const
-//    {
-//        return *this;
-//    }
-//
-//    template <int _dim>
-//    typename DefectiveCrystal<_dim>::MicrostructureContainerType& DefectiveCrystal<_dim>::microstructures()
-//    {
-//        return *this;
-//    }
-
-
-//    template <int _dim>
-//    std::unique_ptr<ExternalLoadControllerBase<_dim>> DefectiveCrystal<_dim>::getExternalLoadController(const DislocationDynamicsBase<dim>& ddBase,const MatrixDim& plasticStrain_in)
-//    {
-//
-//        std::cout<<"gettingExternalLoadController"<<std::endl;
-//        if(!ddBase.isPeriodicDomain)
-//        {
-//            std::cout<<"getExternalLoadController a"<<std::endl;
-//            return std::unique_ptr<ExternalLoadControllerBase<_dim>>(nullptr);
-//        }
-//        else
-//        {
-//            if(ddBase.simulationParameters.externalLoadControllerName=="UniformExternalLoadController")
-//            {
-//                std::cout<<"getExternalLoadController b"<<std::endl;
-//                return std::unique_ptr<ExternalLoadControllerBase<_dim>>(new UniformExternalLoadController<_dim>(ddBase,plasticStrain_in));
-//            }
-//            else
-//            {
-//                std::cout<<"Unknown externalLoadController name "<<ddBase.simulationParameters.externalLoadControllerName<<"No controller applied."<<std::endl;
-//                return std::unique_ptr<ExternalLoadControllerBase<dim>>(nullptr);
-//            }
-//        }
-//    }
-
-//    template <int _dim>
-//    void DefectiveCrystal<_dim>::updateLoadControllers(const long int& runID, const bool& isClimbStep)
-//    {/*! Updates bvpSolver using the stress and displacement fields of the
-//      *  current DD configuration.
-//      */
-//        if(bvpSolver)
-//        {
-//            if (!(runID%bvpSolver->stepsBetweenBVPupdates))
-//            {// enter the if statement if use_bvp!=0 and runID is a multiple of use_bvp
-//                std::cout<<"Updating bvpSolver ... "<<std::endl;
-//                throw std::runtime_error("re-implement BVP update");
-//    //                const int quadraturePerTriangle=37;
-//    //                bvpSolver->template assembleAndSolve<DislocationNetworkType,quadraturePerTriangle>(*DN, isClimbStep);
-//            }
-//        }
-//        if (externalLoadController)
-//        {
-//            std::cout<<"Updating externalLoadController... "<<std::endl;
-//            externalLoadController->update(averagePlasticStrain());
-//        }
-//    }
-
-//        template <int _dim>
-//        double DefectiveCrystal<_dim>::getMaxVelocity() const
-//        {
-//            double vmax = 0.0;
-//
-//            for (const auto &nodeIter : DN->networkNodes())
-//            {
-//                    const double vNorm(nodeIter.second.lock()->get_V().norm());
-//                    if (vNorm > vmax)
-//                    {
-//                        vmax = vNorm;
-//                    }
-//            }
-//            return vmax;
-//        }
-
-//        template <int _dim>
-//        void DefectiveCrystal<_dim>::singleGlideStep()
-//        {
-//            if(DN)
-//            {
-//                std::cout<<"\n"<<blueBoldColor<< "runID="<<ddBase.simulationParameters.runID<<" (of "<<ddBase.simulationParameters.Nsteps<<")"
-//                /*                    */<< ", time="<<ddBase.simulationParameters.totalTime<<std::endl;
-//                std::cout<< "Glide step: networkNodes="<<DN->networkNodes().size()
-//                /*                    */<< ", networkSegments="<<DN->networkLinks().size()
-//                /*                    */<< ", loopNodes="<<DN->loopNodes().size()
-//                /*                    */<< ", loopSegments="<<DN->loopLinks().size()
-//                /*                    */<< ", loops="<<DN->loops().size();
-//
-//            std::cout<< defaultColor<<std::endl;
-//
-//                DislocationNode<dim,corder>::totalCappedNodes=0;
-//                DN->updateGeometry();
-//                updateLoadControllers(ddBase.simulationParameters.runID, false);
-////                const double maxVelocity(getMaxVelocity());
-//                DN->assembleGlide(ddBase.simulationParameters.runID, maxVelocity);
-//                DN->storeSingleGlideStepDiscreteEvents(ddBase.simulationParameters.runID);
-////                DN->solveGlide();
-//                DN->solveNodalVelocities(DN->glideSolver.get());
-//                ddBase.simulationParameters.dt=DN->timeIntegrator.getGlideTimeIncrement(*DN); // TO DO: MAKE THIS std::min between DN and CrackSystem
-//                DN->updateRates();
-//                DN->io().output(ddBase.simulationParameters.runID);
-//                DN->moveGlide(ddBase.simulationParameters.dt);
-//                DN->executeSingleGlideStepDiscreteEvents(ddBase.simulationParameters.runID);
-//                if (DN->capMaxVelocity)
-//                {
-//                    std::cout<<redBoldColor<<"( "<<(DislocationNode<dim,corder>::totalCappedNodes)<<" total nodes capped "<<defaultColor<<std::endl;
-//                    std::cout<<redBoldColor<<", "<<(double(DislocationNode<dim,corder>::totalCappedNodes)/double(DN->networkNodes().size()))<<" fraction of nodes capped "
-//                    <<defaultColor<<" )"<<std::endl;
-//                }
-//                ddBase.simulationParameters.totalTime+=ddBase.simulationParameters.dt;
-//                ++ddBase.simulationParameters.runID;
-//            }
-//        }
-
-//template <int _dim>
-//void DefectiveCrystal<_dim>::singleClimbStep()
-//{
-//    if(DN)
-//    {
-//        if(DN->climbSolver)
-//        {
-//            if(DN->plasticDistortionRate().norm()<DN->climbSolver->glideEquilibriumRate)
-//            {
-//                std::cout<<"\n"<<blueBoldColor<< "runID="<<ddBase.simulationParameters.runID<<" (of "<<ddBase.simulationParameters.Nsteps<<")"
-//                /*                    */<< ", time="<<ddBase.simulationParameters.totalTime<<std::endl;
-//                std::cout<< "Climb step: networkNodes="<<DN->networkNodes().size()
-//                /*                    */<< ", networkSegments="<<DN->networkLinks().size()
-//                /*                    */<< ", loopNodes="<<DN->loopNodes().size()
-//                /*                    */<< ", loopSegments="<<DN->loopLinks().size()
-//                /*                    */<< ", loops="<<DN->loops().size();
-//
-//            std::cout<< defaultColor<<std::endl;
-//
-//        //        DislocationNode<dim,corder>::totalCappedNodes=0;
-//                DN->updateGeometry();
-//                updateLoadControllers(ddBase.simulationParameters.runID, false);
-//        //        const double maxVelocity(getMaxVelocity());
-//        //        DN->assembleGlide(ddBase.simulationParameters.runID, maxVelocity);
-//        //        DN->storeSingleGlideStepDiscreteEvents(ddBase.simulationParameters.runID);
-////                DN->solveClimb();
-//                DN->solveNodalVelocities(DN->climbSolver.get());
-//                ddBase.simulationParameters.dt=DN->timeIntegrator.getClimbTimeIncrement(*DN); // TO DO: MAKE THIS std::min between DN and CrackSystem
-//                DN->updateRates();
-//                DN->io().output(ddBase.simulationParameters.runID);
-////                DN->moveClimb(ddBase.simulationParameters.dt);
-////                DN->executeSingleGlideStepDiscreteEvents(ddBase.simulationParameters.runID);
-////                if (DN->capMaxVelocity)
-////                {
-////                    std::cout<<redBoldColor<<"( "<<(DislocationNode<dim,corder>::totalCappedNodes)<<" total nodes capped "<<defaultColor<<std::endl;
-////                    std::cout<<redBoldColor<<", "<<(double(DislocationNode<dim,corder>::totalCappedNodes)/double(DN->networkNodes().size()))<<" fraction of nodes capped "
-////                    <<defaultColor<<" )"<<std::endl;
-////                }
-//                ddBase.simulationParameters.totalTime+=ddBase.simulationParameters.dt;
-//                ++ddBase.simulationParameters.runID;
-//
-//            }
-//        }
-//
-//    }
-//}

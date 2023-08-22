@@ -34,6 +34,7 @@
 #include <vtkActor2D.h>
 #include <vtkProperty2D.h>
 //#include <IDreader.h>
+//#include <PlanarPolygon.h>
 #include <DDconfigIO.h>
 #include <MeshPlane.h>
 #include <NetworkNodeActor.h>

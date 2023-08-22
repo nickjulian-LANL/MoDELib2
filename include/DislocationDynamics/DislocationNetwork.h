@@ -26,6 +26,7 @@
 
 #ifdef _OPENMP
 #include <omp.h>
+#define EIGEN_DONT_PARALLELIZE // disable Eigen Internal openmp Parallelization
 #endif
 
 #include <vector>
@@ -50,11 +51,25 @@
 
 #include <DislocationNetworkRemesh.h>
 #include <DislocationJunctionFormation.h>
+// #include <DislocationCrossSlip.h>
+////#include <Material.h>
+//#include <UniqueOutputFile.h>
+#include <DislocationNetworkIO.h>
+//#include <DislocationParticle.h>
 #include <DislocationFieldBase.h>
-#include <DDtimeStepper.h>
+////#include <ParticleSystem.h>
+//
+////#include <SingleFieldPoint.h>
+#include <DDtimeIntegrator.h>
+//#include <EqualIteratorRange.h>
+////#include <BoundingLineSegments.h>
+//#include <GrainBoundaryTransmission.h>
+////#include <GrainBoundaryDissociation.h>
 #include <DefectiveCrystalParameters.h>
 #include <SimplicialMesh.h>
 #include <Polycrystal.h>
+#include <BVPsolver.h>
+#include <ExternalLoadControllerBase.h>
 #include <GlidePlaneModule.h>
 
 #include <DislocationNodeContraction.h>
@@ -63,12 +78,24 @@
 #include <PolyhedronInclusion.h>
 
 #include <DDconfigIO.h>
-#include <DislocationGlideSolverFactory.h>
-#include <DislocationClimbSolverFactory.h>
+#include <DislocationGlideSolver.h>
 #include <CrossSlipModels.h>
-#include <MicrostructureBase.h>
-#include <MicrostructureContainer.h>
-#include <InclusionMicrostructure.h>
+
+//#include <TextFileParser.h>
+////#include <DisplacementPoint.h>
+
+
+////#include <ExternalLoadController.h>
+//#include <DislocationInjector.h>
+//#include <PeriodicDislocationLoop.h>
+////#include <PeriodicLoopObserver.h>
+//
+////#include <PeriodicDislocationSuperLoop.h>
+////#include <PlanarDislocationSuperLoop.h>
+//
+//#ifdef _MODEL_GREATWHITE_
+//#include <MooseSolution.h>
+//#endif
 
 #ifndef NDEBUG
 #define VerboseDislocationNetwork(N,x) if(verboseDislocationNetwork>=N){std::cout<<x;}
@@ -79,13 +106,13 @@
 namespace model
 {
     template <int dim, short unsigned int corder>
-    class DislocationNetwork : public MicrostructureBase<dim>
-    /*                      */,public LoopNetwork<DislocationNetwork<dim,corder> >
+    class DislocationNetwork :public LoopNetwork<DislocationNetwork<dim,corder> >
+    /*                     */,public std::map<size_t,std::shared_ptr<EshelbyInclusionBase<dim>>>
+    /*                     */,public std::map<size_t,PolyhedronInclusionNodeIO<dim>>
+
     {
         
     public:
-
-        
         
         typedef TypeTraits<DislocationNetwork<dim,corder>> TraitsType;
         typedef typename TraitsType::LoopNetworkType LoopNetworkType;
@@ -98,80 +125,88 @@ namespace model
         typedef typename TraitsType::VectorDim VectorDim;
         typedef typename TraitsType::VectorLowerDim VectorLowerDim;
         typedef typename TraitsType::MatrixDim MatrixDim;
-        typedef MicrostructureContainer<dim> MicrostructureContainerType;
-        typedef typename MicrostructureBase<dim>::ElementType ElementType;
-        typedef typename MicrostructureBase<dim>::NodeType NodeType;
-        typedef typename MicrostructureBase<dim>::SimplexDim SimplexDim;
-        typedef typename MicrostructureBase<dim>::VectorMSize VectorMSize;
+        typedef DislocationNetworkIO<LoopNetworkType> DislocationNetworkIOType;
+        typedef std::map<size_t,std::shared_ptr<EshelbyInclusionBase<dim>>> EshelbyInclusionContainerType;
+        typedef std::map<size_t,PolyhedronInclusionNodeIO<dim>> PolyhedronInclusionNodeContainerType;
+        typedef BVPsolver<dim,2> BvpSolverType;
+        typedef typename BvpSolverType::FiniteElementType FiniteElementType;
+        typedef typename FiniteElementType::ElementType ElementType;
 
-
-        constexpr static int NdofXnode=NetworkNodeType::NdofXnode;
+        
         static int verboseDislocationNetwork;
-        size_t glideStepsSinceLastClimb;
-        void moveNodes(const double & dt_in);
-        void storeSingleGlideStepDiscreteEvents(const long int& runID);
-        void executeSingleGlideStepDiscreteEvents(const long int& runID);
-        void updateBoundaryNodes();
-        bool contract(std::shared_ptr<NetworkNodeType> nA,std::shared_ptr<NetworkNodeType> nB);
-        
-        std::shared_ptr<DislocationGlideSolverBase<DislocationNetwork<dim,corder>>> glideSolver;
-        std::shared_ptr<DislocationClimbSolverBase<DislocationNetwork<dim,corder>>> climbSolver;
 
-    private:
-        
-        const InclusionMicrostructure<dim>* _inclusions;
 
     public:
 
-        DislocationDynamicsBase<dim>& ddBase;
+        const DefectiveCrystalParameters& simulationParameters;
+        const SimplicialMesh<dim>& mesh;
+        const Polycrystal<dim>& poly;
+        GlidePlaneFactory<dim> glidePlaneFactory;
+        std::shared_ptr<PeriodicGlidePlaneFactory<dim>> periodicGlidePlaneFactory;
+        const std::unique_ptr<BVPsolver<dim,2>>& bvpSolver;
+        const std::unique_ptr<ExternalLoadControllerBase<dim>>& externalLoadController;
+        const std::vector<VectorDim>& periodicShifts;
         DislocationNetworkRemesh<LoopNetworkType> networkRemesher;
         DislocationJunctionFormation<DislocationNetwork<dim,corder>> junctionsMaker;
         const std::shared_ptr<BaseCrossSlipModel<DislocationNetwork<dim,corder>>> crossSlipModel;
         DislocationCrossSlip<DislocationNetwork<dim,corder>> crossSlipMaker;
         DislocationNodeContraction<LoopNetworkType> nodeContractor;
-        DDtimeStepper<DislocationNetwork<dim,corder>> timeStepper;
+        DDtimeIntegrator timeIntegrator;
         std::shared_ptr<StochasticForceGenerator> stochasticForceGenerator;
+        DislocationNetworkIO<LoopNetworkType> networkIO;
         int ddSolverType;
         bool computeDDinteractions;
+        int  outputFrequency;
+        bool outputBinary;
+        bool outputMeshDisplacement;
+        bool outputFEMsolution;
         bool outputQuadraturePoints;
         bool outputLinkingNumbers;
         bool outputLoopLength;
         bool outputSegmentPairDistances;
-        const bool outputPlasticDistortionPerSlipSystem;
         const bool computeElasticEnergyPerLength;
         double alphaLineTension;
         std::set<const LoopNodeType*> danglingBoundaryLoopNodes;
         const bool use_velocityFilter;
         const double velocityReductionFactor;
-        
-        
         const int verboseDislocationNode;
-            
-        DislocationNetwork(MicrostructureContainerType& mc);
-                
-        void initializeConfiguration(const DDconfigIO<dim>& configIO,const std::ofstream& f_file,const std::ofstream& F_labels) override;
-        void solve() override;
-        double getDt() const override;
-        void output(DDconfigIO<dim>& configIO,DDauxIO<dim>& auxIO,std::ofstream& f_file,std::ofstream& F_labels) const override;
-        void updateConfiguration() override;
-        MatrixDim averagePlasticDistortion() const override ;
-        MatrixDim averagePlasticDistortionRate() const override;
-        VectorDim displacement(const VectorDim&,const NodeType* const,const ElementType* const,const SimplexDim* const) const override;
-        MatrixDim stress(const VectorDim&,const NodeType* const,const ElementType* const ele,const SimplexDim* const guess) const override;
-        MatrixDim averageStress() const override;
-        VectorDim inelasticDisplacementRate(const VectorDim&, const NodeType* const, const ElementType* const,const SimplexDim* const) const override;
-        VectorMSize mobileConcentration(const VectorDim&, const NodeType* const, const ElementType* const,const SimplexDim* const) const override;
+        bool capMaxVelocity;
 
-
+        DislocationNetwork(const DefectiveCrystalParameters& _simulationParameters,
+                           const SimplicialMesh<dim>& _mesh,
+                           const Polycrystal<dim>& _poly,
+                           const std::unique_ptr<BVPsolver<dim,2>>& _bvpSolver,
+                           const std::unique_ptr<ExternalLoadControllerBase<dim>>& _externalLoadController,
+                           const std::vector<VectorDim>& _periodicShifts,
+                           long int& runID);
+        
         void setConfiguration(const DDconfigIO<dim>&);
-        MatrixDim averagePlasticStrain() const;
-        std::map<std::pair<int,int>,double> slipSystemAveragePlasticDistortion() const;
-        MatrixDim averagePlasticStrainRate() const;
+        MatrixDim plasticDistortionRate() const;
+        MatrixDim plasticDistortion() const;
+        MatrixDim plasticStrain() const;
+        std::map<std::pair<int,int>,double> slipSystemPlasticDistortion() const;
+        MatrixDim plasticStrainRate() const;
         void updateGeometry();//
+        void updateRates();//
+        DislocationNetworkIOType& io();
+        const DislocationNetworkIOType& io() const;
         std::tuple<double,double,double,double> networkLength() const;
-        bool isClimbStep() const;
-        const InclusionMicrostructure<dim>* const inclusions() const;
-
+        const EshelbyInclusionContainerType& eshelbyInclusions() const;
+        EshelbyInclusionContainerType& eshelbyInclusions();
+        const PolyhedronInclusionNodeContainerType& polyhedronInclusionNodes() const;
+        PolyhedronInclusionNodeContainerType& polyhedronInclusionNodes();
+        VectorDim displacement(const VectorDim& x) const;
+        void displacement(std::vector<FEMnodeEvaluation<ElementType,dim,1>>& fieldPoints) const;
+        MatrixDim stress(const VectorDim& x) const;
+        void stress(std::deque<FEMfaceEvaluation<ElementType,dim,dim>>& fieldPoints) const;
+        void assembleGlide(const long int& runID, const double& maxVelocity);
+        void solveGlide(const long int& runID);
+        void moveGlide(const double & dt_in);
+        void storeSingleGlideStepDiscreteEvents(const long int& runID);
+        void executeSingleGlideStepDiscreteEvents(const long int& runID);
+        void updateBoundaryNodes();
+        bool contract(std::shared_ptr<NetworkNodeType> nA,std::shared_ptr<NetworkNodeType> nB);
+        
     };
     
 }

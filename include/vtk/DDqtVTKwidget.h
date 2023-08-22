@@ -23,7 +23,7 @@
 //#include <ChartActor.h>
 //#include <DDFieldWidget.h>
 #include <SimplicialMeshActor.h>
-#include <DefectiveCrystalActor.h>
+#include <DDconfigVtk.h>
 //#include <DDtraitsIO.h>
 #include <DislocationDynamicsBase.h>
 #include <GlidePlaneFactory.h>
@@ -59,7 +59,7 @@ public:
     DislocationDynamicsBase<3> ddBase;
     QLabel* workingDirLabel;
     SimplicialMeshActor* meshActor;
-    DefectiveCrystalActor* defectiveCrystalActor;
+    DDconfigVtk* ddConfigVtk;
     
     DDqtVTKwidget(QWidget *parent);
     

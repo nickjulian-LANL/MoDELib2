@@ -30,7 +30,6 @@ namespace model
         
         typedef typename TypeTraits<TrialFunctionType>::ElementType ElementType;
         typedef typename TypeTraits<TrialFunctionType>::BaryType BaryType;
-        typedef typename TypeTraits<TrialFunctionType>::NodeType NodeType;
         constexpr static int dim=TypeTraits<TrialFunctionType>::dim;
         
         typedef TrialBase<TrialFunctionType> TrialBaseType;
@@ -61,22 +60,23 @@ namespace model
         
         /**********************************************************************/
         EvalMatrixType operator()(const Eigen::Matrix<double,dim,1>& P,
-                                  const Simplex<dim,dim>* const guess) const
+                                  const Simplex<dim,dim>* guess) const
         {/*!@param[in] P the position vector
           * @param[in] guess the Simplex where the search starts
           * \returns the value of trialExp expression at position P. If P is
           * ouside the mesh, a zero matrix is returned.
           */
-            const std::pair<bool,const ElementType*> temp(TrialBaseType::fe().searchWithGuess(P,guess));
+            const std::pair<bool,const ElementType*> temp=TrialBaseType::fe().searchWithGuess(P,guess);
+            EvalMatrixType val(EvalMatrixType::Zero());
             if(temp.first)
             {
-                return trialExp().sfm(*(temp.second),temp.second->simplex.pos2bary(P))*TrialBaseType::dofs(*(temp.second));
+                val=trialExp().sfm(*(temp.second),temp.second->simplex.pos2bary(P))*TrialBaseType::dofs(*(temp.second));
             }
             else
             {
                 std::cout<<"WARNING: EVALUATING EXPRESSION OUTSIDE DOMAIN"<<std::endl;
-                return EvalMatrixType::Zero();
             }
+            return val;
         }
         
         /**********************************************************************/
@@ -87,19 +87,6 @@ namespace model
           * ouside the mesh, a zero matrix is returned.
           */
             return this->operator()(P,&(TrialBaseType::mesh().simplices().begin()->second));
-        }
-        
-        EvalMatrixType operator()(const NodeType& node) const
-        {/*!@param[in] node the node
-          * \returns the average value of trialExp at the node
-          */
-            EvalMatrixType temp(EvalMatrixType::Zero());
-            for(const auto& ele : node)
-            {
-                const Eigen::Matrix<double,dim+1,1> bary(ele->simplex.pos2bary(node.P0));
-                temp+=trialExp().sfm(*ele,bary)*TrialBaseType::dofs(*ele);
-            }
-            return temp/node.size();
         }
         
     };

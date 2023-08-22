@@ -774,11 +774,7 @@ namespace model
             insideReferencePoint+=referencePlane->localPosition(seg->P0-lastPatch->shift);
         }
         insideReferencePoint/=centralPlane->meshIntersections.size();
-        if(!lastPatch->contains(insideReferencePoint))
-        {
-            throw std::runtime_error("lastPatch does not cointain insideReferencePoint");
-        }
-//        assert(lastPatch->contains(insideReferencePoint));
+        assert(lastPatch->contains(insideReferencePoint));
         
         // Find initial point
         //        const VectorLowerDim P0(polyPoints[0]);

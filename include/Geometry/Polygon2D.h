@@ -14,6 +14,7 @@
 #include <map>
 #include <Eigen/Dense>
 #include <assert.h>
+//#include <earcut.hpp>
 
 namespace model
 {

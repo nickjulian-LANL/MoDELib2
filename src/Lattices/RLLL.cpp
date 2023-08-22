@@ -69,16 +69,10 @@ namespace model
          const double &delta) : /* init */ B(B0),
                                 /* init */ U(Eigen::Matrix<long int, Eigen::Dynamic, Eigen::Dynamic>::Identity(B0.cols(), B0.cols()))
     {
-        if (delta < 0.5 || delta > 1.0)
-        {
-          throw std::runtime_error( "delta must be in [0.5 1]");
-        }
+        assert(delta >= 0.5 && delta <= 1.0 && "delta must be in [0.5 1]");
 
         const int n = B0.cols();
-        if (n > B0.rows())
-        {
-          throw std::runtime_error( "B.rows() must be >= B.cols()");
-        }
+        assert(n <= B0.rows() && "B.rows() must be >= B.cols()");
 
         //            //std::cout<<"here 0"<<std::endl;
         VectorType H(VectorType::Zero(n));
@@ -145,14 +139,14 @@ namespace model
         if (err > FLT_EPSILON)
         {
             std::cout << "RLLL relative error= " << std::setprecision(15) << std::scientific << err << " > " << FLT_EPSILON << std::endl;
-            throw std::runtime_error("Relative error too large. RLLL failed.");
+            assert(false && "Relative error too large. RLLL failed.");
         }
 
         const double absDetU(fabs(U.cast<double>().determinant()));
         if (fabs(absDetU - 1.0) > FLT_EPSILON)
         {
             std::cout << "|det(U)|= " << std::setprecision(15) << std::scientific << absDetU << std::endl;
-            throw std::runtime_error("U is not unimodular. RLLL failed.");
+            assert(false && "U is not unimodular. RLLL failed.");
         }
     }
 

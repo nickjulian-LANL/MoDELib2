@@ -36,13 +36,10 @@ namespace model
         typedef std::tuple<std::shared_ptr<NetworkNodeType>,std::shared_ptr<NetworkNodeType>,size_t,size_t> CrossSlipTupleType;
         typedef std::deque<CrossSlipTupleType> CrossSlipContainerType;
         
-        
-        BaseCrossSlipModel(const DDtraitsIO& traitsIO);
-        virtual ~BaseCrossSlipModel() = default;
-
         virtual void addToCrossSlip(const NetworkLinkType& link,CrossSlipContainerType& crossSlipDeq) = 0;
         virtual std::pair<bool,std::pair<int,int>> isCrossSlipLink(const NetworkLinkType& link) = 0;
         std::pair<bool,int> isBaseCrossSlipLink(const NetworkLinkType& link) const;
+        BaseCrossSlipModel(const DDtraitsIO& traitsIO);
         
         const double crossSlipDeg;
         const double sinCrossSlip;

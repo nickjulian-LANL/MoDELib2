@@ -41,7 +41,6 @@ namespace model
         const VectorDim& b;
         const double& length;
         const VectorDim& t;
-        const double& EwaldLength;
         
     private:
 
@@ -54,8 +53,7 @@ namespace model
                                    const VectorDim& _P1,
                                    const VectorDim& _b,
                                    const double& _length,
-                                   const VectorDim& _t,
-                                   const double& EwaldLength_in);
+                                   const VectorDim& _t);
 
         void updateGeometry();
         MatrixDim nonSymmStress(const VectorDim& x) const;

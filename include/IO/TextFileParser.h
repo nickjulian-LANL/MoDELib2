@@ -20,8 +20,9 @@
 #include <set>
 #include <map>
 #include <regex>
-
 #include <Eigen/Dense>
+
+
 
 #include <TerminalColors.h>
 
@@ -35,6 +36,8 @@ struct StringToScalar
     static T toScalar(const std::string& key)
     {
         throw std::runtime_error("Unknown conversion from std::string "+key+" to "+typeid(T).name()+".");
+        //            std::cout<<"Unknown conversion from std::string "<<key<<" to "<< typeid(T).name()<<". Exiting."<<std::endl;
+        //            exit(EXIT_FAILURE);
     }
 };
 
@@ -125,7 +128,68 @@ class TextFileParser : public std::ifstream
     
     template <typename Scalar>
     using EigenMapType=Eigen::Map<const Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>, 0, Eigen::Stride<Eigen::Dynamic,Eigen::Dynamic> >;
- 
+    
+    /**********************************************************************/
+//    std::pair<std::string,std::string> readKey( const std::string& key
+//    //                               ,const bool& removeWitespaces=true
+//    )
+//    {
+//        this->seekg (0, this->beg); // reset the position of the next character at beginning for each read
+//    this->clear();
+//    this->seekg(0);
+//
+//        std::string line;
+//        std::string read;
+//        std::string comment;
+//        bool success(false);
+//
+//        while (std::getline(*this, line))
+//        {
+//            const size_t foundKey=line.find(key);
+//            const size_t foundEqual=line.find("=");
+//            const std::string keyRead(removeSpaces(line.substr(0,foundEqual)));
+//
+//            if(keyRead==key)
+//            {
+//                const size_t foundSemiCol=line.find(";");
+//                const size_t foundPound=line.find("#");
+//
+//                if(   foundKey!=std::string::npos
+//                   && foundEqual!=std::string::npos
+//                   && foundSemiCol!=std::string::npos
+//                   && foundKey<foundEqual
+//                   && foundEqual<foundSemiCol
+//                   && foundSemiCol<foundPound
+//                   )
+//                {
+//                    read=line.substr(foundEqual+1,foundSemiCol-foundEqual-1);
+//                    if(foundPound!=std::string::npos)
+//                    {
+//                        comment=line.substr(foundPound,line.size()-foundPound);
+//                    }
+//                    success=true;
+//                    break;
+//
+//                }
+//            }
+//        }
+//
+//        if(!success)
+//        {
+//            throw std::runtime_error("File "+fileName+" does not cointain line with format "+key+"=...;");
+//            //                std::cout<<"File "<<fileName<<" does not cointain line with format:\n"<< key <<"=...;\n EXITING"<<std::endl;
+//            //                exit(EXIT_FAILURE);
+//        }
+//
+//        //            if(removeWitespaces)
+//        //            {
+//        //                std::regex_replace( read, "\s", "" );
+//        //            }
+//        //            std::cout<<key<<"="<<read<<std::endl;
+//
+//        return std::make_pair(read,comment);
+//    }
+    
     std::vector<std::pair<std::string,std::string>> readKey( const std::string& key)
     {
         this->clear();
@@ -195,9 +259,23 @@ public:
         if(!this->is_open())
         {
             throw std::runtime_error("File "+fileName+" cannot be opened.");
+            //                std::cout<<"File "<<fileName<<" cannot be opened. Exiting."<<std::endl;
+            //                exit(EXIT_FAILURE);
         }
     }
-        
+    
+//    TextFileParser(const std::filesystem::path& _fileName) :
+//    /* init */ std::ifstream(_fileName.string())
+//    /* init */,fileName(_fileName.string())
+//    {
+//        if(!this->is_open())
+//        {
+//            throw std::runtime_error("File "+fileName+" cannot be opened.");
+//            //                std::cout<<"File "<<fileName<<" cannot be opened. Exiting."<<std::endl;
+//            //                exit(EXIT_FAILURE);
+//        }
+//    }
+    
     static std::string removeSpaces(std::string key)
     {
         key.erase(std::remove_if(key.begin(), key.end(), [](unsigned char x) { return std::isspace(x); }), key.end());
@@ -216,19 +294,6 @@ public:
     std::vector<std::pair<std::string,std::string>> readStringVector(const std::string& key)
     {
         return readKey(key);
-    }
-    
-    std::set<std::string> readStringSet(const std::string& key,const bool&verbose=false)
-    {
-        const std::string valStr(readString(key,verbose));
-        std::stringstream ss(valStr);
-        std::string tempVal;
-        std::set<std::string> tempS;
-        while (ss >> tempVal)
-        {
-            tempS.insert(tempVal);
-        }
-        return tempS;
     }
     
     /**********************************************************************/
@@ -299,10 +364,14 @@ public:
     template<typename KeyType,typename Scalar>
     std::map<KeyType,std::vector<Scalar>> readArrayMap(const std::string& key,const bool&verbose=false)
     {
+//        this->seekg (0, this->beg); // reset the position of the next character at beginning for each read
         this->clear();
         this->seekg(0);
 
         std::string line;
+//        std::string lines;
+//        std::string comment;
+//        std::vector<Scalar> array;
         bool success=false;
         std::map<KeyType,std::vector<Scalar>> temp;
 
@@ -321,6 +390,14 @@ public:
             {
                 
                 success=true;
+//                size_t foundSemiCol=line.find(";");
+//                size_t foundPound=line.find("#");
+
+//                if(
+////                   && (foundPound==std::string::npos || foundPound>foundSemiCol)
+//                   )
+//                {
+                    
                     auto tup(splitMapLine<KeyType,Scalar>(line.substr(foundEqual+1,line.size()-foundEqual-1)));
                 if(std::get<0>(tup))
                 {// valid line
@@ -380,6 +457,7 @@ public:
     template<typename Scalar>
     std::vector<Scalar> readArray(const std::string& key,const bool&verbose=false)
     {
+//        this->seekg (0, this->beg); // reset the position of the next character at beginning for each read
         this->clear();
         this->seekg(0);
         
@@ -464,6 +542,7 @@ public:
                 std::cout<<" "<<val;
             }
             std::cout<<"; "<<comment<<defaultColor<<std::endl;
+            
         }
         
         return array;
@@ -504,6 +583,9 @@ public:
         if(array.size()%cols!=0)
         {
             throw std::runtime_error("Error in reading matrix "+key+": array.size="+std::to_string(array.size())+" is not a multiple of cols ("+std::to_string(cols)+").");
+            //                std::cout<<"Error in reading matrix "<<key<<std::endl;
+            //                std::cout<<"array.size="<<array.size()<<", is not a multiple of cols ("<<cols<<"). EXITING"<<std::endl;
+            //                exit(EXIT_FAILURE);
         }
         const size_t rows(array.size()/cols);
         EigenMapType<Scalar> em(array.data(), rows, cols, Eigen::Stride<Eigen::Dynamic,Eigen::Dynamic>(1, cols));
@@ -520,6 +602,10 @@ public:
         if(array.size()%rows!=0)
         {
             throw std::runtime_error("Error in reading matrix "+key+": array.size="+std::to_string(array.size())+" is not a multiple of rows ("+std::to_string(rows)+").");
+            
+            //                std::cout<<"Error in reading matrix "<<key<<std::endl;
+            //                std::cout<<"array.size="<<array.size()<<", is not a multiple of rows ("<<rows<<"). EXITING"<<std::endl;
+            //                exit(EXIT_FAILURE);
         }
         const size_t cols(array.size()/rows);
         EigenMapType<Scalar> em(array.data(), rows, cols, Eigen::Stride<Eigen::Dynamic,Eigen::Dynamic>(1, cols));

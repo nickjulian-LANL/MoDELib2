@@ -47,15 +47,13 @@ namespace model
         /* init */,C2(1.0/(4.0*std::numbers::pi*C1))
         /* init */,C3(1.0-2.0*nu)
         /* init */,C4(0.5*C2)
-        /* init */,enabledSlipSystems(TextFileParser(materialFile).readStringSet("enabledSlipSystems",true))
-        /* init */,enabledSecondPhases(TextFileParser(materialFile).readStringSet("enabledSecondPhases",true))
-//        /* init */,dOmegav(TextFileParser(materialFile).readScalar<double>("dOmegav",true))
-//        /* init */,Ufv_SI(TextFileParser(materialFile).readScalar<double>("Ufv_eV",true) * eV2J)
-//        /* init */,Ufv(Ufv_SI/mu_SI/std::pow(b_SI,3))
-//        /* init */,Umv_SI(TextFileParser(materialFile).readScalar<double>("Umv_eV",true) * eV2J)
-//        /* init */,Umv(Umv_SI/mu_SI/std::pow(b_SI,3))
-//        /* init */,D0v_SI(TextFileParser(materialFile).readScalar<double>("D0v_SI",true))
-//        /* init */,Dv(D0v_SI/b_SI/cs_SI*exp(-Umv/kB/T))
+        /* init */,dOmegav(TextFileParser(materialFile).readScalar<double>("dOmegav",true))
+        /* init */,Ufv_SI(TextFileParser(materialFile).readScalar<double>("Ufv_eV",true) * eV2J)
+        /* init */,Ufv(Ufv_SI/mu_SI/std::pow(b_SI,3))
+        /* init */,Umv_SI(TextFileParser(materialFile).readScalar<double>("Umv_eV",true) * eV2J)
+        /* init */,Umv(Umv_SI/mu_SI/std::pow(b_SI,3))
+        /* init */,D0v_SI(TextFileParser(materialFile).readScalar<double>("D0v_SI",true))
+        /* init */,Dv(D0v_SI/b_SI/cs_SI*exp(-Umv/kB/T))
         {
             std::cout<<magentaColor<<"  temperature: T="<<T<<" [K]"<<std::endl;
             std::cout<<magentaColor<<"  units of stress (shear modulus): mu="<<mu_SI<<" [Pa]"<<std::endl;

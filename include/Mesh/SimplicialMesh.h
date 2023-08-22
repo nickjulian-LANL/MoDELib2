@@ -51,8 +51,7 @@ namespace model
         
         VectorDim _xMin;
         VectorDim _xMax;
-        VectorDim _xC;
-
+        
         double vol0;
         
         void createMesh(const std::set<int>&);
@@ -72,7 +71,6 @@ namespace model
         typedef MeshRegionBoundary<dim> MeshRegionBoundaryType;
         typedef std::pair<size_t,size_t> MeshRegionIDType;
         typedef std::map<MeshRegionIDType,MeshRegionBoundaryType> MeshRegionBoundaryContainerType;
-        typedef Eigen::Matrix<double,dim,Eigen::Dynamic> PeriodicBasisType;
         
         SimplicialMesh();
         
@@ -90,9 +88,9 @@ namespace model
         
         void identifyParallelFaces(const std::set<int>&);
         
-        Eigen::Matrix<double,dim,Eigen::Dynamic> periodicBasis() const;
+        std::vector<VectorDim> periodicBasis() const;
         
-//        std::vector<VectorDim> periodicShifts(const std::vector<int>& periodicImageSize) const;
+        std::vector<VectorDim> periodicShifts(const std::vector<int>& periodicImageSize) const;
 
         void insertSimplex(const typename SimplexTraits<dim,dim>::SimplexIDType& xIN,const int& regionID);
         
@@ -133,9 +131,6 @@ namespace model
         
         const double& xMax(const int& k) const;
         
-        const Eigen::Matrix<double,_dim,1>& xCenter() const;
-        
-        
         const double& volume() const;
         
         const MeshRegionBoundaryContainerType& regionBoundaries() const;
@@ -143,6 +138,9 @@ namespace model
         MeshRegionBoundaryContainerType& regionBoundaries();
         
         const MeshRegionBoundaryType& regionBoundary(const int& i,const int& j) const;
+        
+        
+        
         
     };
     

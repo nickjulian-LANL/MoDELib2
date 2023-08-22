@@ -17,7 +17,6 @@
 #include <DislocationMobilityHEXbasal.h>
 #include <DislocationMobilityHEXprismatic.h>
 #include <DislocationMobilityHEXpyramidal.h>
-#include <DislocationMobilityPy.h>
 
 namespace model
 {

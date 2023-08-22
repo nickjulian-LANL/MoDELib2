@@ -12,7 +12,7 @@
 #include <QFileDialog>
 
 #include <DDqtVTKwidget.h>
-#include <DefectiveCrystalActor.h>
+
 
 namespace model
 {
@@ -26,7 +26,7 @@ namespace model
     /* init */,ddBase(getWorkingDir())
     /* init */,workingDirLabel(new QLabel(QString::fromStdString(ddBase.simulationParameters.traitsIO.simulationFolder)))
     /* init */,meshActor(new SimplicialMeshActor(renderWindow,renderer,ddBase.mesh))
-    /* init */,defectiveCrystalActor(new DefectiveCrystalActor(renderWindow,renderer,openglWidget,ddBase))
+    /* init */,ddConfigVtk(new DDconfigVtk(renderWindow,renderer,openglWidget,ddBase))
     {
         renderer->SetBackground(1,1,1);
         renderWindow->AddRenderer(renderer);
@@ -35,7 +35,7 @@ namespace model
         openglWidget->setRenderWindow(renderWindow);
 
         
-        tabWidget->addTab(defectiveCrystalActor, tr(std::string("Defects").c_str()));
+        tabWidget->addTab(ddConfigVtk, tr(std::string("Config").c_str()));
         tabWidget->addTab(meshActor, tr(std::string("Mesh").c_str()));
 
         mainLayout->addWidget(workingDirLabel,0,0,1,2);

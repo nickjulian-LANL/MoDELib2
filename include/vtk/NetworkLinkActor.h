@@ -36,11 +36,10 @@
 #include <vtkLabeledDataMapper.h>
 #include <vtkFloatArray.h>
 #include <IDreader.h>
-//#include <PlanarPolygon.h>
+#include <PlanarPolygon.h>
 #include <DDconfigIO.h>
 #include <MeshPlane.h>
-//#include <ConfigurationFields.h>
-#include <DefectiveCrystal.h>
+#include <DDconfigFields.h>
 
 namespace model
 {
@@ -86,14 +85,12 @@ namespace model
         
         public:
         
-//        const ConfigurationFields<3>& configFields;
-        const DefectiveCrystal<3>& defectiveCrystal;
-        const DislocationNetwork<3,0>* const dislocationNetwork;
-
-        NetworkLinkActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const DefectiveCrystal<3>& defectiveCrystal_in);
+        const DDconfigFields<3>& configFields;
+                
+        NetworkLinkActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const DDconfigFields<3>& configFields_in);
         void updateConfiguration(vtkPolyData* const nodePolyData);
 
-        Eigen::Matrix<int,3,1> computeColor(const VectorDim& burgers, const VectorDim& chord, const std::shared_ptr<SlipSystem>& slipSystem) const;
+        Eigen::Matrix<int,3,1> computeColor(const VectorDim& burgers, const VectorDim& chord, const VectorDim& planeNormal) const;
     };
     
 } // namespace model

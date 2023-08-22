@@ -42,7 +42,6 @@ OLD/
 header_symlinks/
 build/
 evl/
-__pycache__/
 
 # Output Files
 *.jpg

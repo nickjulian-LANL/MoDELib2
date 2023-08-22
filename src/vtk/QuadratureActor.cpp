@@ -184,7 +184,7 @@ namespace model
             pkForces->InsertNextTuple(qp.pkForce.data()); // arrow vector
             sfForces->InsertNextTuple(qp.stackingFaultForce.data()); // arrow vector
             ltForces->InsertNextTuple(qp.lineTensionForce.data()); // arrow vector
-            velocities->InsertNextTuple(qp.velocity.data()); // arrow vector
+            velocities->InsertNextTuple(qp.glideVelocity.data()); // arrow vector
         }
         
         pkPolydata->SetPoints(nodePoints);

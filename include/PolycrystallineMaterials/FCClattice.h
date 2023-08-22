@@ -40,23 +40,20 @@ namespace model
     {
 //        static constexpr auto name="FCC";
         static constexpr int dim=3;
-        typedef Eigen::Matrix<double,dim,1> VectorDimD;
-        typedef Eigen::Matrix<long int,dim,1> VectorDimI;
-        typedef LatticeVector<dim> LatticeVectorType;
         typedef typename SingleCrystalBase<dim>::MatrixDim MatrixDim;
         typedef typename SingleCrystalBase<dim>::PlaneNormalContainerType PlaneNormalContainerType;
         typedef typename SingleCrystalBase<dim>::SlipSystemContainerType SlipSystemContainerType;
         typedef typename SingleCrystalBase<dim>::SecondPhaseContainerType SecondPhaseContainerType;
 
         
-//        static constexpr bool enable111planes=true;
-//        static constexpr bool enable110planes=false;
+        static constexpr bool enable111planes=true;
+        static constexpr bool enable110planes=false;
         
         FCClattice(const MatrixDim& Q,const PolycrystallineMaterialBase& material,const std::string& polyFile);
         static Eigen::Matrix<double,dim,dim> getLatticeBasis();
-        std::vector<std::shared_ptr<GlidePlaneBase>> getPlaneNormals(const PolycrystallineMaterialBase& material,const std::string& polyFile) const;
-        std::vector<std::shared_ptr<SlipSystem>> getSlipSystems(const PolycrystallineMaterialBase& material,const PlaneNormalContainerType& plN) const;
-        SecondPhaseContainerType getSecondPhases(const PolycrystallineMaterialBase& material,const PlaneNormalContainerType& planes) const ;
+        std::vector<std::shared_ptr<LatticePlaneBase>> getPlaneNormals() const;
+        std::vector<std::shared_ptr<SlipSystem>> getSlipSystems(const PolycrystallineMaterialBase& material,const std::string& polyFile,const PlaneNormalContainerType& plN) const;
+        std::vector<std::shared_ptr<SecondPhase<dim>>> getSecondPhases(const PolycrystallineMaterialBase& material,const SlipSystemContainerType& slipSystems) const ;
         
         const PlaneNormalContainerType& planeNormals() const override;
         const SlipSystemContainerType& slipSystems() const override;

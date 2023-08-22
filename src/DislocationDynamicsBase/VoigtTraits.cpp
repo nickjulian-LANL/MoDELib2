@@ -19,23 +19,23 @@ namespace model
 template <int dim>
 SymmetricVoigtTraits<dim>::SymmetricVoigtTraits(const VoigtSizeMatrixType& tensorIndex_in):
 /* init */ tensorIndex(tensorIndex_in)
-///* init */,voigtIndex(getVoigtIndex(tensorIndex))
+/* init */,voigtIndex(getVoigtIndex(tensorIndex))
 {
     
 }
 
-//template <int dim>
-//Eigen::Matrix<size_t,dim,dim> SymmetricVoigtTraits<dim>::getVoigtIndex(const VoigtSizeMatrixType& ti)
-//{
-//    
-//    Eigen::Matrix<size_t,dim,dim> temp(Eigen::Matrix<size_t,dim,dim>::Zero());
-//    for(int k=0;k<ti.rows();++k)
-//    {
-//        temp(ti(k,0),ti(k,1))=k;
-//        temp(ti(k,1),ti(k,0))=k;
-//    }
-//    return temp;
-//}
+template <int dim>
+Eigen::Matrix<size_t,dim,dim> SymmetricVoigtTraits<dim>::getVoigtIndex(const VoigtSizeMatrixType& ti)
+{
+    
+    Eigen::Matrix<size_t,dim,dim> temp(Eigen::Matrix<size_t,dim,dim>::Zero());
+    for(int k=0;k<ti.rows();++k)
+    {
+        temp(ti(k,0),ti(k,1))=k;
+        temp(ti(k,1),ti(k,0))=k;
+    }
+    return temp;
+}
 
 
 template <int dim>

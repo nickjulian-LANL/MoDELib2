@@ -56,24 +56,6 @@ namespace model
             return tempNorm>FLT_EPSILON? (temp/tempNorm).eval() : Eigen::Matrix<double,dim,1>::Zero();
         }
         
-        Eigen::Matrix<double,dim,dim> normalTensor() const
-        {
-            Eigen::Matrix<double,dim,dim> temp(Eigen::Matrix<double,dim,dim>::Zero());
-            for(auto ele : *this)
-            {
-                const Eigen::Matrix<double,dim+1,1> bary(ele->simplex.pos2bary(P0));
-                for(int k=0;k<dim+1;++k)
-                {
-                    if (std::fabs(bary(k))<FLT_EPSILON && (ele->simplex.child(k).isBoundarySimplex() || ele->simplex.child(k).isRegionBoundarySimplex()))
-                    {
-                        const Eigen::Matrix<double,dim,1> unitNormal(ele->simplex.nda.col(k).normalized());
-                        temp += unitNormal*unitNormal.transpose();
-                    }
-                }
-            }
-            return temp;
-        }
-        
     };
     
     

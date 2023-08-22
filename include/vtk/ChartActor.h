@@ -19,7 +19,6 @@
 #include <QWidget>
 #include <QComboBox>
 #include <QPushButton>
-#include <QLineEdit>
 
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkRenderer.h>
@@ -40,7 +39,6 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
 #include <vtkTable.h>
-
 
 #include <TextFileParser.h>
 #include <DDtraitsIO.h>
@@ -70,13 +68,6 @@ namespace model
         QComboBox* yComboBox;
         QCheckBox* xAxisLog;
         QCheckBox* yAxisLog;
-        QGroupBox* customScaleBoxX;
-        QLineEdit* minScaleX;
-        QLineEdit* maxScaleX;
-        QGroupBox* customScaleBoxY;
-        QLineEdit* minScaleY;
-        QLineEdit* maxScaleY;
-
 
         vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
         vtkRenderer* const renderer;

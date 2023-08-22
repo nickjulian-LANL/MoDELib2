@@ -23,47 +23,19 @@ namespace model
     DislocationNode<dim,corder>::DislocationNode(LoopNetworkType* const net,
                                                                    const VectorDim& P,
                                                                    const VectorDim& V,
-                                                                   const ClimbVelocityScalarType& cvs,
                                                                    const double& vrc) :
     /* init */ NetworkNode<DislocationNode>(net)
     /* init */,SplineNodeType(P)
+    // /* init */,ConfinedDislocationObjectType(this->get_P())
     /* init */,p_Simplex(get_includingSimplex(this->get_P(),(const Simplex<dim,dim>*) NULL))
-    /* init */,climbVelocityScalar(cvs)
     /* init */,velocity(V)
     /* init */,vOld(velocity)
     /* init */,velocityReductionCoeff(vrc)
+//    /* init */,virtualNode(nullptr)
+//    /* init */,masterNode(nullptr)
     {
-        VerboseDislocationNode(1, "  Creating Network Node " << this->tag() <<" @ "<<this->get_P().transpose() << std::endl;);        
+        VerboseDislocationNode(1, "  Creating Network Node " << this->tag() <<" @ "<<this->get_P().transpose() << std::endl;);
     }
-
-template <int dim, short unsigned int corder>
-DislocationNode<dim,corder>::DislocationNode(LoopNetworkType* const net,
-                                                               const VectorDim& P) :
-/* init */ NetworkNode<DislocationNode>(net)
-/* init */,SplineNodeType(P)
-/* init */,p_Simplex(get_includingSimplex(this->get_P(),(const Simplex<dim,dim>*) NULL))
-/* init */,climbVelocityScalar(ClimbVelocityScalarType::Zero())
-/* init */,velocity(VectorDim::Zero())
-/* init */,vOld(velocity)
-/* init */,velocityReductionCoeff(1.0)
-{
-    VerboseDislocationNode(1, "  Creating Network Node " << this->tag() <<" @ "<<this->get_P().transpose() << std::endl;);
-}
-
-template <int dim, short unsigned int corder>
-typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::climbDirection() const
-{
-    VectorDim temp(VectorDim::Zero());
-    for(const auto& link : this->neighbors())
-    {// weighted average of segments climb directions
-        if(std::get<1>(link.second)->isSessile())
-        {
-            temp+=std::get<1>(link.second)->climbDirection()*std::get<1>(link.second)->chordLength();
-        }
-    }
-    const double tempNorm(temp.norm());
-    return tempNorm>FLT_EPSILON? (temp/tempNorm).eval() : VectorDim::Zero();
-}
 
     template <int dim, short unsigned int corder>
     DislocationNode<dim,corder>::~DislocationNode()
@@ -75,7 +47,7 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
     template <int dim, short unsigned int corder>
     std::shared_ptr<DislocationNode<dim,corder>> DislocationNode<dim,corder>::clone() const
     {
-        return std::shared_ptr<DislocationNode<dim,corder>>(new DislocationNode(this->p_network(),this->get_P(),get_V(),climbVelocityScalar,velocityReduction()));
+        return std::shared_ptr<DislocationNode<dim,corder>>(new DislocationNode(this->p_network(),this->get_P(),get_V(),velocityReduction()));
     }
     
     template <int dim, short unsigned int corder>
@@ -84,7 +56,7 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
         std::pair<bool,const Simplex<dim,dim>*> temp(false,NULL);
         if (guess==NULL)
         {
-            temp=this->network().ddBase.mesh.search(X);
+            temp=this->network().mesh.search(X);
         }
         else
         {
@@ -93,16 +65,16 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
             {// node only in one region
                 if((*grains.begin())->grainID!=guess->region->regionID)
                 {
-                    temp=this->network().ddBase.mesh.searchRegion((*grains.begin())->grainID,X);
+                    temp=this->network().mesh.searchRegion((*grains.begin())->grainID,X);
                 }
                 else
                 {
-                    temp=this->network().ddBase.mesh.searchRegionWithGuess(X,guess);
+                    temp=this->network().mesh.searchRegionWithGuess(X,guess);
                 }
             }
             else
             {
-                temp=this->network().ddBase.mesh.searchWithGuess(X,guess);
+                temp=this->network().mesh.searchWithGuess(X,guess);
             }
         }
         if(!temp.first) // PlanarDislocationNode not found inside mesh
@@ -139,27 +111,23 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
             const auto& loop(loopNode->loop());
             if(loop)
             {
-                if(loop->glidePlane)
+                if(loop->loopType==DislocationLoopIO<dim>::GLISSILELOOP)
                 {
-                    temp.push_back(loop->glidePlane->unitNormal);
+                    if(loop->glidePlane)
+                    {
+                        temp.push_back(loop->glidePlane->unitNormal);
+                    }
                 }
-//                if(loop->loopType==DislocationLoopIO<dim>::GLISSILELOOP)
-//                {
-//                    if(loop->glidePlane)
-//                    {
-//                        temp.push_back(loop->glidePlane->unitNormal);
-//                    }
-//                }
-//                else if(loop->loopType==DislocationLoopIO<dim>::SESSILELOOP)
-//                {
-//                    velocity.setZero();
-//                    break;
-//                }
+                else if(loop->loopType==DislocationLoopIO<dim>::SESSILELOOP)
+                {
+                    velocity.setZero();
+                    break;
+                }
             }
-//            else
-//            {
-//                assert(false && "no loop in node");
-//            }
+            else
+            {
+                assert(false && "no loop in loop");
+            }
 
         }
         
@@ -167,7 +135,7 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
         {
             
             
-            if(!this->network().ddBase.isPeriodicDomain)
+            if(!this->network().simulationParameters.isPeriodicSimulation())
             {// Use boundary planes to confine velocity in case of non-periodic simulation
                 
                 for(const auto& face : this->meshFaces())
@@ -195,19 +163,19 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
         velocity=vNew;
         projectVelocity();
 
-//        if (this->network().capMaxVelocity && !this->network().timeIntegrator.isTimeStepControlling(*this))
-//        {
-//            //Need to cap the max velocity based on the time step
-//            const double vmax=this->network().timeIntegrator.dxMax/this->network().timeIntegrator.dtMax;
-//            assert(fabs(vmax)>FLT_EPSILON && "Max velocity should be greater than 0");
-//            if (velocity.norm()>=FLT_EPSILON && velocity.norm()>fabs(vmax))
-//            {
-//                const double velredFac(velocity.norm()/fabs(vmax));
-//                assert(velredFac>=1.0 && "Velocity reduction factor must be greater than 1");
-//                velocity/=velredFac;
-//                totalCappedNodes+=1;
-//            }
-//        }
+        if (this->network().capMaxVelocity && !this->network().timeIntegrator.isTimeStepControlling(*this))
+        {
+            //Need to cap the max velocity based on the time step
+            const double vmax=this->network().timeIntegrator.dxMax/this->network().timeIntegrator.dtMax;
+            assert(fabs(vmax)>FLT_EPSILON && "Max velocity should be greater than 0");
+            if (velocity.norm()>=FLT_EPSILON && velocity.norm()>fabs(vmax))
+            {
+                const double velredFac(velocity.norm()/fabs(vmax));
+                assert(velredFac>=1.0 && "Velocity reduction factor must be greater than 1");
+                velocity/=velredFac;
+                totalCappedNodes+=1;
+            }
+        }
         
         if(this->network().use_velocityFilter)
         {
@@ -532,10 +500,7 @@ typename DislocationNode<dim,corder>::VectorDim DislocationNode<dim,corder>::cli
             }
             else
             {
-                std::cout<<"glidePlanes.size()="<<gps.size()<<std::endl;
-                std::cout<<"N="<<N<<std::endl;
-                std::cout<<"P="<<P<<std::endl;
-                throw std::runtime_error("DislocationNode, cannot snap, glidePlanes dont intersect.");
+                throw std::runtime_error("Cannot snap, glidePlanes dont intersect.");
                 return snapped.second;
             }
         }

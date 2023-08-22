@@ -52,10 +52,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType& ReciprocalLatticeVector<dim>::operator=(const ReciprocalLatticeVectorType &other)
     {
-        if(&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "ReciprocalLatticeVectorType belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "ReciprocalLatticeVectorType belong to different Lattices.");
         base() = other.base();
         return *this;
     }
@@ -64,10 +61,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType& ReciprocalLatticeVector<dim>::operator=(ReciprocalLatticeVectorType &&other)
     {
-        if(&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         base() = other.base();
         return *this;
     }
@@ -76,10 +70,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType ReciprocalLatticeVector<dim>::operator+(const ReciprocalLatticeVectorType &other) const
     {
-        if (&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         return ReciprocalLatticeVectorType(static_cast<VectorDimI>(*this) + static_cast<VectorDimI>(other), lattice);
     }
 
@@ -87,10 +78,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType& ReciprocalLatticeVector<dim>::operator+=(const ReciprocalLatticeVectorType &other)
     {
-        if (&lattice != &other.lattice)
-        {
-           throw std::runtime_error("LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         base() += other.base();
         return *this;
     }
@@ -99,10 +87,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType ReciprocalLatticeVector<dim>::operator-(const ReciprocalLatticeVectorType &other) const
     {
-        if (&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         return ReciprocalLatticeVectorType(static_cast<VectorDimI>(*this) - static_cast<VectorDimI>(other), lattice);
     }
 
@@ -110,10 +95,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::ReciprocalLatticeVectorType& ReciprocalLatticeVector<dim>::operator-=(const ReciprocalLatticeVectorType &other)
     {
-        if (&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         base() -= other.base();
         return *this;
     }
@@ -129,10 +111,7 @@ namespace model
     template <int dim>
     long int ReciprocalLatticeVector<dim>::dot(const LatticeVectorType &other) const
     {
-        if (&lattice != &other.lattice)
-        {
-           throw std::runtime_error("LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         return static_cast<VectorDimI>(*this).dot(static_cast<VectorDimI>(other));
     }
 
@@ -140,10 +119,7 @@ namespace model
     template <int dim>
     typename ReciprocalLatticeVector<dim>::LatticeDirectionType ReciprocalLatticeVector<dim>::cross(const ReciprocalLatticeVectorType &other) const
     {
-        if (&lattice != &other.lattice)
-        {
-          throw std::runtime_error( "LatticeVectors belong to different Lattices.");
-        }
+        assert(&lattice == &other.lattice && "LatticeVectors belong to different Lattices.");
         return LatticeDirectionType(LatticeVectorType(static_cast<VectorDimI>(*this).cross(static_cast<VectorDimI>(other)), lattice));
     }
 
@@ -173,10 +149,7 @@ namespace model
     template <int dim>
     long int ReciprocalLatticeVector<dim>::closestPlaneIndexOfPoint(const VectorDimD &P) const
     {
-        if (this->squaredNorm() <= 0)
-        {
-          throw std::runtime_error( "A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
-        }
+        assert(this->squaredNorm() > 0 && "A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
         const double hd(cartesian().dot(P));
         return std::lround(hd);
     }
@@ -185,10 +158,7 @@ namespace model
     template <int dim>
     long int ReciprocalLatticeVector<dim>::planeIndexOfPoint(const VectorDimD &P) const
     {
-        if (this->squaredNorm() <= 0)
-        {
-          throw std::runtime_error( "A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
-        }
+        assert(this->squaredNorm() > 0 && "A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
         const double hd(cartesian().dot(P));
         const long int h(std::lround(hd));
         if (fabs(hd - h) > FLT_EPSILON)
@@ -206,10 +176,7 @@ namespace model
     template <int dim>
     long int ReciprocalLatticeVector<dim>::planeIndexOfPoint(const LatticeVector<dim> &P) const
     {
-        if (this->squaredNorm() <= 0)
-        {
-           throw std::runtime_error("A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
-        }
+        assert(this->squaredNorm() > 0 && "A null ReciprocalLatticeVector cannot be used to compute planeIndexOfPoint");
         return dot(P);
     }
 
