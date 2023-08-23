@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.1.0)
 project(DDqt VERSION 1.0.0 LANGUAGES CXX)
 
 option(USE_NOISE_GENERATOR "Use fftw to generate the noise" OFF)
-list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
+#list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
 
-find_package(eigen3 3.4 REQUIRED NO_MODULE)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -march=native -Ofast")
 set(CMAKE_BUILD_TYPE Release)

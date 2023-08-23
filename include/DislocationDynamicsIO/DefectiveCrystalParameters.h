@@ -25,12 +25,12 @@ namespace model
     struct DefectiveCrystalParameters
     {
         
-        const DDtraitsIO traitsIO;
-        const int simulationType;
+        DDtraitsIO traitsIO;
+        int simulationType;
         const bool useDislocations;
         const bool useCracks;
         const std::vector<int> periodicImageSize;
-        const long int Nsteps;
+        long int Nsteps;
         const int timeIntegrationMethod;
         const int useSubCycling;
         const std::set<int> subcyclingBins; 

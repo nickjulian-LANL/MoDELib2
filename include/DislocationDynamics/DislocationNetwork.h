@@ -172,7 +172,7 @@ namespace model
         const int verboseDislocationNode;
         bool capMaxVelocity;
 
-        DislocationNetwork(const DefectiveCrystalParameters& _simulationParameters,
+        DislocationNetwork( DefectiveCrystalParameters& _simulationParameters,
                            const SimplicialMesh<dim>& _mesh,
                            const Polycrystal<dim>& _poly,
                            const std::unique_ptr<BVPsolver<dim,2>>& _bvpSolver,

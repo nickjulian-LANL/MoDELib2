@@ -35,7 +35,7 @@ ddpy::DDInterface::getResolvedShearStresses()
       return rss;
    }
 
-   for ( const auto& grain : DC->poly.grains)
+   for ( const auto& grain : DC->DN->poly.grains)
    {
       rss.clear();
       for ( const auto& ss : grain.second.singleCrystal->slipSystems())
@@ -68,7 +68,7 @@ ddpy::DDInterface::getResolvedShearStrains()
         << " DC->externalLoadController == nullptr" << std::endl;
       return rss;
    }
-   for ( const auto& grain : DC->poly.grains)
+   for ( const auto& grain : DC->DN->poly.grains)
    {
       for ( const auto& ss : grain.second.singleCrystal->slipSystems())
       { // loop over slip system
@@ -283,7 +283,7 @@ size_t ddpy::DDInterface::getCurrentStep()
          << "DefectiveCrystal is instantiated" << std::endl;
       return 0;
    }
-   return DC->simulationParameters.runID;
+   return ddBase->simulationParameters.runID;
 }
 
 void ddpy::DDInterface::setCurrentStep( const long int& step)
@@ -297,14 +297,17 @@ void ddpy::DDInterface::setCurrentStep( const long int& step)
    std::cout << "calling ddpy::DDInterface::setCurrentStep(" // debug
       << step << ")" << std::endl; // debug
 
-   DC->simulationParameters.runID = step;
-   model::DDconfigIO<3> evl(DC->simulationParameters.traitsIO.evlFolder);
-   evl.read( DC->simulationParameters.runID);
+   ddBase->simulationParameters.runID = step;
+   model::DDconfigIO<3> evl(ddBase->simulationParameters.traitsIO.evlFolder);
+   evl.read( ddBase->simulationParameters.runID);
    DC->DN->setConfiguration(evl);
-   DC->externalLoadController = DC->getExternalLoadController(
-            DC->simulationParameters, *DC, step
-            );
-   DC->simulationParameters.manageRestart();
+   DC->externalLoadController->update( DC->plasticStrain());
+   //DC->externalLoadController = DC->getExternalLoadController(
+   //         *ddBase,
+   //         DC->plasticStrain()
+   //         //ddBase->simulationParameters, *DC, step
+   //         );
+   ddBase->simulationParameters.manageRestart();
    return;
 }
 
@@ -336,23 +339,26 @@ void ddpy::DDInterface::setExternalLoad(
       return;
    }
 
-   if ( DC->externalLoadController == nullptr)
-   {
-      // instantiate a load controller by reading a file
-      //  (e.g. uniformExternalLoadController.txt)
-      DC->externalLoadController = DC->getExternalLoadController(
-              DC->simulationParameters,
-              *DC,
-              DC->simulationParameters.runID
-              );
-   }
+   //if ( DC->externalLoadController == nullptr)
+   //{
+   //   // instantiate a load controller by reading a file
+   //   //  (e.g. uniformExternalLoadController.txt)
+   //   //DC->externalLoadController->update( DC->plasticStrain());
+   //   DC->externalLoadController = DC->getExternalLoadController(
+   //            *ddBase,
+   //            DC->plasticStrain()
+   //           //ddBase->simulationParameters,
+   //           //*DC,
+   //           //ddBase->simulationParameters.runID
+   //           );
+   //}
 
-   if ( DC->simulationParameters.externalLoadControllerName
+   if ( ddBase->simulationParameters.externalLoadControllerName
          != "UniformExternalLoadController")
    {
       std::cout << "error ddpy::DDInterface::setExternalLoad(): "
-        << "DC->simulationParameters.externalLoadControllerName: "
-        << DC->simulationParameters.externalLoadControllerName
+        << "ddBase->simulationParameters.externalLoadControllerName: "
+        << ddBase->simulationParameters.externalLoadControllerName
         << " != UniformExternalLoadController ."
         << "Only UniformExternalLoadController is supported by "
         << "ddpy::DDInterface" << std::endl;
@@ -371,8 +377,8 @@ void ddpy::DDInterface::setExternalLoad(
          {
             DC->externalLoadController->ExternalStressRate( ii, jj)
                = ExternalStressRateInBuf( ii, jj) // [Pa/s]
-                  * DC->poly.b_SI/DC->poly.cs_SI  // [m/(m/s)]
-                  / DC->poly.mu_SI; // [Pa]
+                  * DC->DN->poly.b_SI/DC->DN->poly.cs_SI  // [m/(m/s)]
+                  / DC->DN->poly.mu_SI; // [Pa]
          }
       assert((
          DC->externalLoadController->ExternalStressRate
@@ -390,7 +396,7 @@ void ddpy::DDInterface::setExternalLoad(
          {
             DC->externalLoadController->ExternalStrainRate( ii, jj)
                = ExternalStrainRateInBuf( ii, jj) // [s^-1]
-                  * DC->poly.b_SI/DC->poly.cs_SI;  // [m/(m/s)]
+                  * DC->DN->poly.b_SI/DC->DN->poly.cs_SI;  // [m/(m/s)]
          }
       assert((
                DC->externalLoadController->ExternalStrainRate
@@ -462,7 +468,7 @@ void ddpy::DDInterface::setExternalLoad(
          for ( ssize_t jj=0; jj < ExternalStress0In.value().shape()[1]; ++jj)
          {
             DC->externalLoadController->ExternalStress( ii, jj) // unitless
-               = ExternalStress0InBuf( ii, jj) / DC->poly.mu_SI;
+               = ExternalStress0InBuf( ii, jj) / DC->DN->poly.mu_SI;
          }
       assert(
                (
@@ -549,13 +555,13 @@ void ddpy::DDInterface::setEndingStep( const long int& endingStep)
          << "DefectiveCrystal is instantiated" << std::endl;
       return;
    }
-   if ( endingStep <= DC->simulationParameters.Nsteps)
+   if ( endingStep <= ddBase->simulationParameters.Nsteps)
    {
       std::cout << "warning: assigning endingStep=" << endingStep
-         << " <= currentStep:" << DC->simulationParameters.Nsteps
+         << " <= currentStep:" << ddBase->simulationParameters.Nsteps
          << std::endl;
    }
-   DC->simulationParameters.Nsteps = endingStep;
+   ddBase->simulationParameters.Nsteps = endingStep;
    return;
 }
 
@@ -646,7 +652,7 @@ void ddpy::DDInterface::writeConfigToTxt()
       return;
    }
    std::cout << "attempting to write a configuration" << std::endl; // debug
-   DC->DN->io().output( DC->simulationParameters.runID);
+   DC->DN->io().output( ddBase->simulationParameters.runID);
    return;
 }
 
@@ -672,22 +678,22 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
          //|| collectDensities
       )
    {
-      ssize_t initialStep = DC->simulationParameters.runID;
+      ssize_t initialStep = ddBase->simulationParameters.runID;
       ssize_t endStep = initialStep + stepsToRun;
-      if ( DC->poly.grains.size() != 1)
+      if ( DC->DN->poly.grains.size() != 1)
       {
          std::cout << "error: ddpy::DDInterface::runGlideSteps()"
             << " is not yet able to collect measurements when"
             << " the number of grains is not 1."
-            << " DC->poly.grains.size() "
-            << DC->poly.grains.size()
+            << " DC->DN->poly.grains.size() "
+            << DC->DN->poly.grains.size()
             //<< ", collectPlasticStrain: " << collectPlasticStrain
             //<< ", collectResolvedStrainRates: " << collectResolvedStrainRates
             //<< ", collectDensities: " << collectDensities
             << std::endl;
          return;
       }
-      const auto& grain = *(DC->poly.grains.begin());
+      const auto& grain = *(DC->DN->poly.grains.begin());
       const int grainID = grain.second.grainID;
 
       size_t measurementNumber;
@@ -715,9 +721,9 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
       currentSSPD = DC->DN->slipSystemPlasticDistortion(); // unitless
       //MatrixDim strain
       //   = DC->externalLoadController->strain( VectorDim::Zero());
-      MatrixDim stress // units: [DC->poly.mu_SI [Pa]]
+      MatrixDim stress // units: [DC->DN->poly.mu_SI [Pa]]
          = DC->externalLoadController->stress( VectorDim::Zero())
-            * DC->poly.mu_SI; // [Pa]
+            * DC->DN->poly.mu_SI; // [Pa]
 
       //// ensure times, runIDs and measured quantity vectors have same size
       //if ( times.size() != runIDs.size())
@@ -784,7 +790,7 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
       }
 
       //times->push_back( DC->simulationParameters.totalTime
-      //      * (( DC->poly.b_SI)/( DC->poly.cs_SI))); // [sec]
+      //      * (( DC->DN->poly.b_SI)/( DC->DN->poly.cs_SI))); // [sec]
       //runIDs->push_back( DC->simulationParameters.runID);
       ////times[ measurementNumber] = DC->simulationParameters.totalTime;
       ////runIDs[ measurementNumber] = DC->simulationParameters.runID;
@@ -1151,12 +1157,12 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
          ////   );
       } // for ( const auto& key : tensorComponentKeys)
 
-      while ( DC->simulationParameters.runID < endStep)
+      while ( ddBase->simulationParameters.runID < endStep)
       {
          //measurementNumber += 1;
          // set end step
-         DC->simulationParameters.Nsteps
-            = DC->simulationParameters.runID + stepsBetweenMeasurements;
+         ddBase->simulationParameters.Nsteps
+            = ddBase->simulationParameters.runID + stepsBetweenMeasurements;
 
          // run DDD steps until reaching the specified end step
          DC->runGlideSteps();
@@ -1177,16 +1183,16 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
          //  std::map<size_t, std::vector< double> > strainTensorComponents; //keys:11,22,33,12,13,23
          // std::vector<std::pair<size_t,size_t> > tensorComponentKeys({11,22,33,12,13,23});
 
-         times->push_back( DC->simulationParameters.totalTime
-                  * ( DC->poly.b_SI)/(DC->poly.cs_SI)
+         times->push_back( ddBase->simulationParameters.totalTime
+                  * ( DC->DN->poly.b_SI)/(DC->DN->poly.cs_SI)
                );
-         runIDs->push_back( DC->simulationParameters.runID);
+         runIDs->push_back( ddBase->simulationParameters.runID);
          //times[ measurementNumber] = DC->simulationParameters.totalTime;
          //runIDs[ measurementNumber] = DC->simulationParameters.runID;
 
          // retrieve stress and strain tensors and store their components
          stress = DC->externalLoadController->stress( VectorDim::Zero())
-                  * DC->poly.mu_SI; // [Pa]
+                  * DC->DN->poly.mu_SI; // [Pa]
 
          //strain = DC->externalLoadController->strain( VectorDim::Zero());
          // store stressTensorComponents
@@ -1324,8 +1330,8 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
    else
    { // if no measurements were enabled, run without interruption
       // set step to end on
-      DC->simulationParameters.Nsteps
-         = DC->simulationParameters.runID + stepsToRun;
+      ddBase->simulationParameters.Nsteps
+         = ddBase->simulationParameters.runID + stepsToRun;
       DC->runGlideSteps();
    }
    return;
@@ -1443,7 +1449,7 @@ ddpy::DDInterface::getMechanicalMeasurements()
             );
    }
 
-   const auto& grain = *(DC->poly.grains.begin());
+   const auto& grain = *(DC->DN->poly.grains.begin());
    MatrixDim tmpTensor; // for resolving tensors onto slip systems
    std::shared_ptr< std::vector< double> > rss;
    // determine quantities indexed by slip system
@@ -1521,7 +1527,7 @@ void ddpy::DDInterface::clearMechanicalMeasurements()
       return;
    }
 
-   const auto& grain = *(DC->poly.grains.begin());
+   const auto& grain = *(DC->DN->poly.grains.begin());
 
    // measurements indexed by slip system IDs
    for ( const auto& ss : grain.second.singleCrystal->slipSystems())
