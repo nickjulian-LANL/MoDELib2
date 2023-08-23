@@ -51,6 +51,8 @@ namespace model
         DislocationLoopPatches<_dim> _patches;
         const GrainType& grain;
         const int loopType;
+        
+        double getSlippedArea(){ return _slippedArea;}
 
         
     private:

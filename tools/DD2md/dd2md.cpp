@@ -1,0 +1,931 @@
+#ifndef dd2md_readLmp_CPP_
+#define dd2md_readLmp_CPP_
+
+#include <dd2md.h>
+#include <LmpReader.h>
+
+/**********************************************************************/
+
+
+//model::AtomDisplacementGenerator::fieldPointsOutputType getFieldPoints()
+//{
+//   return fieldPointsOutput;
+//}
+
+void model::AtomDisplacementGenerator::readBurgersMagnitude(
+      const std::string& materialPath)
+{
+   burgersMagnitude = model::TextFileParser( materialPath).readScalar<double>("b_SI",true);
+   std::cout << "burgersMagnitude: " << burgersMagnitude << std::endl; // debug
+   return;
+}
+
+void model::AtomDisplacementGenerator::resetStaticIDs()
+{
+   model::StaticID<model::EshelbyInclusionBase<3>>::set_count(0);
+   model::StaticID<model::Lattice<3>>::set_count(0);
+   model::StaticID<model::DislocationMobilityBase>::set_count(0);
+   model::StaticID<model::PeriodicPlaneNode<3>>::set_count(0);
+   model::StaticID<model::PeriodicPlanePatch<3>>::set_count(0);
+   model::StaticID<model::PeriodicPatchBoundary<3>>::set_count(0);
+   //model::StaticID<model::Derived>::set_count(0);
+   model::StaticID<model::SlipSystem>::set_count(0);
+   //model::StaticID<model::LoopPathClipperNode>::set_count(0);
+   model::StaticID<model::PlanarMeshFace<3>>::set_count(0);
+   //model::StaticID<model::LoopPathClipperNode>::set_count(0);
+   model::StaticID<model::NetworkNode<model::DislocationNode<3,0>>>::set_count(0);
+   model::StaticID<model::NetworkLink<model::DislocationSegment<3,0>>>::set_count(0);
+   model::StaticID<model::Loop<model::DislocationLoop<3,0>>>::set_count(0);
+   model::StaticID<model::LoopNode<model::DislocationLoopNode<3,0>>>::set_count(0);
+   model::StaticID<model::MeshPlane<3>>::set_count(0);
+   model::StaticID<model::SimplexBase<3,0>>::set_count(0);
+   model::StaticID<model::SimplexBase<3,1>>::set_count(0);
+   model::StaticID<model::SimplexBase<3,2>>::set_count(0);
+   model::StaticID<model::SimplexBase<3,3>>::set_count(0);
+   //model::StaticID<model::SequentialOutputFile<prefix,auto>>::set_count(0);
+   return;
+}
+
+void model::AtomDisplacementGenerator::readddBase()
+{
+   if ( ddBase != nullptr) resetStaticIDs(); // TODO: is this necessary?
+   ddBase =  std::unique_ptr<DislocationDynamicsBaseType>(
+         new DislocationDynamicsBaseType( dddPath)
+         );
+   configFields = std::unique_ptr<DDconfigFields<3>>(
+         new DDconfigFields<3>( *ddBase, configIO));
+   return;
+}
+
+void model::AtomDisplacementGenerator::readDefectiveCrystal()
+{
+   if ( ddBase == nullptr) readddBase();
+   DC = std::unique_ptr<DefectiveCrystalType>(
+         new DefectiveCrystalType( *ddBase)
+         );
+   return;
+}
+
+void model::AtomDisplacementGenerator::regenerateMicrostructure()
+{
+   if ( ddBase == nullptr) readddBase();
+   // instantiate a MicrostructureGenerator
+   model::MicrostructureGenerator mg( *ddBase);
+   mg.readMicrostructureFile();
+   mg.writeConfigFiles(0);
+   //microstructureGenerator.readMicrostructureFile();
+   //microstructureGenerator.writeConfigFiles(0);
+   if ( debugFlag)
+      std::cout << "finished call to MicrostructureGenerator" << std::endl;
+
+   //setCurrentStep(0);// DefectiveCrystal will use runID to read some things
+
+   // instantiate a DefectiveCrystalType DC( ddBase)
+   DC = std::unique_ptr<DefectiveCrystalType>(
+         new DefectiveCrystalType( *ddBase)
+         );
+   if ( debugFlag)
+      std::cout << "finished call to DefectiveCrystalType" << std::endl;
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::readLammpsBounds(
+      const std::string& lammpsFilePath
+      )
+{
+   LmpReader lammpsReader(
+          lammpsFilePath,
+          //1.0,
+          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
+          Eigen::Matrix<double,3,3>::Identity(),
+          debugFlag);
+   if ( lammpsReader.readLmpStreamBounds( bounds) != EXIT_SUCCESS)
+   {
+      std::cout << "error: cannot read boundaries from lammps data file."
+         << std::endl;
+   }
+   return;
+}
+
+//void model::AtomDisplacementGenerator::applyDisplacement( VectorDim& x)
+//{
+//   VectorDim temp( VectorDim::Zero());
+//   //double temp( 0.0);
+//   for ( const auto& patch : loopPatches())
+//   {
+//      const auto& loop( configIO.loop( patch.first));
+//      for ( const auto& shift : periodicShifts)
+//      {
+//         temp += patch.second.solidAngle( x + shift)
+//                  /4.0/std::numbers::pi*loop.B;
+//      }
+//   }
+//   return;
+//}
+
+const model::DDconfigIO<3>& model::AtomDisplacementGenerator::config(
+      ) const
+{
+   return configIO;
+}
+
+model::DDconfigIO<3>& model::AtomDisplacementGenerator::config()
+{
+   return configIO;
+}
+
+typename model::AtomDisplacementGenerator::VectorDim
+model::AtomDisplacementGenerator::dislocationPlasticDisplacement(
+      const VectorDim& x) const
+{
+    return configFields->dislocationPlasticDisplacement( x);
+}
+
+typename model::AtomDisplacementGenerator::VectorDim
+model::AtomDisplacementGenerator::dislocationPlasticDisplacement(
+      const double& x,
+      const double& y,
+      const double& z) const
+{
+    return dislocationPlasticDisplacement((VectorDim()<<x,y,z).finished());
+}
+
+void model::AtomDisplacementGenerator::readConfiguration(
+      const size_t& runID)
+{
+   //std::cout << "configIO.getTxtFilename(0): " << configIO.getTxtFilename(0) << std::endl; // debug
+   configIO.read( runID);
+   configFields->updateConfiguration();
+   return;
+}
+
+//void model::AtomDisplacementGenerator::writeConfiguration(
+//      const size_t& runID)
+//{ // this function wrote the config of microstructureGenerator
+//   return;
+//}
+
+double model::AtomDisplacementGenerator::solidAngle(
+      const VectorDim& x) const
+{
+   return configFields->solidAngle( x);
+}
+
+double model::AtomDisplacementGenerator::solidAngle(
+            const double& x,
+            const double& y,
+            const double& z
+      ) const
+{
+   return solidAngle((VectorDim()<<x,y,z).finished());
+}
+
+void model::AtomDisplacementGenerator::computeDisplacements(
+      const std::string& lammpsFilePath)
+{
+   if ( DC == nullptr)
+   {
+      std::cout << "error: DefectiveCrystal not yet instantiated"
+         << std::endl; 
+      return;
+   }
+   if ( DC->DN == nullptr)
+   {
+      std::cout << "error: DefectiveCrystal->DislocationNetwork "
+         << "not yet instantiated"
+         << std::endl; 
+      return;
+   }
+
+   //bool periodicFlag; 
+   //if ( DC->DN->simulationParameters.isPeriodicSimulation())
+   //{
+   //   // temporarily set it to non-periodic
+   //   periodicFlag = true;
+   //   DC->DN->simulationParameters.simulationType = 0; // FINITE_NO_FEM
+   //}
+   //else periodicFlag = false;
+
+   LmpReader lammpsReader(
+          lammpsFilePath,
+          //1.0,
+          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
+          lmpDeformationMatrix,
+          debugFlag);
+   if ( lammpsReader.readLmpStream(
+            bounds,
+            masses,
+            atomIDs,
+            atomTypes,
+            fieldPoints // atomPositions
+            ) != EXIT_SUCCESS)
+   {
+      std::cout << "quiting without computing displacements ..."
+         << std::endl;
+      //if ( periodicFlag)
+      //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
+      return;
+   }
+
+   if ( debugFlag) std::cout << "Computing DislocationDisplacement at field points..." << std::endl;
+   //DC->DN->displacement( fieldPoints);
+   for (unsigned int k=0; k < fieldPoints.size(); ++k)
+   {
+      fieldPoints[k] = DC->DN->displacement( fieldPoints[k].P);
+   }
+
+   if ( debugFlag) std::cout << "Applying external elastic field ..." << std::endl;
+   applyExternalElasticField();  // updates elasticDisplacements member
+   if ( debugFlag) std::cout << "Finished computeDisplacements ..." << std::endl;
+
+   //// return simulationParameters to periodic if it was altered
+   //if ( periodicFlag)
+   //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
+   return;
+} // void model::AtomDisplacementGenerator::computeDisplacements()
+
+void model::AtomDisplacementGenerator::computeDisplacements2(
+      const std::string& lammpsFilePath)
+{
+   LmpReader lammpsReader(
+          lammpsFilePath,
+          //1.0,
+          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
+          lmpDeformationMatrix,
+          debugFlag);
+   if ( lammpsReader.readLmpStream(
+            bounds,
+            masses,
+            atomIDs,
+            atomTypes,
+            fieldPoints // atomPositions
+            ) != EXIT_SUCCESS)
+   {
+      std::cout << "quiting without computing displacements ..."
+         << std::endl;
+      //if ( periodicFlag)
+      //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
+      return;
+   }
+
+   if ( debugFlag) std::cout << "Computing dislocationPlasticDisplacement() at field points..." << std::endl;
+   // Iterate over fieldPoints and modify by applying
+   //  dislocationPlasticDisplacement( ); to each.
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      //VectorDim temp( VectorDim::Zero());
+      //temp += dislocationPlasticDisplacement( (burgersMagnitude/(1e-10))*fieldPoints[ ii].P);
+      //temp += dislocationPlasticDisplacement(fieldPoints[ ii].P);
+      fieldPoints[ ii] = dislocationPlasticDisplacement(
+           fieldPoints[ ii].P
+           );
+      //fieldPoints[ ii] = ((1e-10)/burgersMagnitude)*(fieldPoints[ ii].P + temp);
+   }
+   //DC->DN->displacement( fieldPoints);
+
+   //if ( debugFlag) std::cout << "Applying external elastic field ..." << std::endl;
+   //applyExternalElasticField();  // updates elasticDisplacements member
+   if ( debugFlag) std::cout << "Finished computeDisplacements2 ..." << std::endl;
+
+   return;
+} // void model::AtomDisplacementGenerator::computeDisplacements2()
+
+void model::AtomDisplacementGenerator::applyExternalElasticField()
+{
+   // Elastic displacement container 
+   if ( debugFlag) std::cout<<"applyExternalElasticField(): Computing the displacement associated with the external stressZX...\n"<<std::flush;
+   const double gamma_ZX = 8.e8/DC->DN->poly.mu_SI;
+   VectorDim box_size( ddBase->mesh.xMax() - ddBase->mesh.xMin());
+
+   for (unsigned int k=0; k < fieldPoints.size(); ++k)
+   {
+      const double dis = gamma_ZX * (
+                              fieldPoints[ k].P - ddBase->mesh.xMin()
+                           ).dot( VectorDim::UnitZ());
+      elasticDisplacements.push_back( dis * (VectorDim::UnitX()));
+   }
+   if ( debugFlag) std::cout<<"applyExternalElasticField(): finished computing the displacement associated with the external stressZX...\n"<<std::flush;
+   return;
+}
+
+
+//typedef std::tuple<size_t, > patchGlidePlaneType;
+
+std::tuple<
+   pybind11::array_t<double, pybind11::array::c_style>, // planeNormals
+   pybind11::array_t<double, pybind11::array::c_style>, // Burger's vectors
+   std::map< int, // size_t and long int were disallowed during compilation
+      std::map< int,
+         pybind11::array_t<double, pybind11::array::c_style>
+         >
+      > // polygons
+   >
+model::AtomDisplacementGenerator::getPatchGlidePlanes()
+{
+   // NOTES:
+   // std::map<std::shared_ptr<PeriodicPlanePatch<_dim>>,std::vector<Eigen::Matrix<double,_dim-1,1>>> _patches;
+   // patch.first points to a PeriodicPlanePatch<3>
+   //  patch.first->patchBoundary->referencePlane points to a GlidePlane<3>
+   //  which is a LatticePlane and MeshPlane<3>
+   //  LatticePlane inherits from LatticePlaneBase 
+   //   which inherits from ReciprocalLatticeDirection<3>
+   //   which inherits from Eigen::Matrix<long int, dim, 1>
+   //  MeshPlane<3> inherits from Plane<3> which contains VectorDim unitNormal
+   // patch.second is a vector of 2x1 matrices ( the boundary points)
+   //std::map<size_t, VectorDim> ; // one per loop
+   pybind11::array_t<double, pybind11::array::c_style> planeNormals; // per loop
+   pybind11::array_t<double, pybind11::array::c_style> burgersVectors; // per loop
+   //pybind11::array_t<double, pybind11::array::c_style> polygons; // (#loops, #patches per loop, #vertices,3)
+   std::map< int,  // one element per loop
+      std::map< int, // one element per patch
+         pybind11::array_t<double, pybind11::array::c_style> // vertices 3-D
+      >
+   > polygons;
+
+   int loopCount; //loopCount = DC->DN->loops().size();
+   std::vector< int > patchCounts; // one patch count per loop
+   std::vector<std::vector< int>> vertexCounts; // one count per patch
+
+   // count the dimensions required for the output arrays
+   int loopNumber; loopNumber = 0;
+   for( const auto& loop : DC->DN->loops())
+   {
+      if( loop.second.lock()->glidePlane)
+      {
+         if(loop.second.lock()->getSlippedArea() > FLT_EPSILON)
+         {// a right-handed normal for the loop can be determined
+            //patchCounts.emplace_back( loop.second.lock()->_patches.size());
+            int patchNumber; patchNumber = 0;
+            vertexCounts.emplace_back( std::vector<int>());
+            // inspect all _patches 
+            for ( const auto& patch : loop.second.lock()->_patches.globalPatches())
+            {
+               ++patchNumber;
+               vertexCounts.back().emplace_back(
+                     patch.second.size() // number of vertices on the patch
+                     );
+            }
+            ++loopNumber;
+            patchCounts.emplace_back( patchNumber);
+         }
+      }
+   }
+   loopCount = loopNumber;
+
+   planeNormals.resize( {loopCount, 3});
+   burgersVectors.resize( {loopCount, 3});
+
+   pybind11::buffer_info planeNormalsBuf = planeNormals.request();
+   //std::cout << "planeNormalsBuf.ndim: " << planeNormalsBuf.ndim  << std::endl;
+   //std::cout << "planeNormalsBuf.shape[0]: " << planeNormalsBuf.shape[0] << std::endl;
+   //std::cout << "planeNormalsBuf.shape[1]: " << planeNormalsBuf.shape[0] << std::endl;
+
+   pybind11::buffer_info burgersVectorsBuf = burgersVectors.request();
+   //std::cout << "burgersVectorsBuf.ndim: " << burgersVectorsBuf.ndim  << std::endl;
+   //std::cout << "burgersVectorsBuf.shape[0]: " << burgersVectorsBuf.shape[0] << std::endl;
+   //std::cout << "burgersVectorsBuf.shape[1]: " << burgersVectorsBuf.shape[0] << std::endl;
+
+
+   double* planeNormalsPtr
+      = static_cast<double*>( planeNormalsBuf.ptr);
+   double* burgersVectorsPtr
+      = static_cast<double*>( burgersVectorsBuf.ptr);
+
+   // inspect all loops
+   loopNumber = 0;
+   for( const auto& loop : DC->DN->loops())
+   {
+      if( loop.second.lock()->glidePlane)
+      {
+         if(loop.second.lock()->getSlippedArea() > FLT_EPSILON)
+         {
+            planeNormalsPtr[ 0 + 3*loopNumber]
+                  = loop.second.lock()->rightHandedUnitNormal()[0];
+            planeNormalsPtr[ 1 + 3*loopNumber]
+                  = loop.second.lock()->rightHandedUnitNormal()[1];
+            planeNormalsPtr[ 2 + 3*loopNumber]
+                  = loop.second.lock()->rightHandedUnitNormal()[2];
+
+            burgersVectorsPtr[ 0 + 3*loopNumber]
+               = loop.second.lock()->burgers()[0] * burgersMagnitude;
+            burgersVectorsPtr[ 1 + 3*loopNumber]
+               = loop.second.lock()->burgers()[1] * burgersMagnitude;
+            burgersVectorsPtr[ 2 + 3*loopNumber]
+               = loop.second.lock()->burgers()[2] * burgersMagnitude;
+
+            polygons[ loopNumber]
+               = std::map< int,
+                  pybind11::array_t<double, pybind11::array::c_style> >();
+
+            // inspect all _patches 
+            int patchNumber; patchNumber = 0;
+            // loop.second.lock()->_patches.localPatches() // 2-D positions
+            // loop.second.lock()->_patches.globalPatches() // 3-D positions
+            for ( const auto& patch : loop.second.lock()->_patches.globalPatches())
+            {
+               polygons[ loopNumber][ patchNumber]
+                  =  pybind11::array_t<double, pybind11::array::c_style>();
+               polygons[ loopNumber][ patchNumber].resize(
+                     {vertexCounts[ loopNumber][ patchNumber], 3} );
+               pybind11::buffer_info polygonBuf
+                  = polygons[ loopNumber][ patchNumber].request();
+               //std::cout << "loop " << loopNumber << ", patch " << patchNumber << ", polygonBuf.ndim: " << polygonBuf.ndim  << std::endl;
+               //std::cout << "loop " << loopNumber << ", patch " << patchNumber << ", polygonBuf.shape[0]: " << polygonBuf.shape[0] << std::endl;
+               //std::cout << "loop " << loopNumber << ", patch " << patchNumber << ", polygonBuf.shape[1]: " << polygonBuf.shape[0] << std::endl;
+
+               double* polygonPtr = static_cast<double*>( polygonBuf.ptr);
+
+               // coordinates of the polygon:
+               const auto patchGlidePlane(
+                     patch.first->patchBoundary->referencePlane
+                     );
+               // patch.second is a vector of 3x1 matrices ( the boundary points)
+               for (int vv=0;
+                     vv < vertexCounts[ loopNumber][ patchNumber]; ++vv)
+               {
+                  VectorDim tempVec( patch.second[ vv]);
+                  polygonPtr[ 0 + 3*vv] = tempVec[0] * burgersMagnitude/1e-10;
+                  polygonPtr[ 1 + 3*vv] = tempVec[1] * burgersMagnitude/1e-10;
+                  polygonPtr[ 2 + 3*vv] = tempVec[2] * burgersMagnitude/1e-10;
+               }
+               ++patchNumber;
+            }
+            ++loopNumber;
+         }
+      }
+   }
+   return std::tuple<
+      pybind11::array_t<double, pybind11::array::c_style>, // planeNormals
+      pybind11::array_t<double, pybind11::array::c_style>, // burgersVectors
+      std::map< int,
+         std::map< int,
+            pybind11::array_t<double, pybind11::array::c_style>
+            >
+         > // polygons
+      >
+      ( planeNormals, // one per loop
+        burgersVectors, // one per loop
+        polygons // indexed as: [loop#][patch#][vertex#]
+      );
+}
+
+//std::tuple<
+//   std::map<size_t, model::AtomDisplacementGenerator::VectorDim>,
+//   std::map<size_t, model::AtomDisplacementGenerator::VectorDim>,
+//   std::map< std::pair<size_t,size_t>,
+//      std::vector< model::AtomDisplacementGenerator::VectorDim>>>
+//model::AtomDisplacementGenerator::getPatchGlidePlanes()
+//{
+//   // NOTES:
+//   // std::map<std::shared_ptr<PeriodicPlanePatch<_dim>>,std::vector<Eigen::Matrix<double,_dim-1,1>>> _patches;
+//   // patch.first points to a PeriodicPlanePatch<3>
+//   //  patch.first->patchBoundary->referencePlane points to a GlidePlane<3>
+//   //  which is a LatticePlane and MeshPlane<3>
+//   //  LatticePlane inherits from LatticePlaneBase 
+//   //   which inherits from ReciprocalLatticeDirection<3>
+//   //   which inherits from Eigen::Matrix<long int, dim, 1>
+//   //  MeshPlane<3> inherits from Plane<3> which contains VectorDim unitNormal
+//   // patch.second is a vector of 2x1 matrices ( the boundary points)
+//   std::map<size_t, VectorDim> planeNormals; // one per loop
+//   std::map<size_t, VectorDim> burgersVectors; // one per loop
+//   std::map<std::pair<size_t,size_t>, std::vector<VectorDim>> polygons;// several per loop
+//   // inspect all loops
+//   size_t loopNumber; loopNumber = 0;
+//   for( const auto& loop : DC->DN->loops())
+//   {
+//      if( loop.second.lock()->glidePlane)
+//      {
+//         if(loop.second.lock()->_slippedArea > FLT_EPSILON)
+//         {
+//            planeNormals[ loopNumber]
+//                  = loop.second.lock()->rightHandedUnitNormal();
+//            //planeNormals.emplace_back(
+//            //   patch.first->patchBoundary->referencePlane->unitNormal
+//            //   );
+//
+//            burgersVectors[ loopNumber] = loop.second.lock()->burgers();
+//
+//            // inspect all _patches 
+//            for ( const auto& patch : loop.second.lock()->_patches)
+//            {
+//               size_t patchNumber; patchNumber = 0;
+//               // coordinates of the polygon:
+//               const auto patchGlidePlane(
+//                     patch.first->patchBoundary->referencePlane
+//                     );
+//               // patch.second is a vector of 2x1 matrices ( the boundary points)
+//               std::vector<VectorDim> polygonPoints;
+//               for ( size_t ii=0; ii < patch.second.size(); ++ii)
+//               {
+//                  polygonPoints.emplace_back(
+//                        patchGlidePlane->globalPosition( patch.second[ ii]) 
+//                        );
+//               }
+//               polygons[
+//                     std::pair<size_t,size_t>( loopNumber, patchNumber)
+//                  ] = polygonPoints;
+//               ++patchNumber;
+//            }
+//            ++loopNumber;
+//         }
+//      }
+//   }
+//   return std::make_tuple<
+//   std::map<size_t, VectorDim>,
+//   std::map<size_t, VectorDim>,
+//   std::map< std::pair<size_t,size_t>, std::vector<VectorDim>>
+//      >( planeNormals, burgersVectors, polygons);
+//
+//
+//   //for(const auto& pair : _patches)
+//   //{
+//   //  const auto patchGlidePlane(pair.first->patchBoundary->referencePlane);
+//   //
+//   //// pair.first->patchBoundary->referencePlane is a:
+//   ////  std::shared_ptr<GlidePlane<dim>>
+//   //
+//   //  std::vector<std::pair<VectorDim,VectorDim>> segments;
+//   //  for(size_t k=0;k<pair.second.size();++k)
+//   //  {
+//   //     const size_t k1(k+1==pair.second.size()? 0 : k+1);
+//   //     segments.emplace_back(
+//   //        patchGlidePlane->globalPosition(pair.second[k]),
+//   //        patchGlidePlane->globalPosition(pair.second[k1])
+//   //        );
+//   //     // coordinates of the polygon:
+//   //     //  (patchGlidePlane->globalPosition(pair.second[k]),
+//   //     //   patchGlidePlane->globalPosition(pair.second[k1])
+//   //  }
+//   //  temp += planarSolidAngle(x,patchGlidePlane->P,rightHandedUnitNormal(),segments);
+//
+//   return;
+//}
+
+double model::AtomDisplacementGenerator::getBurgersMagnitude()
+{
+   return DC->DN->poly.b_SI/1e-10;
+}
+
+void model::AtomDisplacementGenerator::writeDisplacementsToFile(
+      const std::string& outputFilePath)
+{
+   if ( debugFlag)
+      std::cout << "Outputing to file " << outputFilePath
+               << " ..." << std::flush;
+   const auto t2= std::chrono::system_clock::now();
+
+   // open output file and truncate its existing contents 
+   std::ofstream outputFile( outputFilePath,
+              std::ofstream::out | std::ofstream::trunc);
+
+   if ( fieldPoints.size() != atomTypes.size()) 
+   {
+      std::cout << "error "
+         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << " fieldPoints.size() != atomType.size()) " << std::endl;
+      return;
+   }
+
+   outputFile << "# LAMMPS data file written by DD2MD" << std::endl << std::endl;
+   outputFile << fieldPoints.size() << " atoms" << std::endl << std::endl;
+   outputFile << masses.size() << " atom types" << std::endl << std::endl;
+   outputFile
+      // << std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[0] << " "
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[1]
+      << " xlo xhi" << std::endl
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[2] << " "
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[3]
+      << " ylo yhi" << std::endl
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[4] << " "
+      //<< std::setw(16)
+      << std::setprecision(12)  << (burgersMagnitude/1e-10) * bounds[5]
+      << " zlo zhi" << std::endl << std::endl;
+   outputFile << "Masses" << std::endl << std::endl;
+   for ( const auto& mm : masses)
+   {
+      outputFile << mm.first << " " << mm.second << std::endl;
+   }
+
+   outputFile << std::endl << "Atoms # atomic" << std::endl << std::endl;
+   for (unsigned int k=0; k < fieldPoints.size(); ++k)
+   {
+       outputFile << fieldPoints[k].pointID << " "
+                    //<< std::setw(8)
+                    << atomTypes[ k] << " "
+                    << std::setiosflags( std::ios::fixed );
+       //if(applyStress)
+       //outputFile //<< std::setw(16)
+       //   << std::setprecision(12)
+       //   << fieldPoints[k].P.transpose() * DC->DN->poly.b_SI/1e-10
+       //      + fieldPoints[k].transpose() * DC->DN->poly.b_SI/1e-10
+       //      + elasticDisplacements[k].transpose() * DC->DN->poly.b_SI/1e-10
+       //   << "\n";
+       // if elasticDisplacements shouldn't be applied, then the following line is desired, not the above
+       //VectorDim tempPoint( lmpDeformationMatrixInverse *fieldPoints[k].P);
+       outputFile //<< std::setw(15)
+        << std::setprecision(12)
+        << (lmpDeformationMatrixInverse * fieldPoints[k].P).transpose() * DC->DN->poly.b_SI /1e-10
+          + (lmpDeformationMatrixInverse * fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        << "\n";
+   }
+   if ( debugFlag)
+      std::cout<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t2)).count()<<" sec]"<<std::endl;
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::setCurrentStep( const long int& step)
+{
+   if ( DC == nullptr)
+   {
+      std::cout << "error: cannot setCurrentStep until "
+         << "DefectiveCrystal is instantiated" << std::endl;
+      return;
+   }
+
+   ddBase->simulationParameters.runID = step;
+   DC->externalLoadController->update( DC->plasticStrain());
+   ddBase->simulationParameters.manageRestart();
+   return;
+}
+
+void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
+            const pybind11::array_t<double,
+               pybind11::array::c_style | pybind11::array::forcecast>
+               c2gIn,
+            //const std::string& lammpsDataFilePath,
+            const std::string& lattice,
+            const std::string& material,
+            const std::string& meshFilePath
+            )
+
+{
+   MatrixDim c2g;
+   auto c2gNp = c2gIn.unchecked<2>(); // for reading c2g input np.array
+   if (! ((c2gNp.shape(0) == 3) && (c2gNp.shape(1) == 3)))
+   {
+      std::cout << "error: regeneratePolycrystalFile( C2G) requires C2G "
+         << "to be a 3x3 numpy array consisting of rows of normalized "
+         << "basis vectors of the crystal lattice." << std::endl;
+      return;
+   }
+   bool latticeIsAcceptable = false;
+   bool materialIsAcceptable = false;
+   for ( const auto& lat : acceptableLattices)
+   {
+      if ( lattice == std::string(lat)) latticeIsAcceptable = true;
+   }
+   for ( const auto& mat : acceptableMaterials)
+   {
+      if ( material == std::string(mat)) materialIsAcceptable = true;
+   }
+   if ( ! ( latticeIsAcceptable && materialIsAcceptable))
+   {
+      std::cout << "error: unacceptable lattice or material: "
+         << lattice << ", " << material << std::endl;
+      std::cout << "  acceptable lattice or materials are: ";
+      for ( const auto& mat : acceptableMaterials) std::cout << mat << ", ";
+      for ( const auto& lat : acceptableLattices) std::cout << lat << ", ";
+   }
+   std::cout << "lattice: " << lattice << ", material: " << material << std::endl; // debug
+
+   c2g << c2gNp(0,0), c2gNp(0,1), c2gNp(0,2),
+         c2gNp(1,0), c2gNp(1,1), c2gNp(1,2),
+         c2gNp(2,0), c2gNp(2,1), c2gNp(2,2);
+   std::cout << "c2g:\n" << c2g << std::endl; // debug
+   std::string outputFilePath = dddPath + "/inputFiles/polycrystal.txt";
+
+   // TODO: detect and move any existing polycrystal.txt file
+   std::ofstream outputFile( outputFilePath,
+              std::ofstream::out | std::ofstream::trunc);
+
+   std::cout << "lammps boundaries: " <<  std::endl;// debug
+   for ( const auto& bd : bounds) std::cout << bd << ", "; // debug
+   std::cout << std::endl; // debug
+
+   double deltaX, deltaY, deltaZ; 
+   deltaX = abs( bounds[1] - bounds[0]);
+   deltaY = abs( bounds[3] - bounds[2]);
+   deltaZ = abs( bounds[5] - bounds[4]);
+   std::cout << "lammps: deltaX " << deltaX << ", deltaY " << deltaY
+      << ", deltaZ " << deltaZ << std::endl; // debug
+   
+   MatrixDim AA; // AA scales the mesh: y=A(x-x0), where x is the input mesh
+   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
+   {
+      AA << -1.0, 1.0, 1.0,
+         1.0, -1.0, 1.0,
+         1.0, 1.0, -1.0;
+      AA /= sqrt(3.0);
+   }
+   else if (! lattice.compare("fcc"))
+   {
+      AA << 0.0, 1.0, 1.0,
+          1.0, 0.0, 1.0,
+          1.0, 1.0, 0.0;
+      AA /= sqrt(2.0);
+   }
+   else
+   {
+      std::cout << "error: lattice type not recognized while trying to "
+         << "create matrix A" << std::endl;
+      return;
+   }
+    
+   AA = c2g * AA;
+
+   MatrixDim f12, f31, f23;
+   f12 << 1.0, skew, 0.0,
+       0.0, 1.0, 0.0,
+       0.0, 0.0, 1.0;
+   f31 << 1.0, 0.0, 0.0,
+       0.0, 1.0, 0.0,
+       skew, 0.0, 1.0;
+   f23 << 1.0, 0.0, 0.0,
+       0.0, 1.0, skew,
+       0.0, 0.0, 1.0;
+   MatrixDim deformingMatrix;
+   deformingMatrix = f12 * (f23 * f31);
+
+   MatrixDim scalingMatrix;
+   scalingMatrix << deltaX, 0, 0,
+      0, deltaY, 0,
+      0, 0, deltaZ;
+
+   deformingMatrix = ( AA.inverse()) * (deformingMatrix * scalingMatrix);
+   // Create a transformation to be applied to the atoms to align
+   //  their strained slip systems to the perfect slip systems of DDD.
+   MatrixDim deformingMatrixRounded( deformingMatrix.array().round());
+
+   // deform AA to be writtent to polycrystal.txt
+   AA = AA * deformingMatrixRounded;
+   //std::cout  // debug
+   //     << std::setw(22) << std::setprecision(15) << AA(0,0)
+   //     << std::setw(22) << std::setprecision(15) << AA(0,1)
+   //     << std::setw(22) << std::setprecision(15) << AA(0,2)
+   //     << std::endl
+   //     << std::setw(22) << std::setprecision(15) << AA(1,0)
+   //     << std::setw(22) << std::setprecision(15) << AA(1,1)
+   //     << std::setw(22) << std::setprecision(15) << AA(1,2)
+   //     << std::endl
+   //     << std::setw(22) << std::setprecision(15) << AA(2,0)
+   //     << std::setw(22) << std::setprecision(15) << AA(2,1)
+   //     << std::setw(22) << std::setprecision(15) << AA(2,2)
+   //     << std::endl; // debug
+
+   lmpDeformationMatrix = deformingMatrixRounded * (deformingMatrix.inverse()) ;
+   lmpDeformationMatrixInverse =  lmpDeformationMatrix.inverse();
+   std::cout << "lmpDeformationMatrix :\n" << lmpDeformationMatrix // debug
+      << std::endl; // debug
+   std::cout << "lmpDeformationMatrixInverse :\n" // debug
+      << lmpDeformationMatrixInverse // debug
+      << std::endl; // debug
+
+   double x0x, x0y, x0z;
+   x0x = bounds[0]/deltaX; // bounds[0] is xlo, deltaX = xhi -xlo
+   x0y = bounds[2]/deltaY; // bounds[2] is ylo
+   x0z = bounds[4]/deltaZ; // bounds[4] is zlo
+   VectorDim x0;
+   x0 << x0x, x0y, x0z; // scaling of the mesh is y=A(x-x0)
+   std::cout << "x0: " << x0x << ", " << x0y << ", " << x0z << std::endl; // debug
+
+   outputFile << "materialFile=" << material + ".txt;" << std::endl;
+   outputFile << "enablePartials=0;"
+      << std::endl;
+   outputFile << "absoluteTemperature = 300; # [K] simulation temperature"
+      << std::endl;
+   outputFile << "meshFile=" << meshFilePath << ";"
+      << std::endl;
+   outputFile << "C2G1="
+        << std::setw(22) << std::setprecision(15) << c2g(0,0)
+        << std::setw(22) << std::setprecision(15) << c2g(0,1)
+        << std::setw(22) << std::setprecision(15) << c2g(0,2)
+        << std::endl
+        << std::setw(22) << std::setprecision(15) << c2g(1,0)
+        << std::setw(22) << std::setprecision(15) << c2g(1,1)
+        << std::setw(22) << std::setprecision(15) << c2g(1,2)
+        << std::endl
+        << std::setw(22) << std::setprecision(15) << c2g(2,0)
+        << std::setw(22) << std::setprecision(15) << c2g(2,1)
+        << std::setw(22) << std::setprecision(15) << c2g(2,2)
+        << ";" << std::endl;
+   //outputFile <<  c2g << ";" <<  std::endl; // precision is too low
+   outputFile << std::endl;
+   outputFile << "A=" 
+        << std::setw(22) << std::setprecision(15) << AA(0,0)
+        << std::setw(22) << std::setprecision(15) << AA(0,1)
+        << std::setw(22) << std::setprecision(15) << AA(0,2)
+        << std::endl
+        << std::setw(22) << std::setprecision(15) << AA(1,0)
+        << std::setw(22) << std::setprecision(15) << AA(1,1)
+        << std::setw(22) << std::setprecision(15) << AA(1,2)
+        << std::endl
+        << std::setw(22) << std::setprecision(15) << AA(2,0)
+        << std::setw(22) << std::setprecision(15) << AA(2,1)
+        << std::setw(22) << std::setprecision(15) << AA(2,2)
+        << ";" << std::endl;
+   outputFile << std::endl << std::endl;
+   outputFile << "x0="
+      << std::setw(21) << std::setprecision(15) << x0(0)
+      << std::setw(21) << std::setprecision(15) << x0(1)
+      << std::setw(21) << std::setprecision(15) << x0(2)
+      << ";" << std::endl;
+   outputFile << "periodicFaceIDs= 0 1 2 3 4 5 " << ";" << std::endl;
+   outputFile << std::endl;
+
+   outputFile << "solidSolutionNoiseMode=" << solidSolutionNoiseMode
+      << "; # 0=no noise, 1= read noise, 2=compute noise" << std::endl;
+   outputFile << "stackingFaultNoiseMode=" << stackingFaultNoiseMode
+      << ";" << std::endl;
+   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
+   {
+      outputFile << "dislocationMobilityType='BCC';" << std::endl;
+   }
+   else if (! lattice.compare("fcc"))
+   {
+      outputFile << "dislocationMobilityType='FCC';" << std::endl;
+   }
+   outputFile << std::endl;
+   //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
+   //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
+      
+      
+   return;
+}
+
+PYBIND11_MODULE( dd2md, m) {
+   namespace py = pybind11;
+   m.doc() = "TODO: revise m.doc() in dd2md.cpp";
+   py::class_<model::AtomDisplacementGenerator>( m, "AtomDisplacementGenerator")
+      .def( py::init([](
+                  const std::string& modelibFolderPath
+                  ){
+               // lambda function that returns an instantiation
+               return std::unique_ptr< model::AtomDisplacementGenerator>(
+                  new model::AtomDisplacementGenerator(
+                     modelibFolderPath
+                     )
+                  );
+            }),
+            py::arg("dddFolderPath").none(false)
+            )
+      .def("computeDisplacements",
+            &model::AtomDisplacementGenerator::computeDisplacements,
+            py::arg("lammpsDataFilePath").none(false)
+            )
+      .def("computeDisplacements2",
+            &model::AtomDisplacementGenerator::computeDisplacements2,
+            py::arg("lammpsDataFilePath").none(false)
+            )
+      .def("getBurgersMagnitude",
+            &model::AtomDisplacementGenerator::getBurgersMagnitude
+          )
+      .def("readBurgersMagnitude",
+            &model::AtomDisplacementGenerator::readBurgersMagnitude,
+            py::arg("materialFilePath").none(false)
+          )
+      .def("writeDisplacementsToFile",
+            &model::AtomDisplacementGenerator::writeDisplacementsToFile,
+            py::arg("outputFile").none(false)
+            )
+      .def("getPatchGlidePlanes",
+            &model::AtomDisplacementGenerator::getPatchGlidePlanes
+          )
+      .def("regeneratePolycrystalFile",
+            &model::AtomDisplacementGenerator::regeneratePolycrystalFile,
+            py::kw_only(),
+            py::arg( "c2g").none(false),
+            py::arg( "lattice").none(false),
+            py::arg( "material").none(false),
+            py::arg( "meshFilePath").none(false)
+          )
+      .def("regenerateMicrostructure",
+            &model::AtomDisplacementGenerator::regenerateMicrostructure
+          )
+      .def("readDefectiveCrystal",
+            &model::AtomDisplacementGenerator::readDefectiveCrystal
+          )
+      .def("readLammpsBounds",
+            &model::AtomDisplacementGenerator::readLammpsBounds,
+            py::arg("lammpsDataFilePath").none(false)
+          )
+      .def("readConfiguration",
+            &model::AtomDisplacementGenerator::readConfiguration,
+            py::arg("runID").none(false)
+          )
+      //.def("dislocationPlasticDisplacement",
+      //      static_cast<typename model::AtomDisplacementGenerator::VectorDim (model::AtomDisplacementGenerator::*)(const double&,const double&,const double&) const>(&model::AtomDisplacementGenerator::dislocationPlasticDisplacement)
+      //      )
+      //.def("getDisplacedPoints",
+      //      &model::AtomDisplacementGenerator::getFieldPoints
+      //      )
+      ;
+   //PYBIND11_NUMPY_DTYPE( );
+}
+#endif

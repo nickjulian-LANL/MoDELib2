@@ -576,7 +576,7 @@ typename DislocationNetwork<dim,corder>::VectorDim DislocationNetwork<dim,corder
   * Note:
   */
     
-    assert(!simulationParameters.isPeriodicSimulation());
+    //assert(!simulationParameters.isPeriodicSimulation());
     
     VectorDim temp(VectorDim::Zero());
     
