@@ -19,7 +19,7 @@ namespace model
 
 /**********************************************************************/
 template <int dim, short unsigned int corder>
-DislocationNetwork<dim,corder>::DislocationNetwork(const DefectiveCrystalParameters& _simulationParameters,
+DislocationNetwork<dim,corder>::DislocationNetwork( DefectiveCrystalParameters& _simulationParameters,
                                                    const SimplicialMesh<dim>& _mesh,
                                                    const Polycrystal<dim>& _poly,
                                                    const std::unique_ptr<BVPsolver<dim,2>>& _bvpSolver,
