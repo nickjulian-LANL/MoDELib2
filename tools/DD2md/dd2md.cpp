@@ -20,6 +20,39 @@ void model::AtomDisplacementGenerator::readBurgersMagnitude(
    return;
 }
 
+void model::AtomDisplacementGenerator::readLammpsConfigurationFile(
+      const std::string& lammpsDataFilePath
+      )
+{
+   LmpReader lammpsReader(
+          lammpsDataFilePath,
+          //1.0,
+          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
+          lmpDeformationMatrix,
+          debugFlag);
+   if ( lammpsReader.readLmpStream(
+            lammpsBoxBounds,
+            masses,
+            atomIDs,
+            atomTypes,
+            fieldPoints, // atomPositions
+            pointIDs
+            ) != EXIT_SUCCESS)
+   {
+      std::cout << "error: readLammpsConfigurationFile() failed to read "
+         << lammpsDataFilePath
+         << std::endl;
+      //if ( periodicFlag)
+      //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
+      return;
+   }
+   // TODO: shift atoms so that modelib slip systems and lammps slip
+   //  systems coincide
+   shift_atoms();
+
+   return;
+}
+
 void model::AtomDisplacementGenerator::resetStaticIDs()
 {
    model::StaticID<model::EshelbyInclusionBase<3>>::set_count(0);
@@ -100,7 +133,7 @@ void model::AtomDisplacementGenerator::readLammpsBounds(
           1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
           Eigen::Matrix<double,3,3>::Identity(),
           debugFlag);
-   if ( lammpsReader.readLmpStreamBounds( bounds) != EXIT_SUCCESS)
+   if ( lammpsReader.readLmpStreamBounds( lammpsBoxBounds) != EXIT_SUCCESS)
    {
       std::cout << "error: cannot read boundaries from lammps data file."
          << std::endl;
@@ -160,12 +193,6 @@ void model::AtomDisplacementGenerator::readConfiguration(
    return;
 }
 
-//void model::AtomDisplacementGenerator::writeConfiguration(
-//      const size_t& runID)
-//{ // this function wrote the config of microstructureGenerator
-//   return;
-//}
-
 double model::AtomDisplacementGenerator::solidAngle(
       const VectorDim& x) const
 {
@@ -181,8 +208,8 @@ double model::AtomDisplacementGenerator::solidAngle(
    return solidAngle((VectorDim()<<x,y,z).finished());
 }
 
-void model::AtomDisplacementGenerator::computeDisplacements(
-      const std::string& lammpsFilePath)
+void model::AtomDisplacementGenerator::computeDisplacements()
+      //const std::string& lammpsFilePath)
 {
    if ( DC == nullptr)
    {
@@ -198,33 +225,10 @@ void model::AtomDisplacementGenerator::computeDisplacements(
       return;
    }
 
-   //bool periodicFlag; 
-   //if ( DC->DN->simulationParameters.isPeriodicSimulation())
-   //{
-   //   // temporarily set it to non-periodic
-   //   periodicFlag = true;
-   //   DC->DN->simulationParameters.simulationType = 0; // FINITE_NO_FEM
-   //}
-   //else periodicFlag = false;
-
-   LmpReader lammpsReader(
-          lammpsFilePath,
-          //1.0,
-          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
-          lmpDeformationMatrix,
-          debugFlag);
-   if ( lammpsReader.readLmpStream(
-            bounds,
-            masses,
-            atomIDs,
-            atomTypes,
-            fieldPoints // atomPositions
-            ) != EXIT_SUCCESS)
+   if ( fieldPoints.size() <= 0)
    {
-      std::cout << "quiting without computing displacements ..."
-         << std::endl;
-      //if ( periodicFlag)
-      //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
+      std::cout << "error: computDisplacements() called while fieldPoints"
+         << " is empty" << std::endl;
       return;
    }
 
@@ -232,11 +236,11 @@ void model::AtomDisplacementGenerator::computeDisplacements(
    //DC->DN->displacement( fieldPoints);
    for (unsigned int k=0; k < fieldPoints.size(); ++k)
    {
-      fieldPoints[k] = DC->DN->displacement( fieldPoints[k].P);
+      fieldPoints[k] += DC->DN->displacement( fieldPoints[k]);
    }
 
-   if ( debugFlag) std::cout << "Applying external elastic field ..." << std::endl;
-   applyExternalElasticField();  // updates elasticDisplacements member
+   //if ( debugFlag) std::cout << "Applying external elastic field ..." << std::endl;
+   //applyExternalElasticField();  // updates elasticDisplacements member
    if ( debugFlag) std::cout << "Finished computeDisplacements ..." << std::endl;
 
    //// return simulationParameters to periodic if it was altered
@@ -245,29 +249,9 @@ void model::AtomDisplacementGenerator::computeDisplacements(
    return;
 } // void model::AtomDisplacementGenerator::computeDisplacements()
 
-void model::AtomDisplacementGenerator::computeDisplacements2(
-      const std::string& lammpsFilePath)
+void model::AtomDisplacementGenerator::computeDisplacements2()
+     // const std::string& lammpsFilePath)
 {
-   LmpReader lammpsReader(
-          lammpsFilePath,
-          //1.0,
-          1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
-          lmpDeformationMatrix,
-          debugFlag);
-   if ( lammpsReader.readLmpStream(
-            bounds,
-            masses,
-            atomIDs,
-            atomTypes,
-            fieldPoints // atomPositions
-            ) != EXIT_SUCCESS)
-   {
-      std::cout << "quiting without computing displacements ..."
-         << std::endl;
-      //if ( periodicFlag)
-      //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
-      return;
-   }
 
    if ( debugFlag) std::cout << "Computing dislocationPlasticDisplacement() at field points..." << std::endl;
    // Iterate over fieldPoints and modify by applying
@@ -275,12 +259,12 @@ void model::AtomDisplacementGenerator::computeDisplacements2(
    for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
    {
       //VectorDim temp( VectorDim::Zero());
-      //temp += dislocationPlasticDisplacement( (burgersMagnitude/(1e-10))*fieldPoints[ ii].P);
-      //temp += dislocationPlasticDisplacement(fieldPoints[ ii].P);
+      //temp += dislocationPlasticDisplacement( (burgersMagnitude/(1e-10))*fieldPoints[ ii]);
+      //temp += dislocationPlasticDisplacement(fieldPoints[ ii]);
       fieldPoints[ ii] = dislocationPlasticDisplacement(
-           fieldPoints[ ii].P
+           fieldPoints[ ii]
            );
-      //fieldPoints[ ii] = ((1e-10)/burgersMagnitude)*(fieldPoints[ ii].P + temp);
+      //fieldPoints[ ii] = ((1e-10)/burgersMagnitude)*(fieldPoints[ ii] + temp);
    }
    //DC->DN->displacement( fieldPoints);
 
@@ -301,7 +285,7 @@ void model::AtomDisplacementGenerator::applyExternalElasticField()
    for (unsigned int k=0; k < fieldPoints.size(); ++k)
    {
       const double dis = gamma_ZX * (
-                              fieldPoints[ k].P - ddBase->mesh.xMin()
+                              fieldPoints[ k] - ddBase->mesh.xMin()
                            ).dot( VectorDim::UnitZ());
       elasticDisplacements.push_back( dis * (VectorDim::UnitX()));
    }
@@ -567,7 +551,7 @@ double model::AtomDisplacementGenerator::getBurgersMagnitude()
    return DC->DN->poly.b_SI/1e-10;
 }
 
-void model::AtomDisplacementGenerator::writeDisplacementsToFile(
+void model::AtomDisplacementGenerator::writeConfigurationToFile(
       const std::string& outputFilePath)
 {
    if ( debugFlag)
@@ -579,10 +563,17 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    std::ofstream outputFile( outputFilePath,
               std::ofstream::out | std::ofstream::trunc);
 
+   if ( fieldPoints.size() <= 0)
+   {
+      std::cout << "error "
+         << "AtomDisplacementGenerator::writeConfigurationToFile"
+         << " called while fieldPoints is empty" << std::endl;
+      return;
+   }
    if ( fieldPoints.size() != atomTypes.size()) 
    {
       std::cout << "error "
-         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << "AtomDisplacementGenerator::writeConfigurationToFile"
          << " fieldPoints.size() != atomType.size()) " << std::endl;
       return;
    }
@@ -592,19 +583,19 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    outputFile << masses.size() << " atom types" << std::endl << std::endl;
    outputFile
       // << std::setw(16)
-      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[0] << " "
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[0] << " "
       //<< std::setw(16)
-      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[1]
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[1]
       << " xlo xhi" << std::endl
       //<< std::setw(16)
-      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[2] << " "
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[2] << " "
       //<< std::setw(16)
-      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[3]
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[3]
       << " ylo yhi" << std::endl
       //<< std::setw(16)
-      << std::setprecision(12) << (burgersMagnitude/1e-10) * bounds[4] << " "
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[4] << " "
       //<< std::setw(16)
-      << std::setprecision(12)  << (burgersMagnitude/1e-10) * bounds[5]
+      << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[5]
       << " zlo zhi" << std::endl << std::endl;
    outputFile << "Masses" << std::endl << std::endl;
    for ( const auto& mm : masses)
@@ -615,23 +606,26 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    outputFile << std::endl << "Atoms # atomic" << std::endl << std::endl;
    for (unsigned int k=0; k < fieldPoints.size(); ++k)
    {
-       outputFile << fieldPoints[k].pointID << " "
+       //outputFile << fieldPoints[k].pointID << " "
+       outputFile << pointIDs[k] << " "
                     //<< std::setw(8)
                     << atomTypes[ k] << " "
                     << std::setiosflags( std::ios::fixed );
        //if(applyStress)
        //outputFile //<< std::setw(16)
        //   << std::setprecision(12)
-       //   << fieldPoints[k].P.transpose() * DC->DN->poly.b_SI/1e-10
+       //   << fieldPoints[k].transpose() * DC->DN->poly.b_SI/1e-10
        //      + fieldPoints[k].transpose() * DC->DN->poly.b_SI/1e-10
        //      + elasticDisplacements[k].transpose() * DC->DN->poly.b_SI/1e-10
        //   << "\n";
        // if elasticDisplacements shouldn't be applied, then the following line is desired, not the above
-       //VectorDim tempPoint( lmpDeformationMatrixInverse *fieldPoints[k].P);
+       //VectorDim tempPoint( lmpDeformationMatrixInverse *fieldPoints[k]);
        outputFile //<< std::setw(15)
         << std::setprecision(12)
-        << (lmpDeformationMatrixInverse * fieldPoints[k].P).transpose() * DC->DN->poly.b_SI /1e-10
-          + (lmpDeformationMatrixInverse * fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        << (fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
+          //+ (fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        //<< (lmpDeformationMatrixInverse * fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        //  + (lmpDeformationMatrixInverse * fieldPoints[k]).transpose() * DC->DN->poly.b_SI /1e-10
         << "\n";
    }
    if ( debugFlag)
@@ -655,19 +649,103 @@ void model::AtomDisplacementGenerator::setCurrentStep( const long int& step)
    return;
 }
 
+
+void model::AtomDisplacementGenerator::shift_atoms(
+      //fieldPointsType& fieldPoints
+      )
+{
+   // iterate over all positions to find the lowest
+   if ( fieldPoints.size() <= 0)
+   {
+      std::cout << "AtomDisplacementGenerator::shift_atoms(): "
+         << "passed an empty set of atoms ..."
+         << std::endl;
+      return;
+   }
+   //VectorDim lowestExtent( fieldPoints[0]);
+   //double oneOverRootThree( 1.0/sqrt(3.0));
+   //VectorDim unitVector( VectorDim()<<oneOverRootThree);
+
+   // TODO: parallelize each of the following loops
+   //// find the lowest extents of atom positions
+   //for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   //{
+   //   if ( fieldPoints[ii](0) < lowestExtent(0))
+   //      lowestExtent(0) = fieldPoints[ii](0);
+   //   if ( fieldPoints[ii](1) < lowestExtent(1))
+   //      lowestExtent(1) = fieldPoints[ii](1);
+   //   if ( fieldPoints[ii](2) < lowestExtent(2))
+   //      lowestExtent(2) = fieldPoints[ii](2);
+   //}
+   //// translate atoms so that their lowest extent is (0,0,0)
+   //for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   //{
+
+   //   VectorDim temp;
+   //   temp << 
+   //      fieldPoints[ii](0) - lowestExtent(0),
+   //      fieldPoints[ii](1) - lowestExtent(1),
+   //      fieldPoints[ii](2) - lowestExtent(2);
+   //   fieldPoints[ii] = temp;
+   //}
+   // translate atoms to ensure lammps and modelib slip planes coincide
+   VectorDim displacementVector;
+   double latticeConstant;
+   if (! lattice.compare("bcc"))
+   {
+      //latticeConstant = (burgersMagnitude/1e-10) * 2.0/sqrt(3.0); 
+      latticeConstant = 2.0/sqrt(3.0); 
+      displacementVector << 0.5, 0.25, 0.125;
+   }
+   else if (! lattice.compare("fcc"))
+   {
+      //latticeConstant = (burgersMagnitude/1e-10) * sqrt(2.0); 
+      latticeConstant = sqrt(2.0); 
+      displacementVector << 0.5, 0.0, 0.0;
+   }
+   displacementVector *= latticeConstant;
+   displacementVector = (C2G.inverse())*displacementVector; 
+   std::cout << "displacementVector: \n" << displacementVector << std::endl; // debug
+   // TODO: incorporate atomic crystallographic orientation rather than use this
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      fieldPoints[ii] += displacementVector;
+   }
+   // translate atoms whose positions exceed the periodic boundaries
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      while ( fieldPoints[ii](0) < lammpsDeformedBoxBounds[0]) // xlo
+         fieldPoints[ii](0) += lammpsDeformedBoxDimensions[0];
+      while ( fieldPoints[ii](0) >= lammpsDeformedBoxBounds[1]) // xhi
+         fieldPoints[ii](0) -= lammpsDeformedBoxDimensions[0];
+
+      while ( fieldPoints[ii](1) < lammpsDeformedBoxBounds[2]) // ylo
+         fieldPoints[ii](1) += lammpsDeformedBoxDimensions[1];
+      while ( fieldPoints[ii](1) >= lammpsDeformedBoxBounds[3]) // yhi
+         fieldPoints[ii](1) -= lammpsDeformedBoxDimensions[1];
+
+      while ( fieldPoints[ii](2) < lammpsDeformedBoxBounds[4]) // zlo
+         fieldPoints[ii](2) += lammpsDeformedBoxDimensions[2];
+      while ( fieldPoints[ii](2) >= lammpsDeformedBoxBounds[5]) // zhi
+         fieldPoints[ii](2) -= lammpsDeformedBoxDimensions[2];
+
+
+   }
+   return;
+}
+
 void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
             const pybind11::array_t<double,
                pybind11::array::c_style | pybind11::array::forcecast>
                c2gIn,
             //const std::string& lammpsDataFilePath,
-            const std::string& lattice,
+            const std::string& latticeIn,
             const std::string& material,
             const std::string& meshFilePath
             )
 
 {
-   MatrixDim c2g;
-   auto c2gNp = c2gIn.unchecked<2>(); // for reading c2g input np.array
+   auto c2gNp = c2gIn.unchecked<2>(); // for reading C2G input np.array
    if (! ((c2gNp.shape(0) == 3) && (c2gNp.shape(1) == 3)))
    {
       std::cout << "error: regeneratePolycrystalFile( C2G) requires C2G "
@@ -679,7 +757,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    bool materialIsAcceptable = false;
    for ( const auto& lat : acceptableLattices)
    {
-      if ( lattice == std::string(lat)) latticeIsAcceptable = true;
+      if ( latticeIn == std::string(lat)) latticeIsAcceptable = true;
    }
    for ( const auto& mat : acceptableMaterials)
    {
@@ -692,13 +770,17 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       std::cout << "  acceptable lattice or materials are: ";
       for ( const auto& mat : acceptableMaterials) std::cout << mat << ", ";
       for ( const auto& lat : acceptableLattices) std::cout << lat << ", ";
+      return;
    }
+
+   lattice = latticeIn; // assign member of AtomDisplacementGenerator
+
    std::cout << "lattice: " << lattice << ", material: " << material << std::endl; // debug
 
-   c2g << c2gNp(0,0), c2gNp(0,1), c2gNp(0,2),
+   C2G << c2gNp(0,0), c2gNp(0,1), c2gNp(0,2),
          c2gNp(1,0), c2gNp(1,1), c2gNp(1,2),
          c2gNp(2,0), c2gNp(2,1), c2gNp(2,2);
-   std::cout << "c2g:\n" << c2g << std::endl; // debug
+   std::cout << "C2G:\n" << C2G << std::endl; // debug
    std::string outputFilePath = dddPath + "/inputFiles/polycrystal.txt";
 
    // TODO: detect and move any existing polycrystal.txt file
@@ -706,13 +788,13 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
               std::ofstream::out | std::ofstream::trunc);
 
    std::cout << "lammps boundaries: " <<  std::endl;// debug
-   for ( const auto& bd : bounds) std::cout << bd << ", "; // debug
+   for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
 
    double deltaX, deltaY, deltaZ; 
-   deltaX = abs( bounds[1] - bounds[0]);
-   deltaY = abs( bounds[3] - bounds[2]);
-   deltaZ = abs( bounds[5] - bounds[4]);
+   deltaX = abs( lammpsBoxBounds[1] - lammpsBoxBounds[0]);
+   deltaY = abs( lammpsBoxBounds[3] - lammpsBoxBounds[2]);
+   deltaZ = abs( lammpsBoxBounds[5] - lammpsBoxBounds[4]);
    std::cout << "lammps: deltaX " << deltaX << ", deltaY " << deltaY
       << ", deltaZ " << deltaZ << std::endl; // debug
    
@@ -738,7 +820,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       return;
    }
     
-   AA = c2g * AA;
+   AA = C2G * AA;
 
    MatrixDim f12, f31, f23;
    f12 << 1.0, skew, 0.0,
@@ -760,10 +842,12 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
 
    deformingMatrix = ( AA.inverse()) * (deformingMatrix * scalingMatrix);
    // Create a transformation to be applied to the atoms to align
-   //  their strained slip systems to the perfect slip systems of DDD.
+   //  their strained atomic planes to the perfect slip systems of DDD.
+   // Atomic planes will still need to be shifted to make atomic slip
+   //  planes coincide with DDD slip planes.
    MatrixDim deformingMatrixRounded( deformingMatrix.array().round());
 
-   // deform AA to be writtent to polycrystal.txt
+   // deform AA to be written to polycrystal.txt
    AA = AA * deformingMatrixRounded;
    //std::cout  // debug
    //     << std::setw(22) << std::setprecision(15) << AA(0,0)
@@ -787,10 +871,78 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       << lmpDeformationMatrixInverse // debug
       << std::endl; // debug
 
+   ////////////////////////////////////////////////
+   /// use the local lmpDeformationMatrix to calculate lammpsDeformedBox
+   // NOTE: assume skew == 0
+   VectorDim lmpAxis00(
+         lammpsBoxBounds[0], // xlo
+         0.0,
+         0.0);
+   VectorDim lmpAxis01(
+         lammpsBoxBounds[1], // xhi
+         0.0,
+         0.0);
+   VectorDim lmpAxis10(
+         0.0,
+         lammpsBoxBounds[2], // ylo
+         0.0);
+   VectorDim lmpAxis11(
+         0.0,
+         lammpsBoxBounds[3], // yhi
+         0.0);
+   VectorDim lmpAxis20(
+         0.0,
+         0.0,
+         lammpsBoxBounds[4]); // zlo
+   VectorDim lmpAxis21(
+         0.0,
+         0.0,
+         lammpsBoxBounds[5]); // zhi
+
+   // transform lammps box boundary coordinates
+   lammpsDeformedBoxBounds.clear();
+   lammpsDeformedBoxBounds.resize(6);
+   lammpsDeformedBoxBounds[0] // xlo
+      = (lmpDeformationMatrix * lmpAxis00)[0];
+   lammpsDeformedBoxBounds[1] // xhi
+      = (lmpDeformationMatrix * lmpAxis01)[0];
+
+   lammpsDeformedBoxBounds[2] // ylo
+      = (lmpDeformationMatrix * lmpAxis10)[1];
+   lammpsDeformedBoxBounds[3] // yhi
+      = (lmpDeformationMatrix * lmpAxis11)[1];
+
+   lammpsDeformedBoxBounds[4] // zlo
+      = (lmpDeformationMatrix * lmpAxis20)[2];
+   lammpsDeformedBoxBounds[5] // zhi
+      = (lmpDeformationMatrix * lmpAxis21)[2];
+
+
+   lammpsDeformedBoxDimensions.clear();
+   lammpsDeformedBoxDimensions.resize(3);
+   lammpsDeformedBoxDimensions[0] = lammpsDeformedBoxBounds[1]
+                                     - lammpsDeformedBoxBounds[0];
+   lammpsDeformedBoxDimensions[1] = lammpsDeformedBoxBounds[3]
+                                     - lammpsDeformedBoxBounds[2];
+   lammpsDeformedBoxDimensions[2] = lammpsDeformedBoxBounds[5]
+                                     - lammpsDeformedBoxBounds[4];
+   std::cout << "lammpsDeformedBoxBounds: (" 
+      << lammpsDeformedBoxBounds[0] << ", "
+      << lammpsDeformedBoxBounds[1] << ", "
+      << lammpsDeformedBoxBounds[2] << ", "
+      << lammpsDeformedBoxBounds[3] << ", "
+      << lammpsDeformedBoxBounds[4] << ", "
+      << lammpsDeformedBoxBounds[5] << ") " << std::endl; // debug
+   std::cout << "lammpsDeformedBoxDimensions: (" 
+      << lammpsDeformedBoxDimensions[0] << ", "
+      << lammpsDeformedBoxDimensions[1] << ", "
+      << lammpsDeformedBoxDimensions[2] << ")" << std::endl; // debug
+   //////////////////////////////////////
+
    double x0x, x0y, x0z;
-   x0x = bounds[0]/deltaX; // bounds[0] is xlo, deltaX = xhi -xlo
-   x0y = bounds[2]/deltaY; // bounds[2] is ylo
-   x0z = bounds[4]/deltaZ; // bounds[4] is zlo
+   x0x = lammpsBoxBounds[0]/deltaX; // lammpsBoxBounds[0] is xlo, deltaX = xhi -xlo
+   x0y = lammpsBoxBounds[2]/deltaY; // lammpsBoxBounds[2] is ylo
+   x0z = lammpsBoxBounds[4]/deltaZ; // lammpsBoxBounds[4] is zlo
    VectorDim x0;
    x0 << x0x, x0y, x0z; // scaling of the mesh is y=A(x-x0)
    std::cout << "x0: " << x0x << ", " << x0y << ", " << x0z << std::endl; // debug
@@ -803,17 +955,17 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    outputFile << "meshFile=" << meshFilePath << ";"
       << std::endl;
    outputFile << "C2G1="
-        << std::setw(22) << std::setprecision(15) << c2g(0,0)
-        << std::setw(22) << std::setprecision(15) << c2g(0,1)
-        << std::setw(22) << std::setprecision(15) << c2g(0,2)
+        << std::setw(22) << std::setprecision(15) << C2G(0,0)
+        << std::setw(22) << std::setprecision(15) << C2G(0,1)
+        << std::setw(22) << std::setprecision(15) << C2G(0,2)
         << std::endl
-        << std::setw(22) << std::setprecision(15) << c2g(1,0)
-        << std::setw(22) << std::setprecision(15) << c2g(1,1)
-        << std::setw(22) << std::setprecision(15) << c2g(1,2)
+        << std::setw(22) << std::setprecision(15) << C2G(1,0)
+        << std::setw(22) << std::setprecision(15) << C2G(1,1)
+        << std::setw(22) << std::setprecision(15) << C2G(1,2)
         << std::endl
-        << std::setw(22) << std::setprecision(15) << c2g(2,0)
-        << std::setw(22) << std::setprecision(15) << c2g(2,1)
-        << std::setw(22) << std::setprecision(15) << c2g(2,2)
+        << std::setw(22) << std::setprecision(15) << C2G(2,0)
+        << std::setw(22) << std::setprecision(15) << C2G(2,1)
+        << std::setw(22) << std::setprecision(15) << C2G(2,2)
         << ";" << std::endl;
    //outputFile <<  c2g << ";" <<  std::endl; // precision is too low
    outputFile << std::endl;
@@ -855,7 +1007,6 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
    //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
       
-      
    return;
 }
 
@@ -876,12 +1027,12 @@ PYBIND11_MODULE( dd2md, m) {
             py::arg("dddFolderPath").none(false)
             )
       .def("computeDisplacements",
-            &model::AtomDisplacementGenerator::computeDisplacements,
-            py::arg("lammpsDataFilePath").none(false)
+            &model::AtomDisplacementGenerator::computeDisplacements
+            //py::arg("lammpsDataFilePath").none(false)
             )
       .def("computeDisplacements2",
-            &model::AtomDisplacementGenerator::computeDisplacements2,
-            py::arg("lammpsDataFilePath").none(false)
+            &model::AtomDisplacementGenerator::computeDisplacements2
+            //py::arg("lammpsDataFilePath").none(false)
             )
       .def("getBurgersMagnitude",
             &model::AtomDisplacementGenerator::getBurgersMagnitude
@@ -890,8 +1041,12 @@ PYBIND11_MODULE( dd2md, m) {
             &model::AtomDisplacementGenerator::readBurgersMagnitude,
             py::arg("materialFilePath").none(false)
           )
-      .def("writeDisplacementsToFile",
-            &model::AtomDisplacementGenerator::writeDisplacementsToFile,
+      .def("readLammpsConfiguration",
+            &model::AtomDisplacementGenerator::readLammpsConfigurationFile,
+            py::arg("lammpsDataFilePath").none(false)
+          )
+      .def("writeConfigurationToFile",
+            &model::AtomDisplacementGenerator::writeConfigurationToFile,
             py::arg("outputFile").none(false)
             )
       .def("getPatchGlidePlanes",

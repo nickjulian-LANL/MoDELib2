@@ -24,9 +24,11 @@ namespace model
 class LmpReader
 {
    public:
-   typedef std::vector<model::FEMnodeEvaluation<model::LagrangeElement<3,2>,3,1>> atomPositionType;
    typedef Eigen::Matrix<double,3,1> VectorDim;
    typedef Eigen::Matrix<double,3,3> MatrixDim;
+   //typedef std::vector<model::FEMnodeEvaluation<model::LagrangeElement<3,2>,3,1>> atomPositionType;
+   typedef std::vector<VectorDim> atomPositionType;
+   typedef std::vector<size_t> pointIDsType;
 
    private:
    int skipLinesOfWhitespace(
@@ -65,7 +67,8 @@ class LmpReader
          std::map<size_t, double>& masses,
          std::vector<size_t>& atomIDs,
          std::vector<size_t>& atomTypes,
-         atomPositionType& atomPositions
+         atomPositionType& atomPositions,
+         pointIDsType& pointIDs
          );
    int readLmpStreamBounds( std::vector<double>& bounds);
    void trimWhitespace( std::string& str);

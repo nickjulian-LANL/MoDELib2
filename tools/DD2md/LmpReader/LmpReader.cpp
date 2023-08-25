@@ -34,7 +34,8 @@ int model::LmpReader::readLmpStream(
          std::map<size_t, double>& masses,
          std::vector<size_t>& atomIDs,
          std::vector<size_t>& atomTypes,
-         atomPositionType& atomPositions
+         atomPositionType& atomPositions,
+         pointIDsType& pointIDs
       )
 {
    // Following specification found at:
@@ -47,6 +48,7 @@ int model::LmpReader::readLmpStream(
    if ( atomIDs.size() != 0) atomIDs.clear();
    if ( atomTypes.size() != 0) atomTypes.clear();
    if ( atomPositions.size() != 0) atomPositions.clear();
+   if ( pointIDs.size() != 0) pointIDs.clear();
 
    // open the file
    std::ifstream inFile(lammpsFilePath.c_str(),std::ifstream::in);
@@ -696,9 +698,9 @@ int model::LmpReader::readLmpStream(
       atomTypes.emplace_back( tmpAtomType);
 
       atomPositions.emplace_back(
-            tmpAtomID,
             deformationMatrix * tmpPosition * scaleFactor // 1e-10/(DC->DN->poly.b_SI)
             );
+      pointIDs.emplace_back( tmpAtomID);
 
       // If the whole population was read, then don't read any more lines.
       if ( ii == atomPopulationCount -1) break;
