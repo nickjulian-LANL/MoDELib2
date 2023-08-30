@@ -17,15 +17,13 @@
 
 #include <DislocationGlideSolverFactory.h>
 #include <GalerkinGlideSolver.h>
-#include <PyGlideSolver.h>
 
 namespace model
 {
     
     template <typename DislocationNetworkType>
-    DislocationGlideSolverBase<DislocationNetworkType>::DislocationGlideSolverBase(const DislocationNetworkType& DN) :
-//    /* init */ DN(DN_in)
-    /* init */ DislocationVelocitySolverBase<DislocationNetworkType>(DN)
+    DislocationGlideSolverBase<DislocationNetworkType>::DislocationGlideSolverBase(const DislocationNetworkType& DN_in) :
+    /* init */ DN(DN_in)
     {
         
     }
@@ -37,13 +35,9 @@ std::shared_ptr<DislocationGlideSolverBase<DislocationNetworkType>> DislocationG
         {
             return std::shared_ptr<DislocationGlideSolverBase<DislocationNetworkType>>(new GalerkinGlideSolver<DislocationNetworkType>(DN));
         }
-        else if(solverType=="Pybind11" || solverType=="pybind11")
-        {
-            return std::shared_ptr<DislocationGlideSolverBase<DislocationNetworkType>>(new PyGlideSolver<DislocationNetworkType>(DN));
-        }
     else
     {
-        std::cout<<redBoldColor<<"Unknown glide solver type "<<solverType<<". Glide disabled."<<defaultColor<<std::endl;
+        throw std::runtime_error("Unknown glide solver type "+solverType);
         return nullptr;
     }
     
