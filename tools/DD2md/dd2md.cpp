@@ -1010,6 +1010,30 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    return;
 }
 
+void model::AtomDisplacementGenerator::runGlideSteps( const size_t& stepsToRun)
+{
+   if ( DC == nullptr) readDefectiveCrystal();
+   if ( DC->DN == nullptr)
+   {
+      std::cout << "error: dd2md::AtomDisplacementGenerator::runGlideSteps()"
+         << " DefectiveCrystal::DefectiveNetwork not yet instantiated."
+         << std::endl;
+      return;
+   }
+   if ( DC->externalLoadController == nullptr)
+   {
+      std::cout << "error: dd2md::AtomDisplacementGenerator::runGlideSteps()"
+        << " DC->externalLoadController isn't instantiated" << std::endl;
+      return;
+   }
+
+   ddBase->simulationParameters.Nsteps
+      = ddBase->simulationParameters.runID + stepsToRun;
+   DC->runGlideSteps();
+   return;
+}
+
+
 PYBIND11_MODULE( dd2md, m) {
    namespace py = pybind11;
    m.doc() = "TODO: revise m.doc() in dd2md.cpp";
@@ -1073,6 +1097,10 @@ PYBIND11_MODULE( dd2md, m) {
       .def("readConfiguration",
             &model::AtomDisplacementGenerator::readConfiguration,
             py::arg("runID").none(false)
+          )
+      .def("runGlideSteps",
+            &model::AtomDisplacementGenerator::runGlideSteps,
+            py::arg("stepsToRun").none(false)
           )
       //.def("dislocationPlasticDisplacement",
       //      static_cast<typename model::AtomDisplacementGenerator::VectorDim (model::AtomDisplacementGenerator::*)(const double&,const double&,const double&) const>(&model::AtomDisplacementGenerator::dislocationPlasticDisplacement)

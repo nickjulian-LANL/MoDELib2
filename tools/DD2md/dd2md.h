@@ -193,6 +193,7 @@ class AtomDisplacementGenerator
                const std::string& materialIn,
                const std::string& meshFilePathIn
             );
+      void runGlideSteps( const size_t& stepsToRun);
 }; // AtomDisplacementGenerator
 
 /**********************************************************************/
