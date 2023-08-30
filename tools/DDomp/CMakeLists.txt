@@ -70,3 +70,8 @@ add_subdirectory(${MoDELibRootDir}/src/DislocationDynamics DDD)
 if(USE_NOISE_GENERATOR)
 	target_link_libraries(${PROJECT_NAME} ${FFTW3_LIBRARIES})
 endif()
+
+if(USE_PYBIND11)
+target_link_libraries(${PROJECT_NAME} PRIVATE pybind11::embed)
+endif()
+
