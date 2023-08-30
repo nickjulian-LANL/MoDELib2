@@ -111,6 +111,7 @@ class AtomDisplacementGenerator
       std::vector<size_t> atomTypes; // per atom
 
       fieldPointsType fieldPoints;
+      fieldPointsType displacements;
       pointIDsType pointIDs;
       std::vector<VectorDim> elasticDisplacements;
 
@@ -170,6 +171,8 @@ class AtomDisplacementGenerator
       void regenerateMicrostructure();
       //void computeDisplacements( const std::string& lammpsFilePath);
       void computeDisplacements();
+      void applyDisplacements();
+      //void getDisplacements();
       void writeConfigurationToFile( const std::string& outputFilePath);
       //void computeDisplacements2( const std::string& lammpsFilePath);
       void computeDisplacements2();

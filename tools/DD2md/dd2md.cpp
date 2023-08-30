@@ -234,9 +234,13 @@ void model::AtomDisplacementGenerator::computeDisplacements()
 
    if ( debugFlag) std::cout << "Computing DislocationDisplacement at field points..." << std::endl;
    //DC->DN->displacement( fieldPoints);
+   if (displacements.size() != fieldPoints.size())
+   {
+      displacements.resize( fieldPoints.size());
+   }
    for (unsigned int k=0; k < fieldPoints.size(); ++k)
    {
-      fieldPoints[k] += DC->DN->displacement( fieldPoints[k]);
+      displacements[k] = DC->DN->displacement( fieldPoints[k]);
    }
 
    //if ( debugFlag) std::cout << "Applying external elastic field ..." << std::endl;
@@ -274,6 +278,43 @@ void model::AtomDisplacementGenerator::computeDisplacements2()
 
    return;
 } // void model::AtomDisplacementGenerator::computeDisplacements2()
+
+void model::AtomDisplacementGenerator::applyDisplacements()
+      //const std::string& lammpsFilePath)
+{
+   if ( DC == nullptr)
+   {
+      std::cout << "error: DefectiveCrystal not yet instantiated"
+         << std::endl; 
+      return;
+   }
+   if ( DC->DN == nullptr)
+   {
+      std::cout << "error: DefectiveCrystal->DislocationNetwork "
+         << "not yet instantiated"
+         << std::endl; 
+      return;
+   }
+
+   if ( fieldPoints.size() <= 0)
+   {
+      std::cout << "error: applyDisplacements() called while fieldPoints"
+         << " is empty" << std::endl;
+      return;
+   }
+
+   if (displacements.size() != fieldPoints.size())
+   {
+      std::cout << "error: applyDisplacements() called while displacements.size() " << displacements.size() << " != fieldPoints.size()" << fieldPoints.size() << std::endl;
+      return;
+   }
+   if ( debugFlag) std::cout << "Applying displacements to fieldPoints..." << std::endl;
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      fieldPoints[ii] += displacements[ii];
+   }
+   return;
+}
 
 void model::AtomDisplacementGenerator::applyExternalElasticField()
 {
@@ -555,7 +596,7 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
       const std::string& outputFilePath)
 {
    if ( debugFlag)
-      std::cout << "Outputing to file " << outputFilePath
+      std::cout << "Outputing configuration to file " << outputFilePath
                << " ..." << std::flush;
    const auto t2= std::chrono::system_clock::now();
 
@@ -633,6 +674,90 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
 
    return;
 }
+
+void model::AtomDisplacementGenerator::writeDisplacementsToFile(
+      const std::string& outputFilePath)
+{
+   if ( debugFlag)
+      std::cout << "Outputting displacements to file " << outputFilePath
+               << " ..." << std::flush;
+   const auto t2= std::chrono::system_clock::now();
+
+   // open output file and truncate its existing contents 
+   std::ofstream outputFile( outputFilePath,
+              std::ofstream::out | std::ofstream::trunc);
+
+   if ( displacements.size() <= 0)
+   {
+      std::cout << "error "
+         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << " called while displacements is empty" << std::endl;
+      return;
+   }
+   if ( displacements.size() != atomTypes.size()) 
+   {
+      std::cout << "error "
+         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << " displacements.size() != atomType.size()) " << std::endl;
+      return;
+   }
+
+   outputFile << "# LAMMPS data file written by DD2MD" << std::endl << std::endl;
+   outputFile << displacements.size() << " atoms" << std::endl << std::endl;
+   outputFile << masses.size() << " atom types" << std::endl << std::endl;
+   outputFile
+      // << std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[0] << " "
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[1]
+      << " xlo xhi" << std::endl
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[2] << " "
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[3]
+      << " ylo yhi" << std::endl
+      //<< std::setw(16)
+      << std::setprecision(12) << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[4] << " "
+      //<< std::setw(16)
+      << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[5]
+      << " zlo zhi" << std::endl << std::endl;
+   outputFile << "Masses" << std::endl << std::endl;
+   for ( const auto& mm : masses)
+   {
+      outputFile << mm.first << " " << mm.second << std::endl;
+   }
+
+   outputFile << std::endl << "Atoms # atomic" << std::endl << std::endl;
+   for (unsigned int k=0; k < displacements.size(); ++k)
+   {
+       //outputFile << displacements[k].pointID << " "
+       outputFile << pointIDs[k] << " "
+                    //<< std::setw(8)
+                    << atomTypes[ k] << " "
+                    << std::setiosflags( std::ios::fixed );
+       //if(applyStress)
+       //outputFile //<< std::setw(16)
+       //   << std::setprecision(12)
+       //   << displacements[k].transpose() * DC->DN->poly.b_SI/1e-10
+       //      + displacements[k].transpose() * DC->DN->poly.b_SI/1e-10
+       //      + elasticDisplacements[k].transpose() * DC->DN->poly.b_SI/1e-10
+       //   << "\n";
+       // if elasticDisplacements shouldn't be applied, then the following line is desired, not the above
+       //VectorDim tempPoint( lmpDeformationMatrixInverse *displacements[k]);
+       outputFile //<< std::setw(15)
+        << std::setprecision(12)
+        << (displacements[k]).transpose() * DC->DN->poly.b_SI /1e-10
+          //+ (displacements[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        //<< (lmpDeformationMatrixInverse * displacements[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        //  + (lmpDeformationMatrixInverse * displacements[k]).transpose() * DC->DN->poly.b_SI /1e-10
+        << "\n";
+   }
+   if ( debugFlag)
+      std::cout<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t2)).count()<<" sec]"<<std::endl;
+
+   return;
+}
+
 
 void model::AtomDisplacementGenerator::setCurrentStep( const long int& step)
 {
@@ -1054,6 +1179,9 @@ PYBIND11_MODULE( dd2md, m) {
             &model::AtomDisplacementGenerator::computeDisplacements
             //py::arg("lammpsDataFilePath").none(false)
             )
+      .def("applyDisplacements",
+            &model::AtomDisplacementGenerator::applyDisplacements
+            )
       .def("computeDisplacements2",
             &model::AtomDisplacementGenerator::computeDisplacements2
             //py::arg("lammpsDataFilePath").none(false)
@@ -1069,6 +1197,10 @@ PYBIND11_MODULE( dd2md, m) {
             &model::AtomDisplacementGenerator::readLammpsConfigurationFile,
             py::arg("lammpsDataFilePath").none(false)
           )
+      .def("writeDisplacementsToFile",
+            &model::AtomDisplacementGenerator::writeDisplacementsToFile,
+            py::arg("outputFile").none(false)
+            )
       .def("writeConfigurationToFile",
             &model::AtomDisplacementGenerator::writeConfigurationToFile,
             py::arg("outputFile").none(false)
