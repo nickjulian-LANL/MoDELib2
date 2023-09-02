@@ -7,7 +7,7 @@ option(USE_NOISE_GENERATOR "Using fftw3 to generate the GlidePlaneNoise" OFF)
 option(USE_PYBIND11 "Using pybind11" ON)
 
 
-find_package(eigen3 3.4 REQUIRED NO_MODULE)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 
 #set(EigenRootDir "/usr/local/include")
 

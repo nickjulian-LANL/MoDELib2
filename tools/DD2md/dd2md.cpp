@@ -787,32 +787,32 @@ void model::AtomDisplacementGenerator::shift_atoms(
          << std::endl;
       return;
    }
-   //VectorDim lowestExtent( fieldPoints[0]);
    //double oneOverRootThree( 1.0/sqrt(3.0));
    //VectorDim unitVector( VectorDim()<<oneOverRootThree);
 
    // TODO: parallelize each of the following loops
-   //// find the lowest extents of atom positions
-   //for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
-   //{
-   //   if ( fieldPoints[ii](0) < lowestExtent(0))
-   //      lowestExtent(0) = fieldPoints[ii](0);
-   //   if ( fieldPoints[ii](1) < lowestExtent(1))
-   //      lowestExtent(1) = fieldPoints[ii](1);
-   //   if ( fieldPoints[ii](2) < lowestExtent(2))
-   //      lowestExtent(2) = fieldPoints[ii](2);
-   //}
-   //// translate atoms so that their lowest extent is (0,0,0)
-   //for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
-   //{
+   // find the lowest extents of atom positions
+   VectorDim lowestExtent( fieldPoints[0]);
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      if ( fieldPoints[ii](0) < lowestExtent(0))
+         lowestExtent(0) = fieldPoints[ii](0);
+      if ( fieldPoints[ii](1) < lowestExtent(1))
+         lowestExtent(1) = fieldPoints[ii](1);
+      if ( fieldPoints[ii](2) < lowestExtent(2))
+         lowestExtent(2) = fieldPoints[ii](2);
+   }
+   // translate atoms so that their lowest extent is (0,0,0)
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
 
-   //   VectorDim temp;
-   //   temp << 
-   //      fieldPoints[ii](0) - lowestExtent(0),
-   //      fieldPoints[ii](1) - lowestExtent(1),
-   //      fieldPoints[ii](2) - lowestExtent(2);
-   //   fieldPoints[ii] = temp;
-   //}
+      VectorDim temp;
+      temp << 
+         fieldPoints[ii](0) - lowestExtent(0),
+         fieldPoints[ii](1) - lowestExtent(1),
+         fieldPoints[ii](2) - lowestExtent(2);
+      fieldPoints[ii] = temp;
+   }
    // translate atoms to ensure lammps and modelib slip planes coincide
    VectorDim displacementVector;
    double latticeConstant;
@@ -853,8 +853,6 @@ void model::AtomDisplacementGenerator::shift_atoms(
          fieldPoints[ii](2) += lammpsDeformedBoxDimensions[2];
       while ( fieldPoints[ii](2) >= lammpsDeformedBoxBounds[5]) // zhi
          fieldPoints[ii](2) -= lammpsDeformedBoxDimensions[2];
-
-
    }
    return;
 }
