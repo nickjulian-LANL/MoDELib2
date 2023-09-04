@@ -367,7 +367,6 @@ void ddpy::DDInterface::setExternalLoad(
 
    // Adapting calculations from UniformExternalLoadController constructor
 
-   //TODO: convert values from SI to modelib's unitless units
    // read and assign ExternalStressRate if it was specified
    if ( ExternalStressRateIn.has_value())
    {
@@ -396,7 +395,7 @@ void ddpy::DDInterface::setExternalLoad(
          {
             DC->externalLoadController->ExternalStrainRate( ii, jj)
                = ExternalStrainRateInBuf( ii, jj) // [s^-1]
-                  * DC->DN->poly.b_SI/DC->DN->poly.cs_SI;  // [m/(m/s)]
+                  * ddBase->poly.b_SI/ddBase->poly.cs_SI;  // [m/(m/s)]
          }
       assert((
                DC->externalLoadController->ExternalStrainRate
@@ -447,10 +446,12 @@ void ddpy::DDInterface::setExternalLoad(
          {
             DC->externalLoadController->ExternalStrain( ii, jj)
                = ExternalStrain0InBuf( ii, jj); // [%]
+            DC->externalLoadController->ExternalStrain0( ii, jj)
+               = ExternalStrain0InBuf( ii, jj); // [%]
          }
       assert(
-               ( DC->externalLoadController->ExternalStrain
-                  - DC->externalLoadController->ExternalStrain.transpose()
+               ( DC->externalLoadController->ExternalStrain0
+                  - DC->externalLoadController->ExternalStrain0.transpose()
                ).norm()
                < DBL_EPSILON && "ExternalStrain0 is not symmetric."
             );
@@ -467,13 +468,15 @@ void ddpy::DDInterface::setExternalLoad(
       for ( ssize_t ii=0; ii < ExternalStress0In.value().shape()[0]; ++ii)
          for ( ssize_t jj=0; jj < ExternalStress0In.value().shape()[1]; ++jj)
          {
+            DC->externalLoadController->ExternalStress0( ii, jj) // unitless
+               = ExternalStress0InBuf( ii, jj) / DC->DN->poly.mu_SI;
             DC->externalLoadController->ExternalStress( ii, jj) // unitless
                = ExternalStress0InBuf( ii, jj) / DC->DN->poly.mu_SI;
          }
       assert(
                (
-                  DC->externalLoadController->ExternalStress
-                   - DC->externalLoadController->ExternalStress.transpose()
+                  DC->externalLoadController->ExternalStress0
+                   - DC->externalLoadController->ExternalStress0.transpose()
                ).norm()
                < DBL_EPSILON && "ExternalStress0 is not symmetric."
             );
@@ -516,6 +519,16 @@ void ddpy::DDInterface::setExternalLoad(
       //  were passed to this function, the values previously assigned by
       //  the constructor should remain.
    }
+   //std::cout << "setExternalLoad: DC->externalLoadController->ExternalStress is\n" // debug
+   //   << DC->externalLoadController->ExternalStress << std::endl;// debug
+   //std::cout << "setExternalLoad: DC->externalLoadController->ExternalStress0 is\n" // debug
+   //   << DC->externalLoadController->ExternalStress0 << std::endl;// debug
+   //std::cout << "setExternalLoad: DC->externalLoadController->ExternalStrain is\n" // debug
+   //   << DC->externalLoadController->ExternalStrain << std::endl;// debug
+   //std::cout << "setExternalLoad: DC->externalLoadController->ExternalStrain0 is\n" // debug
+   //   << DC->externalLoadController->ExternalStrain0 << std::endl;// debug
+   //std::cout << "setExternalLoad: DC->externalLoadController->MachineStiffnessRatio is\n" // debug
+   //   << DC->externalLoadController->MachineStiffnessRatio << std::endl;// debug
    return;
 }
 
@@ -1167,6 +1180,7 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
          // run DDD steps until reaching the specified end step
          DC->runGlideSteps();
          DC->DN->updateGeometry();
+
          // ??updateLoadControllers(simulationParamerters.runID, false);
          // measurements are collected after each DDD time step, but
          //  runGlideSteps() leaves the data in need of updating, hence
@@ -1332,7 +1346,9 @@ void ddpy::DDInterface::runGlideSteps( const size_t& stepsToRun)
       // set step to end on
       ddBase->simulationParameters.Nsteps
          = ddBase->simulationParameters.runID + stepsToRun;
+
       DC->runGlideSteps();
+
    }
    return;
 }
