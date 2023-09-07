@@ -376,8 +376,8 @@ void ddpy::DDInterface::setExternalLoad(
          {
             DC->externalLoadController->ExternalStressRate( ii, jj)
                = ExternalStressRateInBuf( ii, jj) // [Pa/s]
-                  * DC->DN->poly.b_SI/DC->DN->poly.cs_SI  // [m/(m/s)]
-                  / DC->DN->poly.mu_SI; // [Pa]
+                  * ddBase->poly.b_SI/ddBase->poly.cs_SI  // [m/(m/s)]
+                  / ddBase->poly.mu_SI; // [Pa]
          }
       assert((
          DC->externalLoadController->ExternalStressRate
@@ -420,7 +420,7 @@ void ddpy::DDInterface::setExternalLoad(
 
       static constexpr int voigtSize = DefectiveCrystalType::dim*(DefectiveCrystalType::dim+1)/2;
       Eigen::Matrix<double,voigtSize,voigtSize>  Cinv=Eigen::Matrix<double,voigtSize,voigtSize>::Identity();
-      double nu( DC->DN->poly.nu);
+      double nu( ddBase->poly.nu);
       double nu_use( DC->externalLoadController->nu_use);
       Cinv.block(0,0,DefectiveCrystalType::dim,DefectiveCrystalType::dim)
          <<
@@ -469,9 +469,9 @@ void ddpy::DDInterface::setExternalLoad(
          for ( ssize_t jj=0; jj < ExternalStress0In.value().shape()[1]; ++jj)
          {
             DC->externalLoadController->ExternalStress0( ii, jj) // unitless
-               = ExternalStress0InBuf( ii, jj) / DC->DN->poly.mu_SI;
+               = ExternalStress0InBuf( ii, jj) / ddBase->poly.mu_SI;
             DC->externalLoadController->ExternalStress( ii, jj) // unitless
-               = ExternalStress0InBuf( ii, jj) / DC->DN->poly.mu_SI;
+               = ExternalStress0InBuf( ii, jj) / ddBase->poly.mu_SI;
          }
       assert(
                (
