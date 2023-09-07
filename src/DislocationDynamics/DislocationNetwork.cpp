@@ -128,7 +128,7 @@ void DislocationNetwork<dim,corder>::setConfiguration(const DDconfigIO<dim>& evl
     size_t netNodeNumber=1;
     for(const auto& node : evl.nodes())
     {
-        std::cout<<"Creating DislocationNode "<<node.sID<<" ("<<netNodeNumber<<" of "<<evl.nodes().size()<<")"<<std::endl;
+        //std::cout<<"Creating DislocationNode "<<node.sID<<" ("<<netNodeNumber<<" of "<<evl.nodes().size()<<")"<<std::endl;
         const size_t nodeIDinFile(node.sID);
         NetworkNodeType::set_count(nodeIDinFile);
         tempNetNodes.push_back(this->networkNodes().create(node.P,node.V,node.velocityReduction));
@@ -141,7 +141,7 @@ void DislocationNetwork<dim,corder>::setConfiguration(const DDconfigIO<dim>& evl
     size_t loopNodeNumber=1;
     for(const auto& node : evl.loopNodes())
     {
-        std::cout<<"Creating DislocationLoopNode "<<node.sID<<" ("<<loopNodeNumber<<" of "<<evl.loopNodes().size()<<")"<<std::flush;
+        //std::cout<<"Creating DislocationLoopNode "<<node.sID<<" ("<<loopNodeNumber<<" of "<<evl.loopNodes().size()<<")"<<std::flush;
         // std::cout<<"Printing stuff for loopNodes "<<std::endl;
         
         // std::cout << node.loopID << std::endl;
@@ -162,27 +162,27 @@ void DislocationNetwork<dim,corder>::setConfiguration(const DDconfigIO<dim>& evl
         const auto periodicPatchEdge((periodicPatch && node.edgeIDs.first>=0)? (node.edgeIDs.second>=0 ? std::make_pair(periodicPatch->edges()[node.edgeIDs.first],
                                                                                                                         periodicPatch->edges()[node.edgeIDs.second]): std::make_pair(periodicPatch->edges()[node.edgeIDs.first],nullptr)):std::make_pair(nullptr,nullptr));
         // std::cout<<"PeriodicPlane edge created "<<std::endl;
-        if(periodicPatch)
-        {
-            std::cout<<", on patch "<<periodicPatch->shift.transpose()<<std::flush;
-        }
-        if(periodicPatchEdge.first)
-        {
-            std::cout<<" on edge "<<periodicPatchEdge.first->edgeID<<std::flush;
-        }
-        if(periodicPatchEdge.second)
-        {
-            std::cout<<" and "<<periodicPatchEdge.second->edgeID<<std::flush;
-            //                auxPatchSets.emplace(loop->periodicGlidePlane->patches().getFromKey(periodicPatch->shift + periodicPatchEdge.first->deltaShift));
-            //                auxPatchSets.emplace(loop->periodicGlidePlane->patches().getFromKey(periodicPatch->shift + periodicPatchEdge.second->deltaShift));
-        }
-        //            if (auxPatchSets.size()==0)
-        //            {
-        //                auxPatchSets.insert(std::shared_ptr<PeriodicPlanePatch<dim>>(nullptr));
-        //            }
-        // std::cout<<"Trying to create the loop node with loopID "<<loop->sID<<" if loop has GP "<<(loop->glidePlane!=nullptr)<<" networkID is "
-        // <<netNode->sID<<std::endl;
-        std::cout<<std::endl;
+        //if(periodicPatch)
+        //{
+        //    std::cout<<", on patch "<<periodicPatch->shift.transpose()<<std::flush;
+        //}
+        //if(periodicPatchEdge.first)
+        //{
+        //    std::cout<<" on edge "<<periodicPatchEdge.first->edgeID<<std::flush;
+        //}
+        //if(periodicPatchEdge.second)
+        //{
+        //    std::cout<<" and "<<periodicPatchEdge.second->edgeID<<std::flush;
+        //    //                auxPatchSets.emplace(loop->periodicGlidePlane->patches().getFromKey(periodicPatch->shift + periodicPatchEdge.first->deltaShift));
+        //    //                auxPatchSets.emplace(loop->periodicGlidePlane->patches().getFromKey(periodicPatch->shift + periodicPatchEdge.second->deltaShift));
+        //}
+        ////            if (auxPatchSets.size()==0)
+        ////            {
+        ////                auxPatchSets.insert(std::shared_ptr<PeriodicPlanePatch<dim>>(nullptr));
+        ////            }
+        //// std::cout<<"Trying to create the loop node with loopID "<<loop->sID<<" if loop has GP "<<(loop->glidePlane!=nullptr)<<" networkID is "
+        //// <<netNode->sID<<std::endl;
+        //std::cout<<std::endl;
         tempLoopNodes.push_back(this->loopNodes().create(loop,netNode,node.P,periodicPatch,periodicPatchEdge));
         assert(this->loopNodes().get(nodeIDinFile)->sID==nodeIDinFile);
         loopNodeNumber++;
