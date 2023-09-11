@@ -103,7 +103,9 @@ class AtomDisplacementGenerator
       //size_t atomPopulationCount;
       //size_t atomTypeCount;
       std::vector<double> lammpsBoxBounds; // xlo xhi ylo yhi zlo zhi
+      std::vector<double> lammpsTiltFactors; // xy xz yz
       std::vector<double> lammpsDeformedBoxBounds;
+      std::vector<double> lammpsDeformedTiltFactors;
       std::vector<double> lammpsDeformedBoxDimensions;
       std::map<size_t, double> masses; // per atom type
 
@@ -120,7 +122,6 @@ class AtomDisplacementGenerator
 
       //bool alignToSlipSystem0;
       bool debugFlag;
-      double skew;
       double burgersMagnitude;
       int solidSolutionNoiseMode;
       int stackingFaultNoiseMode;
@@ -157,7 +158,6 @@ class AtomDisplacementGenerator
          , acceptableLattices( std::vector<std::string>({"bcc","fcc"}))
          , acceptableMaterials( std::vector<std::string>({"Fe_320","Cu"}))
          , debugFlag( true)
-         , skew( 0.0)
          , burgersMagnitude( -1.0)
          , solidSolutionNoiseMode( 0)
          , stackingFaultNoiseMode( 0)

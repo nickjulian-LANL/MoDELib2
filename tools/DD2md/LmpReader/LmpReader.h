@@ -64,13 +64,17 @@ class LmpReader
 
    int readLmpStream(
          std::vector<double>& bounds,
+         std::vector<double>& tiltFactors,
          std::map<size_t, double>& masses,
          std::vector<size_t>& atomIDs,
          std::vector<size_t>& atomTypes,
          atomPositionType& atomPositions,
          pointIDsType& pointIDs
          );
-   int readLmpStreamBounds( std::vector<double>& bounds);
+   int readLmpStreamBounds(
+         std::vector<double>& bounds,
+         std::vector<double>& tiltFactors
+         );
    void trimWhitespace( std::string& str);
 };
 } // namespace model

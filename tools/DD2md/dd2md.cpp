@@ -32,6 +32,7 @@ void model::AtomDisplacementGenerator::readLammpsConfigurationFile(
           debugFlag);
    if ( lammpsReader.readLmpStream(
             lammpsBoxBounds,
+            lammpsTiltFactors,
             masses,
             atomIDs,
             atomTypes,
@@ -46,8 +47,8 @@ void model::AtomDisplacementGenerator::readLammpsConfigurationFile(
       //   DC->DN->simulationParameters.simulationType = 2; // PERIODIC_IMAGES
       return;
    }
-   // TODO: shift atoms so that modelib slip systems and lammps slip
-   //  systems coincide
+   // Shift atoms so that modelib slip systems and lammps slip systems
+   //  coincide.
    shift_atoms();
 
    return;
@@ -133,7 +134,10 @@ void model::AtomDisplacementGenerator::readLammpsBounds(
           1e-10/burgersMagnitude, // b_SI:2.556e-10 #scaleFactor for atom positions
           Eigen::Matrix<double,3,3>::Identity(),
           debugFlag);
-   if ( lammpsReader.readLmpStreamBounds( lammpsBoxBounds) != EXIT_SUCCESS)
+   if ( lammpsReader.readLmpStreamBounds(
+            lammpsBoxBounds,
+            lammpsTiltFactors
+            ) != EXIT_SUCCESS)
    {
       std::cout << "error: cannot read boundaries from lammps data file."
          << std::endl;
@@ -214,14 +218,14 @@ void model::AtomDisplacementGenerator::computeDisplacements()
    if ( DC == nullptr)
    {
       std::cout << "error: DefectiveCrystal not yet instantiated"
-         << std::endl; 
+         << std::endl;
       return;
    }
    if ( DC->DN == nullptr)
    {
       std::cout << "error: DefectiveCrystal->DislocationNetwork "
          << "not yet instantiated"
-         << std::endl; 
+         << std::endl;
       return;
    }
 
@@ -285,14 +289,14 @@ void model::AtomDisplacementGenerator::applyDisplacements()
    if ( DC == nullptr)
    {
       std::cout << "error: DefectiveCrystal not yet instantiated"
-         << std::endl; 
+         << std::endl;
       return;
    }
    if ( DC->DN == nullptr)
    {
       std::cout << "error: DefectiveCrystal->DislocationNetwork "
          << "not yet instantiated"
-         << std::endl; 
+         << std::endl;
       return;
    }
 
@@ -318,7 +322,7 @@ void model::AtomDisplacementGenerator::applyDisplacements()
 
 void model::AtomDisplacementGenerator::applyExternalElasticField()
 {
-   // Elastic displacement container 
+   // Elastic displacement container
    if ( debugFlag) std::cout<<"applyExternalElasticField(): Computing the displacement associated with the external stressZX...\n"<<std::flush;
    const double gamma_ZX = 8.e8/DC->DN->poly.mu_SI;
    VectorDim box_size( ddBase->mesh.xMax() - ddBase->mesh.xMin());
@@ -353,7 +357,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
    // patch.first points to a PeriodicPlanePatch<3>
    //  patch.first->patchBoundary->referencePlane points to a GlidePlane<3>
    //  which is a LatticePlane and MeshPlane<3>
-   //  LatticePlane inherits from LatticePlaneBase 
+   //  LatticePlane inherits from LatticePlaneBase
    //   which inherits from ReciprocalLatticeDirection<3>
    //   which inherits from Eigen::Matrix<long int, dim, 1>
    //  MeshPlane<3> inherits from Plane<3> which contains VectorDim unitNormal
@@ -383,7 +387,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
             //patchCounts.emplace_back( loop.second.lock()->_patches.size());
             int patchNumber; patchNumber = 0;
             vertexCounts.emplace_back( std::vector<int>());
-            // inspect all _patches 
+            // inspect all _patches
             for ( const auto& patch : loop.second.lock()->_patches.globalPatches())
             {
                ++patchNumber;
@@ -443,7 +447,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
                = std::map< int,
                   pybind11::array_t<double, pybind11::array::c_style> >();
 
-            // inspect all _patches 
+            // inspect all _patches
             int patchNumber; patchNumber = 0;
             // loop.second.lock()->_patches.localPatches() // 2-D positions
             // loop.second.lock()->_patches.globalPatches() // 3-D positions
@@ -507,7 +511,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
 //   // patch.first points to a PeriodicPlanePatch<3>
 //   //  patch.first->patchBoundary->referencePlane points to a GlidePlane<3>
 //   //  which is a LatticePlane and MeshPlane<3>
-//   //  LatticePlane inherits from LatticePlaneBase 
+//   //  LatticePlane inherits from LatticePlaneBase
 //   //   which inherits from ReciprocalLatticeDirection<3>
 //   //   which inherits from Eigen::Matrix<long int, dim, 1>
 //   //  MeshPlane<3> inherits from Plane<3> which contains VectorDim unitNormal
@@ -531,7 +535,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
 //
 //            burgersVectors[ loopNumber] = loop.second.lock()->burgers();
 //
-//            // inspect all _patches 
+//            // inspect all _patches
 //            for ( const auto& patch : loop.second.lock()->_patches)
 //            {
 //               size_t patchNumber; patchNumber = 0;
@@ -544,7 +548,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
 //               for ( size_t ii=0; ii < patch.second.size(); ++ii)
 //               {
 //                  polygonPoints.emplace_back(
-//                        patchGlidePlane->globalPosition( patch.second[ ii]) 
+//                        patchGlidePlane->globalPosition( patch.second[ ii])
 //                        );
 //               }
 //               polygons[
@@ -600,7 +604,7 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
                << " ..." << std::flush;
    const auto t2= std::chrono::system_clock::now();
 
-   // open output file and truncate its existing contents 
+   // open output file and truncate its existing contents
    std::ofstream outputFile( outputFilePath,
               std::ofstream::out | std::ofstream::trunc);
 
@@ -611,7 +615,7 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
          << " called while fieldPoints is empty" << std::endl;
       return;
    }
-   if ( fieldPoints.size() != atomTypes.size()) 
+   if ( fieldPoints.size() != atomTypes.size())
    {
       std::cout << "error "
          << "AtomDisplacementGenerator::writeConfigurationToFile"
@@ -683,7 +687,7 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
                << " ..." << std::flush;
    const auto t2= std::chrono::system_clock::now();
 
-   // open output file and truncate its existing contents 
+   // open output file and truncate its existing contents
    std::ofstream outputFile( outputFilePath,
               std::ofstream::out | std::ofstream::trunc);
 
@@ -694,7 +698,7 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
          << " called while displacements is empty" << std::endl;
       return;
    }
-   if ( displacements.size() != atomTypes.size()) 
+   if ( displacements.size() != atomTypes.size())
    {
       std::cout << "error "
          << "AtomDisplacementGenerator::writeDisplacementsToFile"
@@ -721,6 +725,25 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
       //<< std::setw(16)
       << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedBoxBounds[5]
       << " zlo zhi" << std::endl << std::endl;
+
+   // write the lammps triclinic box tilt factors
+   if ((lammpsDeformedTiltFactors.size() == 3)
+         && (
+            lammpsDeformedTiltFactors[0] != 0.0
+            ||
+            lammpsDeformedTiltFactors[1] != 0.0
+            ||
+            lammpsDeformedTiltFactors[2] != 0.0
+            )
+         )
+   {
+      outputFile
+         << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedTiltFactors[0] << " "
+         << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedTiltFactors[1] << " "
+         << std::setprecision(12)  << (burgersMagnitude/1e-10) * lammpsDeformedTiltFactors[2] << " "
+         << " xy xz yz" << std::endl << std::endl;
+   }
+
    outputFile << "Masses" << std::endl << std::endl;
    for ( const auto& mm : masses)
    {
@@ -790,70 +813,86 @@ void model::AtomDisplacementGenerator::shift_atoms(
    //double oneOverRootThree( 1.0/sqrt(3.0));
    //VectorDim unitVector( VectorDim()<<oneOverRootThree);
 
-   // TODO: parallelize each of the following loops
-   // find the lowest extents of atom positions
-   VectorDim lowestExtent( fieldPoints[0]);
-   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   if ((lammpsDeformedTiltFactors.size() != 3)
+         || !(
+            lammpsDeformedTiltFactors[0] != 0.0
+            ||
+            lammpsDeformedTiltFactors[1] != 0.0
+            ||
+            lammpsDeformedTiltFactors[2] != 0.0
+            )
+         )
    {
-      if ( fieldPoints[ii](0) < lowestExtent(0))
-         lowestExtent(0) = fieldPoints[ii](0);
-      if ( fieldPoints[ii](1) < lowestExtent(1))
-         lowestExtent(1) = fieldPoints[ii](1);
-      if ( fieldPoints[ii](2) < lowestExtent(2))
-         lowestExtent(2) = fieldPoints[ii](2);
-   }
-   // translate atoms so that their lowest extent is (0,0,0)
-   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
-   {
+      // TODO: parallelize each of the following loops
+      // find the lowest extents of atom positions
+      VectorDim lowestExtent( fieldPoints[0]);
+      for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+      {
+         if ( fieldPoints[ii](0) < lowestExtent(0))
+            lowestExtent(0) = fieldPoints[ii](0);
+         if ( fieldPoints[ii](1) < lowestExtent(1))
+            lowestExtent(1) = fieldPoints[ii](1);
+         if ( fieldPoints[ii](2) < lowestExtent(2))
+            lowestExtent(2) = fieldPoints[ii](2);
+      }
+      // translate atoms so that their lowest extent is (0,0,0)
+      for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+      {
 
-      VectorDim temp;
-      temp << 
-         fieldPoints[ii](0) - lowestExtent(0),
-         fieldPoints[ii](1) - lowestExtent(1),
-         fieldPoints[ii](2) - lowestExtent(2);
-      fieldPoints[ii] = temp;
+         VectorDim temp;
+         temp <<
+            fieldPoints[ii](0) - lowestExtent(0),
+            fieldPoints[ii](1) - lowestExtent(1),
+            fieldPoints[ii](2) - lowestExtent(2);
+         fieldPoints[ii] = temp;
+      }
    }
+   // else
+   // {
+   // TODO: figure out how to handle atoms exceeding triclinic box bounds
+   // }
+
    // translate atoms to ensure lammps and modelib slip planes coincide
    VectorDim displacementVector;
    double latticeConstant;
    if (! lattice.compare("bcc"))
    {
-      //latticeConstant = (burgersMagnitude/1e-10) * 2.0/sqrt(3.0); 
-      latticeConstant = 2.0/sqrt(3.0); 
+      //latticeConstant = (burgersMagnitude/1e-10) * 2.0/sqrt(3.0);
+      latticeConstant = 2.0/sqrt(3.0);
       displacementVector << 0.5, 0.25, 0.125;
    }
    else if (! lattice.compare("fcc"))
    {
-      //latticeConstant = (burgersMagnitude/1e-10) * sqrt(2.0); 
-      latticeConstant = sqrt(2.0); 
+      //latticeConstant = (burgersMagnitude/1e-10) * sqrt(2.0);
+      latticeConstant = sqrt(2.0);
       displacementVector << 0.5, 0.0, 0.0;
    }
    displacementVector *= latticeConstant;
-   displacementVector = (C2G.inverse())*displacementVector; 
+   displacementVector = (C2G.inverse())*displacementVector;
    std::cout << "displacementVector: \n" << displacementVector << std::endl; // debug
    // TODO: incorporate atomic crystallographic orientation rather than use this
    for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
    {
       fieldPoints[ii] += displacementVector;
    }
-   // translate atoms whose positions exceed the periodic boundaries
-   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
-   {
-      while ( fieldPoints[ii](0) < lammpsDeformedBoxBounds[0]) // xlo
-         fieldPoints[ii](0) += lammpsDeformedBoxDimensions[0];
-      while ( fieldPoints[ii](0) >= lammpsDeformedBoxBounds[1]) // xhi
-         fieldPoints[ii](0) -= lammpsDeformedBoxDimensions[0];
+   //// translate atoms whose positions exceed the periodic boundaries
+   //for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   //{
+   //   while ( fieldPoints[ii](0) < lammpsDeformedBoxBounds[0]) // xlo
+   //      fieldPoints[ii](0) += lammpsDeformedBoxDimensions[0];
+   //   while ( fieldPoints[ii](0) >= lammpsDeformedBoxBounds[1]) // xhi
+   //      fieldPoints[ii](0) -= lammpsDeformedBoxDimensions[0];
 
-      while ( fieldPoints[ii](1) < lammpsDeformedBoxBounds[2]) // ylo
-         fieldPoints[ii](1) += lammpsDeformedBoxDimensions[1];
-      while ( fieldPoints[ii](1) >= lammpsDeformedBoxBounds[3]) // yhi
-         fieldPoints[ii](1) -= lammpsDeformedBoxDimensions[1];
+   //   while ( fieldPoints[ii](1) < lammpsDeformedBoxBounds[2]) // ylo
+   //      fieldPoints[ii](1) += lammpsDeformedBoxDimensions[1];
+   //   while ( fieldPoints[ii](1) >= lammpsDeformedBoxBounds[3]) // yhi
+   //      fieldPoints[ii](1) -= lammpsDeformedBoxDimensions[1];
 
-      while ( fieldPoints[ii](2) < lammpsDeformedBoxBounds[4]) // zlo
-         fieldPoints[ii](2) += lammpsDeformedBoxDimensions[2];
-      while ( fieldPoints[ii](2) >= lammpsDeformedBoxBounds[5]) // zhi
-         fieldPoints[ii](2) -= lammpsDeformedBoxDimensions[2];
-   }
+   //   while ( fieldPoints[ii](2) < lammpsDeformedBoxBounds[4]) // zlo
+   //      fieldPoints[ii](2) += lammpsDeformedBoxDimensions[2];
+   //   while ( fieldPoints[ii](2) >= lammpsDeformedBoxBounds[5]) // zhi
+   //      fieldPoints[ii](2) -= lammpsDeformedBoxDimensions[2];
+   //}
    return;
 }
 
@@ -914,13 +953,13 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
 
-   double deltaX, deltaY, deltaZ; 
+   double deltaX, deltaY, deltaZ;
    deltaX = abs( lammpsBoxBounds[1] - lammpsBoxBounds[0]);
    deltaY = abs( lammpsBoxBounds[3] - lammpsBoxBounds[2]);
    deltaZ = abs( lammpsBoxBounds[5] - lammpsBoxBounds[4]);
    std::cout << "lammps: deltaX " << deltaX << ", deltaY " << deltaY
       << ", deltaZ " << deltaZ << std::endl; // debug
-   
+
    MatrixDim AA; // AA scales the mesh: y=A(x-x0), where x is the input mesh
    if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
    {
@@ -942,28 +981,36 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
          << "create matrix A" << std::endl;
       return;
    }
-    
+
    AA = C2G * AA;
 
-   MatrixDim f12, f31, f23;
-   f12 << 1.0, skew, 0.0,
-       0.0, 1.0, 0.0,
-       0.0, 0.0, 1.0;
-   f31 << 1.0, 0.0, 0.0,
-       0.0, 1.0, 0.0,
-       skew, 0.0, 1.0;
-   f23 << 1.0, 0.0, 0.0,
-       0.0, 1.0, skew,
-       0.0, 0.0, 1.0;
+   MatrixDim scalingDeformingMatrix;
+   if ( lammpsTiltFactors.size() != 3
+         || (
+          lammpsTiltFactors[0] != 0
+          &&
+          lammpsTiltFactors[1] != 0
+          &&
+          lammpsTiltFactors[2] != 0
+          )
+      )
+   {
+      std::cout << "lammps tilt factors are either not assigned or are 0"
+         << std::endl;
+
+      scalingDeformingMatrix << deltaX, 0, 0,
+                                 0, deltaY, 0,
+                                 0, 0, deltaZ;
+   }
+   // TODO: properly assign scalingDeformingMatrix
+   // TODO: properly assign scalingDeformingMatrix
+   // TODO: properly assign scalingDeformingMatrix
+   // TODO: properly assign scalingDeformingMatrix
+   // TODO: properly assign scalingDeformingMatrix
+   // TODO: properly assign scalingDeformingMatrix
+
    MatrixDim deformingMatrix;
-   deformingMatrix = f12 * (f23 * f31);
-
-   MatrixDim scalingMatrix;
-   scalingMatrix << deltaX, 0, 0,
-      0, deltaY, 0,
-      0, 0, deltaZ;
-
-   deformingMatrix = ( AA.inverse()) * (deformingMatrix * scalingMatrix);
+   deformingMatrix = ( AA.inverse()) * scalingDeformingMatrix;
    // Create a transformation to be applied to the atoms to align
    //  their strained atomic planes to the perfect slip systems of DDD.
    // Atomic planes will still need to be shifted to make atomic slip
@@ -997,6 +1044,11 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    ////////////////////////////////////////////////
    /// use the local lmpDeformationMatrix to calculate lammpsDeformedBox
    // NOTE: assume skew == 0
+   // TODO: rework the following to work with triclinic boxes
+   // TODO: rework the following to work with triclinic boxes
+   // TODO: rework the following to work with triclinic boxes
+   // TODO: rework the following to work with triclinic boxes
+   // TODO: rework the following to work with triclinic boxes
    VectorDim lmpAxis00(
          lammpsBoxBounds[0], // xlo
          0.0,
@@ -1040,26 +1092,35 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    lammpsDeformedBoxBounds[5] // zhi
       = (lmpDeformationMatrix * lmpAxis21)[2];
 
+   // TODO: lammpsDeformedTiltFactors
 
-   lammpsDeformedBoxDimensions.clear();
-   lammpsDeformedBoxDimensions.resize(3);
-   lammpsDeformedBoxDimensions[0] = lammpsDeformedBoxBounds[1]
-                                     - lammpsDeformedBoxBounds[0];
-   lammpsDeformedBoxDimensions[1] = lammpsDeformedBoxBounds[3]
-                                     - lammpsDeformedBoxBounds[2];
-   lammpsDeformedBoxDimensions[2] = lammpsDeformedBoxBounds[5]
-                                     - lammpsDeformedBoxBounds[4];
-   std::cout << "lammpsDeformedBoxBounds: (" 
+
+   //lammpsDeformedBoxDimensions.clear();
+   //lammpsDeformedBoxDimensions.resize(3);
+   //lammpsDeformedBoxDimensions[0] = lammpsDeformedBoxBounds[1]
+   //                                  - lammpsDeformedBoxBounds[0];
+   //lammpsDeformedBoxDimensions[1] = lammpsDeformedBoxBounds[3]
+   //                                  - lammpsDeformedBoxBounds[2];
+   //lammpsDeformedBoxDimensions[2] = lammpsDeformedBoxBounds[5]
+   //                                  - lammpsDeformedBoxBounds[4];
+   std::cout << "lammpsDeformedBoxBounds: ("
       << lammpsDeformedBoxBounds[0] << ", "
       << lammpsDeformedBoxBounds[1] << ", "
       << lammpsDeformedBoxBounds[2] << ", "
       << lammpsDeformedBoxBounds[3] << ", "
       << lammpsDeformedBoxBounds[4] << ", "
       << lammpsDeformedBoxBounds[5] << ") " << std::endl; // debug
-   std::cout << "lammpsDeformedBoxDimensions: (" 
-      << lammpsDeformedBoxDimensions[0] << ", "
-      << lammpsDeformedBoxDimensions[1] << ", "
-      << lammpsDeformedBoxDimensions[2] << ")" << std::endl; // debug
+   if ( lammpsDeformedTiltFactors.size() == 3)
+   {
+      std::cout << "lammpsDeformedTiltFactors: ("
+         << lammpsDeformedTiltFactors[0] << ", "
+         << lammpsDeformedTiltFactors[1] << ", "
+         << lammpsDeformedTiltFactors[2] << ") " << std::endl; // debug
+   }
+   //std::cout << "lammpsDeformedBoxDimensions: ("
+   //   << lammpsDeformedBoxDimensions[0] << ", "
+   //   << lammpsDeformedBoxDimensions[1] << ", "
+   //   << lammpsDeformedBoxDimensions[2] << ")" << std::endl; // debug
    //////////////////////////////////////
 
    double x0x, x0y, x0z;
@@ -1092,7 +1153,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
         << ";" << std::endl;
    //outputFile <<  c2g << ";" <<  std::endl; // precision is too low
    outputFile << std::endl;
-   outputFile << "A=" 
+   outputFile << "A="
         << std::setw(22) << std::setprecision(15) << AA(0,0)
         << std::setw(22) << std::setprecision(15) << AA(0,1)
         << std::setw(22) << std::setprecision(15) << AA(0,2)
@@ -1129,7 +1190,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    outputFile << std::endl;
    //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
    //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
-      
+
    return;
 }
 

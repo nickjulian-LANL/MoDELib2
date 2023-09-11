@@ -31,6 +31,7 @@ int model::LmpReader::skipLinesOfWhitespace(
 
 int model::LmpReader::readLmpStream(
          std::vector<double>& bounds,
+         std::vector<double>& tiltFactors,
          std::map<size_t, double>& masses,
          std::vector<size_t>& atomIDs,
          std::vector<size_t>& atomTypes,
@@ -43,7 +44,8 @@ int model::LmpReader::readLmpStream(
    // required sections: header, Masses, Atoms
 
    // empty the vectors to write be written to
-   if ( bounds.size() != 6) bounds.clear();
+   if ( bounds.size() != 0) bounds.clear();
+   if ( tiltFactors.size() != 0) tiltFactors.clear();
    if ( masses.size() != 0) masses.clear();
    if ( atomIDs.size() != 0) atomIDs.clear();
    if ( atomTypes.size() != 0) atomTypes.clear();
@@ -421,20 +423,23 @@ int model::LmpReader::readLmpStream(
       {
          if ( !term6.compare("yz"))
          {
-            if ((tmpDbl1 != 0.0) || (tmpDbl2 != 0.0) || (tmpDbl3 != 0.0))
-            {
-               // failure
-               if ( debugFlag)
-               {
-                  outputCommonErrorMessage( std::cout, lammpsFilePath,
-                                             lineNumber, line);
-                  std::cout << "LmpReader, box tilt factors must be 0"
-                     << " line: " << line
-                     << std::endl;
-               }
-               inFile.close();
-               return EXIT_FAILURE;
-            }
+            tiltFactors.emplace_back( tmpDbl1 * scaleFactor);
+            tiltFactors.emplace_back( tmpDbl2 * scaleFactor);
+            tiltFactors.emplace_back( tmpDbl3 * scaleFactor);
+            //if ((tmpDbl1 != 0.0) || (tmpDbl2 != 0.0) || (tmpDbl3 != 0.0))
+            //{
+            //   // failure
+            //   if ( debugFlag)
+            //   {
+            //      outputCommonErrorMessage( std::cout, lammpsFilePath,
+            //                                 lineNumber, line);
+            //      std::cout << "LmpReader, box tilt factors must be 0"
+            //         << " line: " << line
+            //         << std::endl;
+            //   }
+            //   inFile.close();
+            //   return EXIT_FAILURE;
+            //}
          }
          else
          {
@@ -443,7 +448,7 @@ int model::LmpReader::readLmpStream(
             {
                outputCommonErrorMessage( std::cout, lammpsFilePath,
                                              lineNumber, line);
-               std::cout << "LmpReader, unkown line format" << std::endl;
+               std::cout << "LmpReader, incomplete triclinic specification " << std::endl;
             }
             inFile.close();
             return EXIT_FAILURE;
@@ -456,12 +461,18 @@ int model::LmpReader::readLmpStream(
          {
             outputCommonErrorMessage( std::cout, lammpsFilePath,
                                           lineNumber, line);
-            std::cout << "LmpReader, unkown line format" << std::endl;
+            std::cout << "LmpReader, incomplete triclinic specification " << std::endl;
          }
          inFile.close();
          return EXIT_FAILURE;
       }
-   } // if ( term4.compare("xy")) // if not, then continue
+   } // if ( term4.compare("xy")) // if not, then assign 0 to tiltFactors
+   else
+   {
+      tiltFactors.emplace_back( 0.0);
+      tiltFactors.emplace_back( 0.0);
+      tiltFactors.emplace_back( 0.0);
+   }
 
 
    /********************************************************************/
@@ -728,7 +739,10 @@ int model::LmpReader::readLmpStream(
    return EXIT_SUCCESS;
 }
 
-int model::LmpReader::readLmpStreamBounds( std::vector<double>& bounds)
+int model::LmpReader::readLmpStreamBounds(
+      std::vector<double>& bounds,
+      std::vector<double>& tiltFactors
+      )
 {
    // Read only the header section of the lammps file.
 
@@ -737,7 +751,7 @@ int model::LmpReader::readLmpStreamBounds( std::vector<double>& bounds)
    // required sections: header, Masses, Atoms
 
    // empty the vectors to write be written to
-   if ( bounds.size() != 6) bounds.clear();
+   if ( bounds.size() != 0) bounds.clear();
 
    // open the file
    std::ifstream inFile(lammpsFilePath.c_str(),std::ifstream::in);
@@ -756,8 +770,9 @@ int model::LmpReader::readLmpStreamBounds( std::vector<double>& bounds)
    lineNumber = 0;
    size_t atomPopulationCount; atomPopulationCount = 0;
    size_t atomTypeCount; atomTypeCount = 0;
-   double tmpDbl1, tmpDbl2; tmpDbl1 = 0; tmpDbl2 = 0;
-   std::string term1, term2, term3, term4;
+   double tmpDbl1, tmpDbl2, tmpDbl3;
+   tmpDbl1 = 0; tmpDbl2 = 0; tmpDbl3 = 0;
+   std::string term1, term2, term3, term4, term5, term6;
 
    // throw away the first two lines
    ++lineNumber;
@@ -1065,6 +1080,71 @@ int model::LmpReader::readLmpStreamBounds( std::vector<double>& bounds)
    }
    bounds.emplace_back( tmpDbl1 * scaleFactor);
    bounds.emplace_back( tmpDbl2 * scaleFactor);
+
+   // see if box is sheared
+   ++lineNumber;
+   if (!( std::getline(inFile, line) && inFile.good()))
+   {
+      if ( debugFlag)
+      {
+         outputCommonErrorMessage( std::cout, lammpsFilePath,
+                                    lineNumber, line);
+      }
+      inFile.close();
+      return EXIT_FAILURE;
+   }
+   { // scope so that lineStream can be redeclared later
+   std::istringstream lineStream( line);
+   lineStream >> tmpDbl1;
+   lineStream >> tmpDbl2;
+   lineStream >> tmpDbl3;
+   lineStream >> term4;
+   lineStream >> term5;
+   lineStream >> term6;
+   }
+   // term1,2,3,4,5 might be "<double> <double> <double> xy xz yz"
+   if ( !term4.compare("xy"))
+   {
+      if ( !term5.compare("xz"))
+      {
+         if ( !term6.compare("yz"))
+         {
+            tiltFactors.emplace_back( tmpDbl1 * scaleFactor);
+            tiltFactors.emplace_back( tmpDbl2 * scaleFactor);
+            tiltFactors.emplace_back( tmpDbl3 * scaleFactor);
+         }
+         else
+         {
+            // failure
+            if ( debugFlag)
+            {
+               outputCommonErrorMessage( std::cout, lammpsFilePath,
+                                             lineNumber, line);
+               std::cout << "LmpReader, incomplete triclinic specification " << std::endl;
+            }
+            inFile.close();
+            return EXIT_FAILURE;
+         }
+      }
+      else
+      {
+         // failure
+         if ( debugFlag)
+         {
+            outputCommonErrorMessage( std::cout, lammpsFilePath,
+                                          lineNumber, line);
+            std::cout << "LmpReader, incomplete triclinic specification " << std::endl;
+         }
+         inFile.close();
+         return EXIT_FAILURE;
+      }
+   } // if ( term4.compare("xy")) // if not, then assign 0 to tiltFactors
+   else
+   {
+      tiltFactors.emplace_back( 0.0);
+      tiltFactors.emplace_back( 0.0);
+      tiltFactors.emplace_back( 0.0);
+   }
 
    return EXIT_SUCCESS;
 }

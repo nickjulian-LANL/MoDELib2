@@ -41,6 +41,7 @@ end
 A=C2G1*A;
 invA=inv(A);
 
+% compute the three vectors that we determine to be along the crystal directions x1 x2 x3
 % Find unit cell vectors along global axes
 for i=1:3
 Bi=invA(:,i);
@@ -53,14 +54,24 @@ L(:,i)=A*Nr;
 Ln(i)=norm(L(:,i));
 end
 
-scaling=1000;
-T=round(scaling*diag(1./Ln))
+%scaling=1000;
+%T=round(scaling*diag(1./Ln))
 
+% if you want to apply a shear to the box, then you have to populate the following matrix to transform the box
+% The first column are the integer coefficients of vectors x1 x2 x3 of the box (the rows of L)
 %T=[1000 0 0
 %    0 500 0
 %    0 0 1000]; % integer combinations of L columns
 
-B=L*T % box
+% T can do scaling or tilting, obtained as linear combinations of L
+%
+T = [1 0 0;
+   5 1 0;
+   0 0 1];
+% T_ij is the integer coefficient that multiplies vector L_i in determining B_j
+
+B=L*T % box , this scales the unit mesh,. T is a matrix of integers. this multiplication produces a linear combination of (column) vectors in L.
+%B contains in columns the three box vectors
 
 x0=[0 0 0];
 
