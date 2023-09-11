@@ -590,32 +590,49 @@ void ddpy::DDInterface::readddBase()
    return;
 }
 
-void ddpy::DDInterface::setBoxBounds(
-      const double& xlo,
-      const double& xhi,
-      const double& ylo,
-      const double& yhi,
-      const double& zlo,
-      const double& zhi
-      )
-{
-   if ( burgersMagnitude <= 0)
-   {
-      std::cout << "error, setBoxBounds: burgersMagnitude <= 0\n"
-         << "try calling readBurgersMagnitude( <material file path>) first"
-         << std::endl;
-      return;
-   }
-   boxBounds[0] = xlo * 1e-10 / burgersMagnitude;
-   boxBounds[1] = xhi * 1e-10 / burgersMagnitude;
-   boxBounds[2] = ylo * 1e-10 / burgersMagnitude;
-   boxBounds[3] = yhi * 1e-10 / burgersMagnitude;
-   boxBounds[4] = zlo * 1e-10 / burgersMagnitude;
-   boxBounds[5] = zhi * 1e-10 / burgersMagnitude;
-   boxVolume = (xhi - xlo) * (yhi - ylo) * (zhi - zlo); // [\AA^{2}]
+//void ddpy::DDInterface::setBoxBounds(
+//      const double& xlo,
+//      const double& xhi,
+//      const double& ylo,
+//      const double& yhi,
+//      const double& zlo,
+//      const double& zhi
+//      )
+//{
+//   if ( burgersMagnitude <= 0)
+//   {
+//      std::cout << "error, setBoxBounds: burgersMagnitude <= 0\n"
+//         << "try calling readBurgersMagnitude( <material file path>) first"
+//         << std::endl;
+//      return;
+//   }
+//   boxBounds[0] = xlo * 1e-10 / burgersMagnitude;
+//   boxBounds[1] = xhi * 1e-10 / burgersMagnitude;
+//   boxBounds[2] = ylo * 1e-10 / burgersMagnitude;
+//   boxBounds[3] = yhi * 1e-10 / burgersMagnitude;
+//   boxBounds[4] = zlo * 1e-10 / burgersMagnitude;
+//   boxBounds[5] = zhi * 1e-10 / burgersMagnitude;
+//
+//   return;
+//}
 
-   return;
-}
+//std::vector<double> ddpy::DDInterface::getBoxBounds()
+//{
+//   if ( burgersMagnitude <= 0)
+//   {
+//      std::cout << "error, getBoxBounds: burgersMagnitude <= 0\n"
+//         << "try calling readBurgersMagnitude( <material file path>) first"
+//         << std::endl;
+//      std::vector<double> tmp;
+//      return tmp;
+//   }
+//   std::vector<double> rescaledBoxBounds( boxBounds);
+//   for ( size_t ii=0; ii < rescaledBoxBounds.size(); ++ii)
+//   {
+//      rescaledBoxBounds[ii] *= burgersMagnitude / 1e-10;
+//   }
+//   return rescaledBoxBounds;
+//}
 
 void ddpy::DDInterface::readDefectiveCrystal()
 {
@@ -2334,180 +2351,177 @@ void ddpy::DDInterface::setOutputPath( const std::string& outputPath)
    return;
 }
 
-void ddpy::DDInterface::regeneratePolycrystalFile(
-            const pybind11::array_t<double,
-               pybind11::array::c_style | pybind11::array::forcecast>
-               c2gIn,
-            const std::string& lattice,
-            const std::string& material,
-            const std::string& meshFilePath
-            )
-{
-   MatrixDim c2g;
-   auto c2gNp = c2gIn.unchecked<2>(); // for reading c2g input np.array
-   if (! ((c2gNp.shape(0) == 3) && (c2gNp.shape(1) == 3)))
-   {
-      std::cout << "error: regeneratePolycrystalFile( C2G) requires C2G "
-         << "to be a 3x3 numpy array consisting of rows of normalized "
-         << "basis vectors of the crystal lattice." << std::endl;
-      return;
-   }
-   bool latticeIsAcceptable = false;
-   bool materialIsAcceptable = false;
-   for ( const auto& lat : acceptableLattices)
-   {
-      if ( lattice == std::string(lat)) latticeIsAcceptable = true;
-   }
-   for ( const auto& mat : acceptableMaterials)
-   {
-      if ( material == std::string(mat)) materialIsAcceptable = true;
-   }
-   if ( ! ( latticeIsAcceptable && materialIsAcceptable))
-   {
-      std::cout << "error: unacceptable lattice or material: "
-         << lattice << ", " << material << std::endl;
-      std::cout << "  acceptable lattice or materials are: ";
-      for ( const auto& mat : acceptableMaterials) std::cout << mat << ", ";
-      for ( const auto& lat : acceptableLattices) std::cout << lat << ", ";
-   }
-   std::cout << "lattice: " << lattice << ", material: " << material << std::endl; // debug
-
-   c2g << c2gNp(0,0), c2gNp(0,1), c2gNp(0,2),
-         c2gNp(1,0), c2gNp(1,1), c2gNp(1,2),
-         c2gNp(2,0), c2gNp(2,1), c2gNp(2,2);
-   //std::cout << "c2g:\n" << c2g << std::endl; // debug
-   std::string outputFilePath = dddFolderPath + "/inputFiles/polycrystal.txt";
-
-   // TODO: detect and move any existing polycrystal.txt file
-   std::ofstream outputFile( outputFilePath,
-              std::ofstream::out | std::ofstream::trunc);
-
-   //std::cout << "lammps boundaries: " <<  std::endl;// debug
-   //for ( const auto& bd : boxBounds) std::cout << bd << ", "; // debug
-   //std::cout << std::endl; // debug
-
-   double deltaX, deltaY, deltaZ;
-   deltaX = abs( boxBounds[1] - boxBounds[0]);
-   deltaY = abs( boxBounds[3] - boxBounds[2]);
-   deltaZ = abs( boxBounds[5] - boxBounds[4]);
-
-   MatrixDim AA; // AA scales the mesh: y=A(x-x0), where x is the input mesh
-   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
-   {
-      AA << -1.0, 1.0, 1.0,
-         1.0, -1.0, 1.0,
-         1.0, 1.0, -1.0;
-      AA /= sqrt(3.0);
-   }
-   else if (! lattice.compare("fcc"))
-   {
-      AA << 0.0, 1.0, 1.0,
-          1.0, 0.0, 1.0,
-          1.0, 1.0, 0.0;
-      AA /= sqrt(2.0);
-   }
-   else
-   {
-      std::cout << "error: lattice type not recognized while trying to "
-         << "create matrix A" << std::endl;
-      return;
-   }
-
-   AA = c2g * AA;
-
-   MatrixDim f12, f31, f23;
-   f12 << 1.0, boxSkew, 0.0,
-       0.0, 1.0, 0.0,
-       0.0, 0.0, 1.0;
-   f31 << 1.0, 0.0, 0.0,
-       0.0, 1.0, 0.0,
-       boxSkew, 0.0, 1.0;
-   f23 << 1.0, 0.0, 0.0,
-       0.0, 1.0, boxSkew,
-       0.0, 0.0, 1.0;
-   MatrixDim deformingMatrix;
-   deformingMatrix = f12 * (f23 * f31);
-
-   MatrixDim scalingMatrix;
-   scalingMatrix << deltaX, 0, 0,
-      0, deltaY, 0,
-      0, 0, deltaZ;
-   deformingMatrix = ( AA.inverse()) * (deformingMatrix * scalingMatrix);
-   deformingMatrix = deformingMatrix.array().round();
-   AA = AA * deformingMatrix;
-
-   double x0x, x0y, x0z; // boxBounds required to identify x0
-   x0x = boxBounds[0]/deltaX; // boxBounds[0] is xlo, deltaX = xhi -xlo
-   x0y = boxBounds[2]/deltaY; // boxBounds[2] is ylo
-   x0z = boxBounds[4]/deltaZ; // boxBounds[4] is zlo
-   VectorDim x0;
-   x0 << x0x, x0y, x0z; // scaling of the mesh is y=A(x-x0)
-
-   outputFile << "materialFile=" << material + ".txt;" << std::endl;
-   outputFile << "enablePartials=0;"
-      << std::endl;
-   outputFile << "absoluteTemperature = 300; # [K] simulation temperature"
-      << std::endl;
-   outputFile << "meshFile=" << meshFilePath << ";"
-      << std::endl;
-   outputFile << "C2G1="
-        << std::setw(22) << std::setprecision(15) << c2g(0,0)
-        << std::setw(22) << std::setprecision(15) << c2g(0,1)
-        << std::setw(22) << std::setprecision(15) << c2g(0,2)
-        << std::endl
-        << std::setw(22) << std::setprecision(15) << c2g(1,0)
-        << std::setw(22) << std::setprecision(15) << c2g(1,1)
-        << std::setw(22) << std::setprecision(15) << c2g(1,2)
-        << std::endl
-        << std::setw(22) << std::setprecision(15) << c2g(2,0)
-        << std::setw(22) << std::setprecision(15) << c2g(2,1)
-        << std::setw(22) << std::setprecision(15) << c2g(2,2)
-        << ";" << std::endl;
-   //outputFile <<  c2g << ";" <<  std::endl; // precision is too low
-   outputFile << std::endl;
-   outputFile << "A="
-        << std::setw(22) << std::setprecision(15) << AA(0,0)
-        << std::setw(22) << std::setprecision(15) << AA(0,1)
-        << std::setw(22) << std::setprecision(15) << AA(0,2)
-        << std::endl
-        << std::setw(22) << std::setprecision(15) << AA(1,0)
-        << std::setw(22) << std::setprecision(15) << AA(1,1)
-        << std::setw(22) << std::setprecision(15) << AA(1,2)
-        << std::endl
-        << std::setw(22) << std::setprecision(15) << AA(2,0)
-        << std::setw(22) << std::setprecision(15) << AA(2,1)
-        << std::setw(22) << std::setprecision(15) << AA(2,2)
-        << ";" << std::endl;
-   outputFile << std::endl << std::endl;
-   outputFile << "x0="
-      << std::setw(21) << std::setprecision(15) << x0(0)
-      << std::setw(21) << std::setprecision(15) << x0(1)
-      << std::setw(21) << std::setprecision(15) << x0(2)
-      << ";" << std::endl;
-   outputFile << "periodicFaceIDs= 0 1 2 3 4 5 " << ";" << std::endl;
-   outputFile << std::endl;
-
-   outputFile << "solidSolutionNoiseMode=" << solidSolutionNoiseMode
-      << "; # 0=no noise, 1= read noise, 2=compute noise" << std::endl;
-   outputFile << "stackingFaultNoiseMode=" << stackingFaultNoiseMode
-      << ";" << std::endl;
-   outputFile << std::endl;
-
-   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
-      outputFile << "dislocationMobilityType='BCC';" << std::endl;
-   else if (! lattice.compare("fcc")) // .compare() returns 0 if they're equal
-      outputFile << "dislocationMobilityType='FCC';" << std::endl;
-   else
-   {
-      std::cout << "error: lattice type not recognized while trying to "
-         << "write polycrystal.txt" << std::endl;
-      return;
-   }
-   //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
-   //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
-
-   return;
-}
+//void ddpy::DDInterface::regeneratePolycrystalFile(
+//            const pybind11::array_t<double,
+//               pybind11::array::c_style | pybind11::array::forcecast>
+//               c2gIn,
+//            const std::string& lattice,
+//            const std::string& material,
+//            const std::string& meshFilePath
+//            )
+//{
+//   MatrixDim c2g;
+//   auto c2gNp = c2gIn.unchecked<2>(); // for reading c2g input np.array
+//   if (! ((c2gNp.shape(0) == 3) && (c2gNp.shape(1) == 3)))
+//   {
+//      std::cout << "error: regeneratePolycrystalFile( C2G) requires C2G "
+//         << "to be a 3x3 numpy array consisting of rows of normalized "
+//         << "basis vectors of the crystal lattice." << std::endl;
+//      return;
+//   }
+//   bool latticeIsAcceptable = false;
+//   bool materialIsAcceptable = false;
+//   for ( const auto& lat : acceptableLattices)
+//   {
+//      if ( lattice == std::string(lat)) latticeIsAcceptable = true;
+//   }
+//   for ( const auto& mat : acceptableMaterials)
+//   {
+//      if ( material == std::string(mat)) materialIsAcceptable = true;
+//   }
+//   if ( ! ( latticeIsAcceptable && materialIsAcceptable))
+//   {
+//      std::cout << "error: unacceptable lattice or material: "
+//         << lattice << ", " << material << std::endl;
+//      std::cout << "  acceptable lattice or materials are: ";
+//      for ( const auto& mat : acceptableMaterials) std::cout << mat << ", ";
+//      for ( const auto& lat : acceptableLattices) std::cout << lat << ", ";
+//   }
+//   std::cout << "lattice: " << lattice << ", material: " << material << std::endl; // debug
+//
+//   c2g << c2gNp(0,0), c2gNp(0,1), c2gNp(0,2),
+//         c2gNp(1,0), c2gNp(1,1), c2gNp(1,2),
+//         c2gNp(2,0), c2gNp(2,1), c2gNp(2,2);
+//   //std::cout << "c2g:\n" << c2g << std::endl; // debug
+//   std::string outputFilePath = dddFolderPath + "/inputFiles/polycrystal.txt";
+//
+//   // TODO: detect and move any existing polycrystal.txt file
+//   std::ofstream outputFile( outputFilePath,
+//              std::ofstream::out | std::ofstream::trunc);
+//
+//   //std::cout << "lammps boundaries: " <<  std::endl;// debug
+//   //for ( const auto& bd : boxBounds) std::cout << bd << ", "; // debug
+//   //std::cout << std::endl; // debug
+//
+//   double deltaX, deltaY, deltaZ;
+//   deltaX = abs( boxBounds[1] - boxBounds[0]);
+//   deltaY = abs( boxBounds[3] - boxBounds[2]);
+//   deltaZ = abs( boxBounds[5] - boxBounds[4]);
+//
+//   MatrixDim FF; // FF scales the mesh: y=A(x-X0), where x is the input mesh
+//   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
+//   {
+//      FF << -1.0, 1.0, 1.0,
+//         1.0, -1.0, 1.0,
+//         1.0, 1.0, -1.0;
+//      FF /= sqrt(3.0);
+//   }
+//   else if (! lattice.compare("fcc"))
+//   {
+//      FF << 0.0, 1.0, 1.0,
+//          1.0, 0.0, 1.0,
+//          1.0, 1.0, 0.0;
+//      FF /= sqrt(2.0);
+//   }
+//   else
+//   {
+//      std::cout << "error: lattice type not recognized while trying to "
+//         << "create matrix A" << std::endl;
+//      return;
+//   }
+//
+//   FF = c2g * FF;
+//
+//   MatrixDim deformingMatrix;
+//   deformingMatrix << 1.0, 0.0, 0.0,
+//                     0.0, 1.0, 0.0,
+//                     0.0, 0.0, 1.0;
+//
+//   MatrixDim scalingMatrix;
+//   scalingMatrix << deltaX, 0, 0,
+//      0, deltaY, 0,
+//      0, 0, deltaZ;
+//   deformingMatrix = ( FF.inverse()) * (deformingMatrix * scalingMatrix);
+//   deformingMatrix = deformingMatrix.array().round();
+//   FF = FF * deformingMatrix;
+//
+//   double x0x, x0y, x0z; // boxBounds required to identify X0
+//   x0x = boxBounds[0]/deltaX; // boxBounds[0] is xlo, deltaX = xhi -xlo
+//   x0y = boxBounds[2]/deltaY; // boxBounds[2] is ylo
+//   x0z = boxBounds[4]/deltaZ; // boxBounds[4] is zlo
+//   VectorDim X0;
+//   X0 << x0x, x0y, x0z; // scaling of the mesh is y=A(x-X0)
+//
+//   outputFile << "materialFile=" << material + ".txt;" << std::endl;
+//   outputFile << "enablePartials=0;"
+//      << std::endl;
+//   outputFile << "absoluteTemperature = 300; # [K] simulation temperature"
+//      << std::endl;
+//   outputFile << "meshFile=" << meshFilePath << ";"
+//      << std::endl;
+//   outputFile << "C2G1="
+//        << std::setw(22) << std::setprecision(15) << c2g(0,0)
+//        << std::setw(22) << std::setprecision(15) << c2g(0,1)
+//        << std::setw(22) << std::setprecision(15) << c2g(0,2)
+//        << std::endl
+//        << std::setw(22) << std::setprecision(15) << c2g(1,0)
+//        << std::setw(22) << std::setprecision(15) << c2g(1,1)
+//        << std::setw(22) << std::setprecision(15) << c2g(1,2)
+//        << std::endl
+//        << std::setw(22) << std::setprecision(15) << c2g(2,0)
+//        << std::setw(22) << std::setprecision(15) << c2g(2,1)
+//        << std::setw(22) << std::setprecision(15) << c2g(2,2)
+//        << ";" << std::endl;
+//   //outputFile <<  c2g << ";" <<  std::endl; // precision is too low
+//   outputFile << std::endl;
+//   outputFile << "F="
+//        << std::setw(22) << std::setprecision(15) << FF(0,0)
+//        << std::setw(22) << std::setprecision(15) << FF(0,1)
+//        << std::setw(22) << std::setprecision(15) << FF(0,2)
+//        << std::endl
+//        << std::setw(22) << std::setprecision(15) << FF(1,0)
+//        << std::setw(22) << std::setprecision(15) << FF(1,1)
+//        << std::setw(22) << std::setprecision(15) << FF(1,2)
+//        << std::endl
+//        << std::setw(22) << std::setprecision(15) << FF(2,0)
+//        << std::setw(22) << std::setprecision(15) << FF(2,1)
+//        << std::setw(22) << std::setprecision(15) << FF(2,2)
+//        << ";" << std::endl;
+//   outputFile << std::endl << std::endl;
+//   outputFile << "X0="
+//      << std::setw(21) << std::setprecision(15) << X0(0)
+//      << std::setw(21) << std::setprecision(15) << X0(1)
+//      << std::setw(21) << std::setprecision(15) << X0(2)
+//      << ";" << std::endl;
+//   outputFile << "periodicFaceIDs= 0 1 2 3 4 5 " << ";" << std::endl;
+//   outputFile << std::endl;
+//
+//   outputFile << "solidSolutionNoiseMode=" << solidSolutionNoiseMode
+//      << "; # 0=no noise, 1= read noise, 2=compute noise" << std::endl;
+//   outputFile << "stackingFaultNoiseMode=" << stackingFaultNoiseMode
+//      << ";" << std::endl;
+//   outputFile << std::endl;
+//
+//   if (! lattice.compare("bcc")) // .compare() returns 0 if they're equal
+//      outputFile << "dislocationMobilityType='BCC';" << std::endl;
+//   else if (! lattice.compare("fcc")) // .compare() returns 0 if they're equal
+//      outputFile << "dislocationMobilityType='FCC';" << std::endl;
+//   else
+//   {
+//      std::cout << "error: lattice type not recognized while trying to "
+//         << "write polycrystal.txt" << std::endl;
+//      return;
+//   }
+//   //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
+//   //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
+//
+//   // TODO: find out if the following need to be added:
+//   // spreadLstress_A=1; # add comment
+//   // a_cai_A=1; # add comment
+//   // seed=0; # add comment
+//
+//   return;
+//}
 
 void ddpy::DDInterface::clearMicrostructureSpecifications()
 {
@@ -2743,14 +2757,14 @@ PYBIND11_MODULE( ddpy, m) {
             &ddpy::DDInterface::readBurgersMagnitude,
             py::arg("materialFilePath").none(false)
           )
-      .def("regeneratePolycrystalFile",
-            &ddpy::DDInterface::regeneratePolycrystalFile,
-            py::kw_only(),
-            py::arg( "c2g").none(false),
-            py::arg( "lattice").none(false),
-            py::arg( "material").none(false),
-            py::arg( "meshFilePath").none(false)
-          )
+      //.def("regeneratePolycrystalFile",
+      //      &ddpy::DDInterface::regeneratePolycrystalFile,
+      //      py::kw_only(),
+      //      py::arg( "c2g").none(false),
+      //      py::arg( "lattice").none(false),
+      //      py::arg( "material").none(false),
+      //      py::arg( "meshFilePath").none(false)
+      //    )
       .def("specifyLoops",
             &ddpy::DDInterface::specifyLoops,
             py::kw_only(),
@@ -2837,15 +2851,18 @@ PYBIND11_MODULE( ddpy, m) {
             &ddpy::DDInterface::setOutputPath,
             py::arg( "outputPath").none(false)
           )
-      .def("setBoxBounds", // prerequisite: readBurgersMagnitude()
-            &ddpy::DDInterface::setBoxBounds,
-            py::arg( "xlo").none(false), // [m]
-            py::arg( "xhi").none(false),
-            py::arg( "ylo").none(false),
-            py::arg( "yhi").none(false),
-            py::arg( "zlo").none(false),
-            py::arg( "zhi").none(false)
-      )
+      //.def("setBoxBounds", // prerequisite: readBurgersMagnitude()
+      //      &ddpy::DDInterface::setBoxBounds,
+      //      py::arg( "xlo").none(false), // [m]
+      //      py::arg( "xhi").none(false),
+      //      py::arg( "ylo").none(false),
+      //      py::arg( "yhi").none(false),
+      //      py::arg( "zlo").none(false),
+      //      py::arg( "zhi").none(false)
+      //)
+      //.def("getBoxBounds", // prerequisite: readBurgersMagnitude()
+      //      &ddpy::DDInterface::getBoxBounds
+      //    )
       .def("clearMicrostructureSpecifications",
             &ddpy::DDInterface::clearMicrostructureSpecifications
       )

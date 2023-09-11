@@ -7,6 +7,7 @@ class EVL:
     nodes=np.empty([0,0])
         
 class PolyCrystalFile(dict):
+    dddFolderPath=''
     materialFile=''
     crystalStructure=''
     absoluteTemperature=300.0
@@ -25,7 +26,8 @@ class PolyCrystalFile(dict):
     X0=np.array([0,0,0])
     periodicFaceIDs=np.array([0,1,2,3,4,5])
     
-    def __init__(self, materialFile):
+    def __init__(self, dddFolderPath, materialFile):
+        self.dddFolderPath = dddFolderPath
         self.materialFile = materialFile
         self.crystalStructure = getStringInFile(materialFile,'crystalStructure')
         if self.crystalStructure == 'FCC':
@@ -74,7 +76,7 @@ class PolyCrystalFile(dict):
             L[:,j]=self.A@nr.transpose()
             self.F[:,j]=self.C2G@L[:,j]*self.boxScaling[j]
 
-        polyFile = open("polycrystal.txt", "w")
+        polyFile = open(self.dddFolderPath+"/inputFiles/polycrystal.txt", "w")
         polyFile.write('materialFile='+self.materialFile+';\n')
         polyFile.write('absoluteTemperature='+str(self.absoluteTemperature)+'; # [K] simulation temperature \n')
         polyFile.write('enablePartials='+str(self.enablePartials)+'; # enables partial slip systems \n')
