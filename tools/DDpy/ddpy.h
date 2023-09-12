@@ -59,8 +59,7 @@ class DDInterface
       std::unique_ptr<DefectiveCrystalType> DC;
 
       // simulation box parameters required before SimplicialMesh
-      std::vector<double> boxBounds; // xlo xhi ylo yhi zlo zhi
-      double boxSkew;
+      //std::vector<double> boxBounds; // xlo xhi ylo yhi zlo zhi
       double boxVolume;  // [\AA^{2}]
       double burgersMagnitude;
       int solidSolutionNoiseMode;
@@ -150,9 +149,7 @@ class DDInterface
 
       DDInterface( const std::string& dddFolderPathIn):
           dddFolderPath( dddFolderPathIn)
-          , boxBounds( std::vector<double>({0,100,0,100,0,100}))
-          , boxSkew( 0.0)
-          , boxVolume( 0.0)
+          //, boxBounds( std::vector<double>({0,100,0,100,0,100}))
           , burgersMagnitude( -1.0)
           , solidSolutionNoiseMode( 0) //# 0=no noise, 1= read noise, 2=compute noise
           , stackingFaultNoiseMode( 0)
@@ -241,6 +238,7 @@ class DDInterface
             const double& zlo,
             const double& zhi
             );
+      std::vector<double> getBoxBounds();
       void runGlideSteps( const size_t& stepsToRun);
       double getBurgersMagnitude();
       void readBurgersMagnitude( const std::string& materialPath);
@@ -317,14 +315,14 @@ class DDInterface
       void setOutputPath( const std::string& outputPath);
 
       void generateMicrostructure();
-      void regeneratePolycrystalFile(
-            const py::array_t<double,
-               py::array::c_style | py::array::forcecast>
-               c2g,
-               const std::string& lattice,
-               const std::string& material,
-               const std::string& meshFilePath
-            );
+      //void regeneratePolycrystalFile(
+      //      const py::array_t<double,
+      //         py::array::c_style | py::array::forcecast>
+      //         c2g,
+      //         const std::string& lattice,
+      //         const std::string& material,
+      //         const std::string& meshFilePath
+      //      );
 
       //template <>
       //void setExternalLoad<model::UniformExternalLoadController<typename DefectiveCrystalType>>(
