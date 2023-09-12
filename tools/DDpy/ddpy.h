@@ -238,7 +238,7 @@ class DDInterface
             const double& zlo,
             const double& zhi
             );
-      std::vector<double> getBoxBounds();
+      //std::vector<double> getBoxBounds();
       void runGlideSteps( const size_t& stepsToRun);
       double getBurgersMagnitude();
       void readBurgersMagnitude( const std::string& materialPath);
