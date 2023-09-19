@@ -71,7 +71,7 @@ class LmpReader
          atomPositionType& atomPositions,
          pointIDsType& pointIDs
          );
-   int readLmpStreamBounds(
+   int readLmpStreamBox(
          std::vector<double>& bounds,
          std::vector<double>& tiltFactors
          );

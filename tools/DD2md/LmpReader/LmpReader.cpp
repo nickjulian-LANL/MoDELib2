@@ -473,7 +473,36 @@ int model::LmpReader::readLmpStream(
       tiltFactors.emplace_back( 0.0);
       tiltFactors.emplace_back( 0.0);
    }
-
+   std::cout << "deformationMatrix\n" << deformationMatrix << std::endl; // debug
+   // apply deformationMatrix to bounds and tilt factors
+   // assume deformationMatrix does not perform a rotation
+   std::cout << "bounds before adjustment:" << std::endl;
+   std::cout << bounds[0] << ", " << bounds[1] << ", " << bounds[2] << ", " << bounds[3] << ", " << bounds[4] << ", " << bounds[5] << std::endl; // debug
+   VectorDim tmpV( bounds[0], bounds[2], bounds[4]);
+   std::cout << "deformationMatrix:\n" << deformationMatrix << std::endl; // debug
+   tmpV = deformationMatrix * tmpV;
+   bounds[0] = tmpV(0);
+   bounds[2] = tmpV(1);
+   bounds[4] = tmpV(2);
+   tmpV << bounds[1], bounds[3], bounds[5];
+   tmpV = deformationMatrix * tmpV;
+   bounds[1] = tmpV(0);
+   bounds[3] = tmpV(1);
+   bounds[5] = tmpV(2);
+   tiltFactors[0] *= deformationMatrix(0,0); // xy
+   tiltFactors[1] *= deformationMatrix(0,0); // xz
+   tiltFactors[2] *= deformationMatrix(1,1); // yz
+   //tmpV << tiltFactors[0], 0, 0; // xy
+   //tmpV *= deformationMatrix;
+   //tiltFactors[0] = tmpV(0);
+   //tmpV << tiltFactors[1], 0, 0; // xz
+   //tmpV *= deformationMatrix;
+   //tiltFactors[1] = tmpV(0);
+   //tmpV << 0, tiltFactors[1], 0; // yz
+   //tmpV *= deformationMatrix;
+   //tiltFactors[2] = tmpV(1);
+   std::cout << "bounds after adjustment:" << std::endl;
+   std::cout << bounds[0] << ", " << bounds[1] << ", " << bounds[2] << ", " << bounds[3] << ", " << bounds[4] << ", " << bounds[5] << std::endl; // debug
 
    /********************************************************************/
    /* read sections: Masses, Atoms, and discard other sections *********/
@@ -739,7 +768,7 @@ int model::LmpReader::readLmpStream(
    return EXIT_SUCCESS;
 }
 
-int model::LmpReader::readLmpStreamBounds(
+int model::LmpReader::readLmpStreamBox(
       std::vector<double>& bounds,
       std::vector<double>& tiltFactors
       )
@@ -1145,6 +1174,32 @@ int model::LmpReader::readLmpStreamBounds(
       tiltFactors.emplace_back( 0.0);
       tiltFactors.emplace_back( 0.0);
    }
+   
+   std::cout << "deformationMatrix:\n" << deformationMatrix << std::endl; // debug
+   // apply deformationMatrix to bounds and tilt factors
+   // assume deformationMatrix does not perform a rotation
+   VectorDim tmpV( bounds[0], bounds[2], bounds[4]);
+   tmpV = deformationMatrix * tmpV;
+   bounds[0] = tmpV(0);
+   bounds[2] = tmpV(1);
+   bounds[4] = tmpV(2);
+   tmpV << bounds[1], bounds[3], bounds[5];
+   tmpV = deformationMatrix * tmpV;
+   bounds[1] = tmpV(0);
+   bounds[3] = tmpV(1);
+   bounds[5] = tmpV(2);
+   tiltFactors[0] *= deformationMatrix(0,0); // xy
+   tiltFactors[1] *= deformationMatrix(0,0); // xz
+   tiltFactors[2] *= deformationMatrix(1,1); // yz
+   //tmpV << tiltFactors[0], 0, 0; // xy
+   //tmpV *= deformationMatrix;
+   //tiltFactors[0] = tmpV(0);
+   //tmpV << tiltFactors[1], 0, 0; // xz
+   //tmpV *= deformationMatrix;
+   //tiltFactors[1] = tmpV(0);
+   //tmpV << 0, tiltFactors[1], 0; // yz
+   //tmpV *= deformationMatrix;
+   //tiltFactors[2] = tmpV(1);
 
    return EXIT_SUCCESS;
 }
