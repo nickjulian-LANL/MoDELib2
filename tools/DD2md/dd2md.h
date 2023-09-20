@@ -176,12 +176,16 @@ class AtomDisplacementGenerator
       //void computeDisplacements( const std::string& lammpsFilePath);
       void computeDisplacements();
       void applyDisplacements();
-      //void getDisplacements();
       void writeConfigurationToFile( const std::string& outputFilePath);
       //void computeDisplacements2( const std::string& lammpsFilePath);
       void computeDisplacements2();
       //void computeDisplacement( );
-      void writeDisplacementsToFile( const std::string& outputFilePath);
+      void writeDisplacementsToLammpsFile(
+            const std::string& outputFilePath);
+      std::map< size_t, VectorDim> //py::array_t<double, py::array::c_style> >
+         getDisplacementsMap();
+      py::array_t<double, py::array::c_style>
+         getDisplacementsNumpy();
       void readLammpsBox( const std::string& lammpsDataFilePath);
       std::tuple<
          py::array_t<double, py::array::c_style>, // planeNormals

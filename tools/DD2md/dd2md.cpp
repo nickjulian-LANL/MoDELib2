@@ -514,10 +514,10 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
             for ( const auto& patch : loop.second.lock()->_patches.globalPatches())
             {
                polygons[ loopNumber][ patchNumber]
-                  =  pybind11::array_t<double, pybind11::array::c_style>();
+                  =  py::array_t<double, pybind11::array::c_style>();
                polygons[ loopNumber][ patchNumber].resize(
                      {vertexCounts[ loopNumber][ patchNumber], 3} );
-               pybind11::buffer_info polygonBuf
+               py::buffer_info polygonBuf
                   = polygons[ loopNumber][ patchNumber].request();
                //std::cout << "loop " << loopNumber << ", patch " << patchNumber << ", polygonBuf.ndim: " << polygonBuf.ndim  << std::endl;
                //std::cout << "loop " << loopNumber << ", patch " << patchNumber << ", polygonBuf.shape[0]: " << polygonBuf.shape[0] << std::endl;
@@ -767,7 +767,43 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
    return;
 }
 
-void model::AtomDisplacementGenerator::writeDisplacementsToFile(
+py::array_t<double, py::array::c_style>
+   model::AtomDisplacementGenerator::getDisplacementsNumpy()
+{
+   py::array_t<double, py::array::c_style> displacementsTmp;
+   int atomCount( displacements.size());
+   displacementsTmp.resize( { atomCount, 3});
+   for ( int ii=0; ii < atomCount; ++ii)
+   {
+      py::buffer_info displacementsBuf = displacementsTmp.request();
+      double* displacementsPtr = static_cast<double*>( displacementsBuf.ptr);
+      displacementsPtr[0 + 3*ii]
+         = displacements[ii](0) * ddBase->poly.b_SI /1e-10;
+      displacementsPtr[1 + 3*ii]
+         = displacements[ii](1) * ddBase->poly.b_SI /1e-10;
+      displacementsPtr[2 + 3*ii]
+         = displacements[ii](2) * ddBase->poly.b_SI /1e-10;
+   }
+   return displacementsTmp;
+}
+
+std::map< size_t, model::AtomDisplacementGenerator::VectorDim> //pybind11::array_t<double, pybind11::array::c_style> >
+   model::AtomDisplacementGenerator::getDisplacementsMap()
+{
+   std::map< size_t, model::AtomDisplacementGenerator::VectorDim>
+      displacementsTmp;
+   displacementsTmp.clear();
+
+   for ( size_t ii=0; ii < displacements.size(); ++ii)
+   {
+      displacementsTmp[ pointIDs[ii]]
+         = displacements[ii] * ddBase->poly.b_SI /1e-10;
+   }
+
+   return displacementsTmp;
+}
+
+void model::AtomDisplacementGenerator::writeDisplacementsToLammpsFile(
       const std::string& outputFilePath)
 {
    if ( debugFlag)
@@ -782,14 +818,14 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    if ( displacements.size() <= 0)
    {
       std::cout << "error "
-         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << "AtomDisplacementGenerator::writeDisplacementsToLammpsFile"
          << " called while displacements is empty" << std::endl;
       return;
    }
    if ( displacements.size() != atomTypes.size())
    {
       std::cout << "error "
-         << "AtomDisplacementGenerator::writeDisplacementsToFile"
+         << "AtomDisplacementGenerator::writeDisplacementsToLammpsFile"
          << " displacements.size() != atomType.size()) " << std::endl;
       return;
    }
@@ -847,7 +883,7 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    //         || std::isnan( displacements[k](2)) // debug
    //         ) // debug
    //   { // debug
-   //      throw std::runtime_error("error writeDisplacementsToFile: displacements["+std::to_string(k)+"] is nan"); // debug
+   //      throw std::runtime_error("error writeDisplacementsToLammpsFile: displacements["+std::to_string(k)+"] is nan"); // debug
    //   } // debug
    //} // debug
 
@@ -878,7 +914,7 @@ void model::AtomDisplacementGenerator::writeDisplacementsToFile(
    if ( debugFlag)
       std::cout<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t2)).count()<<" sec]"<<std::endl;
 
-   std::cout << "lammps boundaries (writeDisplacementsToFile post): " <<  std::endl;// debug
+   std::cout << "lammps boundaries (writeDisplacementsToLammpsFilepost): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
    return;
@@ -1770,9 +1806,15 @@ PYBIND11_MODULE( dd2md, m) {
             &model::AtomDisplacementGenerator::readLammpsConfigurationFile,
             py::arg("lammpsDataFilePath").none(false)
           )
-      .def("writeDisplacementsToFile",
-            &model::AtomDisplacementGenerator::writeDisplacementsToFile,
+      .def("writeDisplacementsToLammpsFile",
+            &model::AtomDisplacementGenerator::writeDisplacementsToLammpsFile,
             py::arg("outputFile").none(false)
+            )
+      .def("getDisplacementsNumpy",
+            &model::AtomDisplacementGenerator::getDisplacementsNumpy
+            )
+      .def("getDisplacementsMap",
+            &model::AtomDisplacementGenerator::getDisplacementsMap
             )
       .def("writeConfigurationToFile",
             &model::AtomDisplacementGenerator::writeConfigurationToFile,
