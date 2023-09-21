@@ -82,6 +82,11 @@ class DDInterface
       std::vector<std::pair<size_t,size_t> > tensorComponentKeys;
       bool debugFlag;
 
+      std::pair<int,int> limit_denominator(
+         const double& xxIn,
+         const int& max_denominator
+         );
+
    public:
       typedef Eigen::Matrix<double,3,1> VectorDim;
       typedef Eigen::Matrix<double,3,3> MatrixDim;
@@ -315,6 +320,40 @@ class DDInterface
       void setOutputPath( const std::string& outputPath);
 
       void generateMicrostructure();
+      void regeneratePolycrystalFile(
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               grain1globalX1,
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               grain1globalX3,
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxScaling, // number of unit cells per box direction
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges1,
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges2,
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges3,
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               x0,
+            const double& TT,
+            const int& enablePartials,
+            const std::string& latticeIn,
+            const std::string& materialIn,
+            const std::string& meshFilePathIn,
+            //const py::array_t<double,
+            //   py::array::c_style | py::array::forcecast>
+            //   X0, // mesh nodes are mapped to x=F*(X-X0)
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               periodicFaceIDs
+            );
       //void regeneratePolycrystalFile(
       //      const py::array_t<double,
       //         py::array::c_style | py::array::forcecast>
