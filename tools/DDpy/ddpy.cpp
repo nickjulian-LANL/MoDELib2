@@ -2523,6 +2523,587 @@ void ddpy::DDInterface::setOutputPath( const std::string& outputPath)
 //   return;
 //}
 
+void ddpy::DDInterface::regeneratePolycrystalFile(
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               grain1globalX1In, // vector in crystal coordinates to align with the x1 global axis (e.g. [11-1] for bcc)
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               grain1globalX3In, // vector in crystal coordinates to align with the x3 global axis (e.g. [101] for bcc)
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxScalingIn, // number of unit cells per box direction
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges1In, // in crystal coordinates
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges2In, // in crystal coordinates
+            const py::array_t<int,
+               py::array::c_style | py::array::forcecast>
+               boxEdges3In, // in crystal coordinates
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               x0In,
+            const double& TT,
+            const int& enablePartials,
+            const std::string& latticeIn,
+            const std::string& materialIn,
+            const std::string& meshFilePathIn,
+            //const py::array_t<double,
+            //   py::array::c_style | py::array::forcecast>
+            //   X0In, // mesh nodes are mapped to x=F*(X-X0)
+            const py::array_t<double,
+               py::array::c_style | py::array::forcecast>
+               periodicFaceIDsIn
+            )
+{
+   //std::cout << "lammps boundaries (regeneratePolycrystalFile): " <<  std::endl;// debug
+   //for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
+   //std::cout << std::endl; // debug
+
+   auto grain1globalX1Np = grain1globalX1In.unchecked<1>();
+   auto grain1globalX3Np = grain1globalX3In.unchecked<1>();
+   //auto X0Np = X0In.unchecked<1>();
+   auto periodicFaceIDsNp = periodicFaceIDsIn.unchecked<1>();
+   auto boxScalingNp = boxScalingIn.unchecked<1>();
+   auto boxEdges1Np = boxEdges1In.unchecked<1>();
+   auto boxEdges2Np = boxEdges2In.unchecked<1>();
+   auto boxEdges3Np = boxEdges3In.unchecked<1>();
+   auto x0Np = x0In.unchecked<1>();
+   if (! ((grain1globalX1Np.shape(0) == 3) ))
+   {
+      std::cout << "error: regeneratePolycrystalFile( ) requires "
+         << "grain1globalX1 to be a 3 element numpy array consisting of "
+         << "a vector in crystal coordinates to align with the first "
+         << "axis of the MoDELib box"
+         << std::endl;
+      return;
+   }
+   if (! ((grain1globalX3Np.shape(0) == 3) ))
+   {
+      std::cout << "error: regeneratePolycrystalFile( ) requires "
+         << "grain1globalX3 to be a 3 element numpy array consisting of "
+         << "a vector in crystal coordinates to align with the third "
+         << "axis of the MoDELib box"
+         << std::endl;
+      return;
+   }
+   if (! ((x0Np.shape(0) == 3) ))
+   {
+      std::cout << "error: regeneratePolycrystalFile( ) requires "
+         << "x0 to be a 3 element numpy array consisting of "
+         << "a vector in global coordinates by which global "
+         << " coordinates of the MoDELib box will be shifted."
+         << std::endl;
+      return;
+   }
+   VectorDim grain1globalX1;
+   grain1globalX1 << grain1globalX1Np[0], grain1globalX1Np[1], grain1globalX1Np[2]; 
+   VectorDim grain1globalX3;
+   grain1globalX3 << grain1globalX3Np[0], grain1globalX3Np[1], grain1globalX3Np[2]; 
+   VectorDim x0;
+   x0 << x0Np[0], x0Np[1], x0Np[2];
+   //if (! ((X0Np.shape(0) == 3) ))
+   //{
+   //   std::cout << "error: regeneratePolycrystalFile( ) requires "
+   //      << "X0 to be a 3 element numpy array consisting of "
+   //      << "a vector in mesh coordinates to traslate the mesh before "
+   //      << "it is rescaled to the MoDELib box (x=F(X-X0))"
+   //      << std::endl;
+   //   return;
+   //}
+   if (! ((boxEdges1Np.shape(0) == 3) && (boxEdges2Np.shape(0) == 3)
+            && (boxEdges3Np.shape(0) == 3)
+            ))
+   {
+      std::cout << "error: regeneratePolycrystalFile( ) requires "
+         << "boxEdges1, boxEdges2, boxEdges3, to each be a 3 element "
+         << "numpy array consisting of vectors in crystal "
+         << "coordinates parallel to the MoDELib "
+         << "box edges"
+         << std::endl;
+      return;
+   }
+
+   if (! ((periodicFaceIDsNp.shape(0) == 6) ))
+   {
+      std::cout << "error: regeneratePolycrystalFile( ) currently "
+         << "periodicFaceIDs to be a 6 element numpy array consisting of "
+         << "integers enumerating periodic faces."
+         << "regeneratePolycrystalFile() does not currently accept "
+         << "a mixture of periodic and aperiodic boundaries."
+         << std::endl;
+      return;
+   }
+   if ( TT < 0)
+   {
+      std::cout << "error, regeneratePolycrystalFile() unacceptable "
+         << "value for temperature " << TT << std::endl;
+      return;
+   }
+   bool latticeIsAcceptable = false;
+   bool materialIsAcceptable = false;
+   for ( const auto& lat : acceptableLattices)
+   {
+      if ( latticeIn == std::string(lat)) latticeIsAcceptable = true;
+   }
+   for ( const auto& mat : acceptableMaterials)
+   {
+      if ( materialIn == std::string(mat)) materialIsAcceptable = true;
+   }
+   if ( ! ( latticeIsAcceptable && materialIsAcceptable))
+   {
+      std::cout << "error: unacceptable lattice or material: "
+         << latticeIn << ", " << materialIn << std::endl;
+      std::cout << "  acceptable lattice or materials are: ";
+      for ( const auto& mat : acceptableMaterials) std::cout << mat << ", ";
+      for ( const auto& lat : acceptableLattices) std::cout << lat << ", ";
+      return;
+   }
+
+   //lattice = latticeIn; // assign member of AtomDisplacementGenerator
+
+   std::cout << "lattice: " << latticeIn << ", material: " << materialIn << std::endl; // debug
+
+   VectorDim x3Crossx1( grain1globalX3.cross( grain1globalX1));
+   x3Crossx1 /= sqrt( x3Crossx1.dot( x3Crossx1));
+
+   // normalize vectors
+   grain1globalX1 /= sqrt( grain1globalX1.dot( grain1globalX1));
+   grain1globalX3 /= sqrt( grain1globalX3.dot( grain1globalX3));
+
+   // recalculate C2G, an orthonormal rotation matrix
+   MatrixDim C2G;
+   C2G << grain1globalX1(0), grain1globalX1(1), grain1globalX1(2),
+         x3Crossx1(0), x3Crossx1(1), x3Crossx1(2),
+         grain1globalX3(0), grain1globalX3(1), grain1globalX3(2);
+
+   std::cout << "C2G:\n" << C2G << std::endl; // debug
+
+   MatrixDim C2Ginv;
+   C2Ginv = C2G.inverse();
+   std::cout << "C2Ginv:\n" << C2Ginv << std::endl; // debug
+
+   std::string outputFilePath = dddFolderPath + "/inputFiles/polycrystal.txt";
+
+   // TODO: detect and move any existing polycrystal.txt file
+   std::ofstream outputFile( outputFilePath,
+              std::ofstream::out | std::ofstream::trunc);
+
+   //std::cout << "lammps boundaries: " <<  std::endl;// debug
+   //for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
+   //std::cout << std::endl; // debug
+
+   //double deltaX, deltaY, deltaZ;
+   //deltaX = abs( lammpsBoxBounds[1] - lammpsBoxBounds[0]);
+   //deltaY = abs( lammpsBoxBounds[3] - lammpsBoxBounds[2]);
+   //deltaZ = abs( lammpsBoxBounds[5] - lammpsBoxBounds[4]);
+   //std::cout << "lammps: deltaX " << deltaX << ", deltaY " << deltaY
+   //   << ", deltaZ " << deltaZ << std::endl; // debug
+
+   //// instantiate box scaling in multiples of burgers vector magnitude
+   //// deltaX is in \AA if using lammps metal units
+   ////std::vector<double> boxScaling(
+   ////      { deltaX / (burgersMagnitude/1e-10),
+   ////      deltaY / (burgersMagnitude/1e-10),
+   ////      deltaZ / (burgersMagnitude/1e-10)});
+
+   //std::cout << "boxScaling: " << boxScalingNp[0] << ", " << boxScalingNp[1] << ", " << boxScalingNp[2] << std::endl; // debug
+   VectorDim boxEdges1UnitVector, boxEdges2UnitVector, boxEdges3UnitVector;
+   boxEdges1UnitVector
+      << boxEdges1Np[0], boxEdges1Np[1], boxEdges1Np[2];
+   boxEdges1UnitVector
+      /= sqrt( boxEdges1UnitVector.dot( boxEdges1UnitVector));
+
+   boxEdges2UnitVector
+      << boxEdges2Np[0], boxEdges2Np[1], boxEdges2Np[2];
+   boxEdges2UnitVector
+      /= sqrt( boxEdges2UnitVector.dot( boxEdges2UnitVector));
+
+   boxEdges3UnitVector
+      << boxEdges3Np[0], boxEdges3Np[1], boxEdges3Np[2];
+   boxEdges3UnitVector
+      /= sqrt( boxEdges3UnitVector.dot( boxEdges3UnitVector));
+
+   MatrixDim specifiedBoxEdges;
+   specifiedBoxEdges
+      << boxEdges1UnitVector(0), boxEdges2UnitVector(0), boxEdges3UnitVector(0),
+         boxEdges1UnitVector(1), boxEdges2UnitVector(1), boxEdges3UnitVector(1),
+         boxEdges1UnitVector(2), boxEdges2UnitVector(2), boxEdges3UnitVector(2);
+   //MatrixDim lammpsBoxEdgesCrystalVectors; // vectors in columns
+   //lammpsBoxEdgesCrystalVectors
+   //   << boxEdges1Np[0], boxEdges2Np[0], boxEdges3Np[0],
+   //      boxEdges1Np[1], boxEdges2Np[1], boxEdges3Np[1],
+   //      boxEdges1Np[2], boxEdges2Np[2], boxEdges3Np[2];
+   //// ii'th row is the direction of the ii'th box edge in global coordinates
+   //lammpsBoxEdges
+   //   << deltaX, 0, 0,
+   //      lammpsTiltFactors[0], deltaY, 0,
+   //      lammpsTiltFactors[1], lammpsTiltFactors[2], deltaZ;
+   //MatrixDim lammpsBoxEdgeUnitVectors( lammpsBoxEdges);
+   //// renomalize box edges (cols of lammpsBoxEdgeUnitVectors) in global coordinates
+   //double tmpMag = 0;
+   //for ( size_t ii=0; ii < 3; ++ii)
+   //{
+   //   tmpMag = sqrt( lammpsBoxEdgeUnitVectors( ii, 0) * lammpsBoxEdgeUnitVectors( ii, 0)
+   //                + lammpsBoxEdgeUnitVectors( ii, 1) * lammpsBoxEdgeUnitVectors( ii, 1)
+   //                + lammpsBoxEdgeUnitVectors( ii, 2) * lammpsBoxEdgeUnitVectors( ii, 2));
+   //   if ( ( tmpMag > 0) && !( isinf( tmpMag)))
+   //   {
+   //      lammpsBoxEdgeUnitVectors( ii, 0) /= tmpMag;
+   //      lammpsBoxEdgeUnitVectors( ii, 1) /= tmpMag;
+   //      lammpsBoxEdgeUnitVectors( ii, 2) /= tmpMag;
+   //   }
+   //   else
+   //   {
+   //      std::cout << "error, regeneratePolycrystalFile(): "
+   //         << "column " << ii << " of lammpsBoxEdgeUnitVectors has magnitude "
+   //         << tmpMag << " <= 0" << std::endl;
+   //      return;
+   //   }
+   //}
+   // ii'th column is the direction of the ii'th box edge in global coordinates
+   //MatrixDim lammpsBoxEdges;
+   //lammpsBoxEdges // in global coordinates
+   //   << deltaX, lammpsTiltFactors[0], lammpsTiltFactors[1],
+   //      0,                    deltaY, lammpsTiltFactors[2],
+   //      0,                         0,               deltaZ;
+   //std::cout << "lammps boundaries (regeneratePolycrystalFile2): " <<  std::endl;// debug
+   //for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
+   //std::cout << std::endl; // debug
+
+   //std::cout << "lammpsBoxEdges (regeneratePolycrystalFile2):\n" << lammpsBoxEdges <<  std::endl;// debug
+
+   //MatrixDim lammpsBoxEdgeUnitVectors( lammpsBoxEdges);
+   // renomalize box edges (cols of lammpsBoxEdgeUnitVectors) in global coordinates
+   //double tmpMag = 0;
+   //for ( size_t ii=0; ii < 3; ++ii)
+   //{
+   //   tmpMag = sqrt( lammpsBoxEdgeUnitVectors( 0, ii) * lammpsBoxEdgeUnitVectors( 0, ii)
+   //                + lammpsBoxEdgeUnitVectors( 1, ii) * lammpsBoxEdgeUnitVectors( 1, ii)
+   //                + lammpsBoxEdgeUnitVectors( 2, ii) * lammpsBoxEdgeUnitVectors( 2, ii));
+   //   if ( ( tmpMag > 0) && !( isinf( tmpMag)))
+   //   {
+   //      lammpsBoxEdgeUnitVectors( 0, ii) /= tmpMag;
+   //      lammpsBoxEdgeUnitVectors( 1, ii) /= tmpMag;
+   //      lammpsBoxEdgeUnitVectors( 2, ii) /= tmpMag;
+   //   }
+   //   else
+   //   {
+   //      std::cout << "error, regeneratePolycrystalFile(): "
+   //         << "column " << ii << " of lammpsBoxEdgeUnitVectors has magnitude "
+   //         << tmpMag << " <= 0" << std::endl;
+   //      return;
+   //   }
+   //}
+   //std::cout << "lammpsBoxEdges:\n" << lammpsBoxEdges << std::endl; // debug
+   //std::cout << "lammpsBoxEdgeUnitVectors:\n" << lammpsBoxEdgeUnitVectors << std::endl; // debug
+
+   MatrixDim AA;
+   if (! latticeIn.compare("bcc")) // .compare() returns 0 if they're equal
+   {
+      AA << -1.0, 1.0, 1.0,
+         1.0, -1.0, 1.0,
+         1.0, 1.0, -1.0;
+      AA /= sqrt(3.0);
+   }
+   else if (! latticeIn.compare("fcc"))
+   {
+      AA << 0.0, 1.0, 1.0,
+          1.0, 0.0, 1.0,
+          1.0, 1.0, 0.0;
+      AA /= sqrt(2.0);
+   }
+   else
+   {
+      std::cout << "error: lattice type not recognized while trying to "
+         << "create matrix A" << std::endl;
+      return;
+   }
+
+   // Find lattice vectors (columns of modelibBoxEdges) aligned to lammpsBoxEdgesCrystalVectors to be scaled and become columns of FF
+   MatrixDim AAinv;
+   AAinv = AA.inverse();
+   //MatrixDim C2Ginv;
+   //C2Ginv = C2G.inverse();
+
+   // interpret lammps box edge vectors
+   //MatrixDim lammpsBoxEdgesCrystalUnits( C2Ginv*(lammpsBoxEdgeUnitVectors));
+   // try to transform lammpsBoxEdgesCrystalUnits cols into integer vectors
+   // This assumes the user has prepared the lammps box edges to be aligned with crystallographic directions which can be expressed as integers.
+   //std::cout << "lammpsBoxEdgesCrystalUnits:\n" // debug
+   //   << lammpsBoxEdgesCrystalUnits<< std::endl; // debug
+
+   //// TODO: fix
+   //for ( size_t jj=0; jj < 3; ++jj)
+   //{
+   //   double tmpDblMax( 0.0);
+   //   tmpDblMax = lammpsBoxEdgesCrystalUnits( Eigen::seq(0,Eigen::last), jj).array().abs().maxCoeff();
+   //   for ( size_t ii=0; ii < 3; ++ii)
+   //   {
+   //      if ( abs( lammpsBoxEdgesCrystalUnits( ii, jj))
+   //            > std::numeric_limits<double>::epsilon())
+   //      {
+   //         lammpsBoxEdgesCrystalUnits( ii, jj)
+   //            = lammpsBoxEdgesCrystalUnits( ii, jj)/ tmpDblMax
+   //      }
+   //      else
+   //      {
+   //         lammpsBoxEdgesCrystalUnits( ii, jj) = 0;
+   //      }
+   //   }
+   //}
+   //std::cout << "lammpsBoxEdgesCrystalVectors:\n" // debug
+   //   << lammpsBoxEdgesCrystalVectors << std::endl; // debug
+   MatrixDim BB( AAinv * specifiedBoxEdges);
+   MatrixDim FF; // FF scales the mesh: y=F(x-x0), where x is the input mesh
+   std::cout << "AA:\n" << AA << std::endl; // debug
+   std::cout << "BB:\n" << BB << std::endl; // debug
+   for ( size_t jj=0; jj < 3; ++jj)
+   {
+      VectorDim Bcol( BB( Eigen::seq(0,Eigen::last), jj));
+      std::cout << "Bcol:\n" << Bcol << std::endl; // debug
+      Bcol /= Bcol.array().abs().maxCoeff(); // rescale box edge vector components to be within [-1,1] interval
+      std::cout << "Bcol rescaled:\n" << Bcol << std::endl; // debug
+      Eigen::Matrix<int,3,1> nn; nn << 0,0,0;
+      Eigen::Matrix<int,3,1> dd; dd << 1,1,1;
+      std::pair<int,int> ff;
+      for ( size_t ii=0; ii < 3; ++ii)
+      {
+         ff = limit_denominator( Bcol[ii], 100);
+         nn(ii) = ff.first;
+         dd(ii) = ff.second;
+      }
+      std::cout << "nn:\n" << nn << std::endl; // debug
+      std::cout << "dd:\n" << dd << std::endl; // debug
+      //dp=np.prod(dd);
+      int dp( 1); // product of denominators of box edge vector components
+      for ( size_t ii=0; ii < 3; ++ii)
+      {
+         dp *= dd(ii);
+      }
+      std::cout << "dp: " << dp << std::endl; // debug
+      //nr=np.array([1,1,1], dtype=int)
+      Eigen::Matrix<int,3,1> nr; nr << 1, 1, 1;
+      //for i in range(0, 3):
+      //    nr[ii]=nn[ii]*dp/dd[ii]
+      for ( size_t ii=0; ii < 3; ++ii)
+      {
+         nr(ii) = nn(ii) * dp/dd(ii); // numerators multiplied by the denominators missing from their rational expression
+      }
+      std::cout << "nr:\n" << nr << std::endl; // debug
+      //nr=nr/np.gcd.reduce(nr)
+      // divide out the greatest common divisor of nr's components
+      int nrGcd( 1);
+      nrGcd = std::gcd( nr(0), nr(1));
+      nrGcd = std::gcd( nrGcd, nr(2));
+      nr /= nrGcd;
+      //L[:,jj]=self.A@nr.transpose()
+      VectorDim nrDubl;
+      nrDubl << nr(0), nr(1), nr(2);
+      std::cout << "nrDubl:\n" << nrDubl << std::endl; // debug
+      VectorDim AAnr( AA*nrDubl); // L[:,jj]
+      std::cout << "AAnr:\n" << AAnr << std::endl; // debug
+      //self.F[:,jj]=self.C2G@modelibBoxEdges[:,jj]*self.boxScaling[jj]
+      //self.F[:,jj]=self.C2G@L[:,jj]*self.boxScaling[jj]
+      // columns of modelibBoxEdges should be lattice vectors (in global coordinates) aligned to box edges
+      VectorDim modelibBoxEdgesCol( (C2G*AAnr)* boxScalingNp[jj]); // transform lattice vectors aligned to box edges from crystal coordinates to global coordinates
+      std::cout << "modelibBoxEdgesCol:\n" << modelibBoxEdgesCol << std::endl; // debug
+      for ( size_t ii=0; ii < 3; ++ii)
+      {
+         FF(ii,jj) = modelibBoxEdgesCol(ii);
+      }
+   }
+   std::cout << "FF:\n" << FF << std::endl; // debug
+
+   // FF is now determined. FF scales the mesh to a size and shape almost equal to that of the lammps box.
+   // The lammps box now needs to be deformed a little to ensure the  modelib and lammps box sizes and shapes are identical.
+
+   // Create a transformation to be applied to the atoms to align
+   //  their strained atomic planes to the perfect slip systems of DDD.
+   // Atomic planes will still need to be shifted to make atomic slip
+   //  planes coincide with DDD slip planes.
+
+   //lmpDeformationMatrix = FF * (lammpsBoxEdges.inverse()) ;
+   //lmpDeformationMatrixInverse =  lmpDeformationMatrix.inverse();
+   //std::cout << "lmpDeformationMatrix :\n" << lmpDeformationMatrix // debug
+   //   << std::endl; // debug
+   //std::cout << "lmpDeformationMatrixInverse :\n" // debug
+   //   << lmpDeformationMatrixInverse // debug
+   //   << std::endl; // debug
+   //std::cout << "lammpsBoxEdges:\n" << lammpsBoxEdges << std::endl;// debug
+   //std::cout << "lammps boundaries (regeneratePolycrystalFile3): " <<  std::endl;// debug
+   //for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
+   //std::cout << std::endl; // debug
+
+   ////////////////////////////////////////////////
+   /// use the local lmpDeformationMatrix to calculate lammpsDeformedBox
+   // the following should be unecessary. lammpsBoxBounds were alread deformed by the LmpReader which was instantiated using lmpDeformationMatrix, which should have been applied to all positions and bounds when the file was read.
+   //// transform lammps box boundary coordinates
+   //lammpsDeformedBoxBounds.clear();
+   //lammpsDeformedBoxBounds.resize(6);
+   //lammpsDeformedBoxBounds[0] // xlo
+   //   =  lmpDeformationMatrix(0,0) * lammpsBoxBounds[0];
+   //   //= (lmpDeformationMatrix * lmpAxis00)[0];
+
+   //lammpsDeformedBoxBounds[1] // xhi
+   //   =  lmpDeformationMatrix(0,0) * lammpsBoxBounds[1];
+   //   //= (lmpDeformationMatrix * lmpAxis01)[0];
+
+   //lammpsDeformedBoxBounds[2] // ylo
+   //   =  lmpDeformationMatrix(1,1) * lammpsBoxBounds[2];
+   //   //= (lmpDeformationMatrix * lmpAxis10)[1];
+
+   //lammpsDeformedBoxBounds[3] // yhi
+   //   =  lmpDeformationMatrix(1,1) * lammpsBoxBounds[3];
+   //   //= (lmpDeformationMatrix * lmpAxis11)[1];
+
+   //lammpsDeformedBoxBounds[4] // zlo
+   //   =  lmpDeformationMatrix(2,2) * lammpsBoxBounds[4];
+   //   //= (lmpDeformationMatrix * lmpAxis20)[2];
+
+   //lammpsDeformedBoxBounds[5] // zhi
+   //   =  lmpDeformationMatrix(2,2) * lammpsBoxBounds[5];
+   //   //= (lmpDeformationMatrix * lmpAxis21)[2];
+
+   //std::cout << "lammpsDeformedBoxBounds:\n"; // debug
+   //for ( const auto& tmpDbl : lammpsDeformedBoxBounds) // debug
+   //{ // debug
+   //   std::cout << tmpDbl << ", "; // debug
+   //} // debug
+   //std::cout << std::endl; // debug
+
+   //// lammpsDeformedTiltFactors
+   //lammpsDeformedTiltFactors.clear(); 
+   //lammpsDeformedTiltFactors.resize(3); 
+   //lammpsDeformedTiltFactors[0] // xy
+   //   = lmpDeformationMatrix(0,0) * lammpsTiltFactors[0];
+   //lammpsDeformedTiltFactors[1] // xz
+   //   = lmpDeformationMatrix(0,0) * lammpsTiltFactors[1];
+   //lammpsDeformedTiltFactors[2] // yz
+   //   = lmpDeformationMatrix(1,1) * lammpsTiltFactors[2];
+
+   //std::cout << "lammpsDeformedTiltFactors:\n"; // debug
+   //for ( const auto& tmpDbl : lammpsDeformedTiltFactors) // debug
+   //{ // debug
+   //   std::cout << tmpDbl << ", "; // debug
+   //} // debug
+   //std::cout << std::endl; // debug
+      
+
+   //lammpsDeformedBoxDimensions.clear();
+   //lammpsDeformedBoxDimensions.resize(3);
+   //lammpsDeformedBoxDimensions[0] = lammpsDeformedBoxBounds[1]
+   //                                  - lammpsDeformedBoxBounds[0];
+   //lammpsDeformedBoxDimensions[1] = lammpsDeformedBoxBounds[3]
+   //                                  - lammpsDeformedBoxBounds[2];
+   //lammpsDeformedBoxDimensions[2] = lammpsDeformedBoxBounds[5]
+   //                                  - lammpsDeformedBoxBounds[4];
+   //std::cout << "lammpsDeformedBoxBounds: ("
+   //   << lammpsDeformedBoxBounds[0] << ", "
+   //   << lammpsDeformedBoxBounds[1] << ", "
+   //   << lammpsDeformedBoxBounds[2] << ", "
+   //   << lammpsDeformedBoxBounds[3] << ", "
+   //   << lammpsDeformedBoxBounds[4] << ", "
+   //   << lammpsDeformedBoxBounds[5] << ") " << std::endl; // debug
+   //if ( lammpsDeformedTiltFactors.size() == 3)
+   //{
+   //   std::cout << "lammpsDeformedTiltFactors: ("
+   //      << lammpsDeformedTiltFactors[0] << ", "
+   //      << lammpsDeformedTiltFactors[1] << ", "
+   //      << lammpsDeformedTiltFactors[2] << ") " << std::endl; // debug
+   //}
+   ////std::cout << "lammpsDeformedBoxDimensions: ("
+   ////   << lammpsDeformedBoxDimensions[0] << ", "
+   ////   << lammpsDeformedBoxDimensions[1] << ", "
+   ////   << lammpsDeformedBoxDimensions[2] << ")" << std::endl; // debug
+
+   std::cout << "X0: " << x0(0) << ", " << x0(1) << ", " << x0(2) << std::endl; // debug
+
+   //////////////////////////////////////
+
+   outputFile << "materialFile=" << materialIn << ".txt;" << std::endl;
+   outputFile << "enablePartials=" << enablePartials << ";"
+      << std::endl;
+   outputFile << "absoluteTemperature = "
+      << TT << "; # [K] simulation temperature"
+      << std::endl;
+   outputFile << "meshFile=" << meshFilePathIn << ";"
+      << std::endl;
+   outputFile << "C2G1="
+        << std::setw(23) << std::setprecision(16) << C2G(0,0)
+        << std::setw(23) << std::setprecision(16) << C2G(0,1)
+        << std::setw(23) << std::setprecision(16) << C2G(0,2)
+        << std::endl
+        << std::setw(23) << std::setprecision(16) << C2G(1,0)
+        << std::setw(23) << std::setprecision(16) << C2G(1,1)
+        << std::setw(23) << std::setprecision(16) << C2G(1,2)
+        << std::endl
+        << std::setw(23) << std::setprecision(16) << C2G(2,0)
+        << std::setw(23) << std::setprecision(16) << C2G(2,1)
+        << std::setw(23) << std::setprecision(16) << C2G(2,2)
+        << ";" << std::endl;
+   outputFile << std::endl;
+   outputFile << "F="
+        << std::setw(23) << std::setprecision(16) << FF(0,0)
+        << std::setw(23) << std::setprecision(16) << FF(0,1)
+        << std::setw(23) << std::setprecision(16) << FF(0,2)
+        << std::endl
+        << std::setw(23) << std::setprecision(16) << FF(1,0)
+        << std::setw(23) << std::setprecision(16) << FF(1,1)
+        << std::setw(23) << std::setprecision(16) << FF(1,2)
+        << std::endl
+        << std::setw(23) << std::setprecision(16) << FF(2,0)
+        << std::setw(23) << std::setprecision(16) << FF(2,1)
+        << std::setw(23) << std::setprecision(16) << FF(2,2)
+        << ";" << std::endl;
+   outputFile << std::endl << std::endl;
+
+   outputFile << "X0="
+      << std::setw(23) << std::setprecision(16) << x0(0)
+      << std::setw(23) << std::setprecision(16) << x0(1)
+      << std::setw(23) << std::setprecision(16) << x0(2)
+      << ";" << std::endl;
+   outputFile << "periodicFaceIDs= "
+      << periodicFaceIDsNp(0) << " "
+      << periodicFaceIDsNp(1) << " "
+      << periodicFaceIDsNp(2) << " "
+      << periodicFaceIDsNp(3) << " "
+      << periodicFaceIDsNp(4) << " "
+      << periodicFaceIDsNp(5) << ";" << std::endl;
+   outputFile << std::endl;
+
+   outputFile << "solidSolutionNoiseMode=" << solidSolutionNoiseMode
+      << "; # 0=no noise, 1= read noise, 2=compute noise" << std::endl;
+   //outputFile << "solidSolutionNoiseFile_xz=" << ";" << std::endl;
+   //outputFile << "solidSolutionNoiseFile_yz=" << ";" << std::endl;
+   outputFile << "stackingFaultNoiseMode=" << stackingFaultNoiseMode
+      << ";" << std::endl;
+   if (! latticeIn.compare("bcc")) // .compare() returns 0 if they're equal
+   {
+      //outputFile << "dislocationMobilityType='BCC';" << std::endl;
+      outputFile << "dislocationMobilityType=default;" << std::endl;
+   }
+   else if (! latticeIn.compare("fcc"))
+   {
+      //outputFile << "dislocationMobilityType='FCC';" << std::endl;
+      outputFile << "dislocationMobilityType=default;" << std::endl;
+   }
+   outputFile << "gridSize=256 256; # size of grid on the glide plane"
+      << std::endl;
+   outputFile << "gridSpacing_SI=1e-10 1e-10; # [m] spacing of grid on the glide plane"
+      << std::endl;
+   //outputFile << "spreadLstress_A=1; # add comment" << std::endl;
+   //outputFile << "seed=0; # add comment" << std::endl;
+   outputFile << std::endl;
+
+   //std::cout << "lammpsBoxBounds 1530: " <<  std::endl;// debug
+   //for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
+   //std::cout << std::endl; // debug
+   return;
+}
+
 void ddpy::DDInterface::clearMicrostructureSpecifications()
 {
    microstructureSpecifications.clear();
@@ -2709,6 +3290,114 @@ pybind11::array_t<double, pybind11::array::c_style>
    return weightedValues;
 }
 
+std::pair<int,int> ddpy::DDInterface::limit_denominator(
+      const double& xxIn,
+      const int& max_denominator
+      )
+{
+   // adapted from https://github.com/python/cpython/blob/66c0d0ac8c55be9c973be1189b0e9ffcfdfb35a4/Lib/fractions.py#L234
+   //  and https://en.wikipedia.org/wiki/Continued_fraction
+
+   //std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ")" << std::endl; // debug
+   if ( max_denominator < 1)
+   {
+      throw std::runtime_error("limit_denominator(), error: argument max_denominator must be greater than 1");
+   }
+   if ( std::isinf( xxIn))
+   {
+      throw std::runtime_error("limit_denominator(), error: given inf as argument");
+   }
+   if ( std::isnan( xxIn))
+   {
+      throw std::runtime_error("limit_denominator(), error: given NaN as argument");
+   }
+   if ( abs( xxIn) < 1.0/max_denominator)
+   {
+      std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ") returning " << 0 << "/" << 1 << std::endl; // debug
+      return std::make_pair<int,int>( 0, 1);
+   }
+   double remainder( xxIn - floor( xxIn));
+   if ( remainder == 0 ) // xxIn is an integer
+   {
+      std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ") returning " << static_cast<int>(xxIn) << "/" << 1 << std::endl; // debug
+      return std::make_pair<int,int>( static_cast<int>( xxIn), 1);
+   }
+   int numerator0, denominator0, numerator1, denominator1, numerator2, denominator2;
+   double invReciprocal;
+   numerator0 = static_cast<int>( floor( xxIn));
+   denominator0 = 1;
+   numerator1 = 1;
+   denominator1 = 0;
+
+   int coefficient;
+   std::cout << "limit_denominator("
+      << xxIn << ", " << max_denominator << ") entering while loop" << std::endl; // debug
+   while ( true)
+   {
+      invReciprocal = 1.0/remainder;
+      coefficient = static_cast<int>( floor( invReciprocal));
+      remainder = invReciprocal - coefficient;
+       
+       // numerator2 is older than numerator1 
+      numerator2 = numerator1;
+      numerator1 = numerator0;
+      denominator2 = denominator1;
+      denominator1 = denominator0;
+
+      numerator0 = coefficient * numerator1 + numerator2;
+      denominator0 = coefficient * denominator1 + denominator2;
+
+      //std::cout // debug
+      //   << "coefficient " << coefficient << ", " // debug
+      //   << "remainder " << remainder << ", " // debug
+      //   << "numerator0 " << numerator0 << ", " // debug
+      //   << "numerator1 " << numerator1 << ", " // debug
+      //   << "numerator2 " << numerator2 << ", " // debug
+      //   << "denominator0 " << denominator0 << ", " // debug
+      //   << "denominator1 " << denominator1 << ", " // debug
+      //   << "denominator2 " << denominator2 << std::endl; // debug
+
+      //if (( xxIn - invReciprocal == 0)
+      if (( remainder <= std::numeric_limits<double>::epsilon())
+            || denominator0 > max_denominator)
+      {
+         //std::cout << "numerator/denominator: " // debug
+         //   << numerator1 << "/" << denominator1 << std::endl; // debug
+         break;
+      }
+   }
+   if ( remainder <= std::numeric_limits<double>::epsilon())
+   {
+      std::pair<int,int> pp{ numerator0, denominator0};
+      std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ") returning " << pp.first << "/" << pp.second << std::endl; // debug
+      return pp;
+   }
+   int kk( floor( (max_denominator - denominator0)/denominator1));
+   int bound1_n, bound1_d;
+   bound1_n = numerator0 + kk*numerator1;
+   bound1_d = denominator0 + kk*denominator1;
+   if (
+         abs( static_cast<double>(numerator1) / static_cast<double>(denominator1) - xxIn)
+         <= abs((static_cast<double>(bound1_n)/static_cast<double>(bound1_d)) - xxIn)
+         )
+   {
+      std::cout << "(n1/d1)";
+      //return std::make_pair<int,int>( numerator1, denominator1);
+      std::pair<int,int> pp{ numerator1, denominator1};
+      std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ") returning " << pp.first << "/" << pp.second << std::endl; // debug
+      return pp;
+   }
+   else
+   {
+      std::cout << "(bound1)";
+      //else return std::make_pair<int,int>( bound1_n, bound1_d);
+      std::pair<int,int> pp{ bound1_n, bound1_d};
+      std::cout << "limit_denominator(" << xxIn << ", " << max_denominator << ") returning " << pp.first << "/" << pp.second << std::endl; // debug
+      return pp;
+   }
+}
+
+
 
 PYBIND11_MODULE( ddpy, m) {
    namespace py = pybind11;
@@ -2765,6 +3454,27 @@ PYBIND11_MODULE( ddpy, m) {
       //      py::arg( "material").none(false),
       //      py::arg( "meshFilePath").none(false)
       //    )
+      .def("regeneratePolycrystalFile",
+            &ddpy::DDInterface::regeneratePolycrystalFile,
+            py::kw_only(),
+            // parameters to determine crystal orientation wrt box:
+            py::arg( "grain1globalX1").none(false), // in crystal coord
+            py::arg( "grain1globalX3").none(false), // in crystal coord
+            // parameters to determine modelib box shape and size
+            py::arg( "boxScaling").none(false),
+            py::arg( "boxEdges1").none(false), // in rows of a matrix, in crystal coord
+            py::arg( "boxEdges2").none(false), // in rows of a matrix, in crystal coord
+            py::arg( "boxEdges3").none(false), // in rows of a matrix, in crystal coord
+            py::arg( "x0").none(false), // 3 element array (0,0,0)
+            // physical parameters
+            py::arg( "T").none(false), // absolute temperature [K]
+            py::arg( "enablePartials"), // True or False. Default: False
+            py::arg( "lattice").none(false),
+            py::arg( "material").none(false),
+            py::arg( "meshFilePath").none(false),
+            //py::arg( "X0").none(false),
+            py::arg( "periodicFaceIDs").none(false)
+          )
       .def("specifyLoops",
             &ddpy::DDInterface::specifyLoops,
             py::kw_only(),
