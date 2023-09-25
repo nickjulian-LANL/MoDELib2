@@ -104,9 +104,682 @@ void model::AtomDisplacementGenerator::readddBase()
 void model::AtomDisplacementGenerator::readDefectiveCrystal()
 {
    if ( ddBase == nullptr) readddBase();
+
    DC = std::unique_ptr<DefectiveCrystalType>(
          new DefectiveCrystalType( *ddBase)
          );
+   return;
+}
+
+void model::AtomDisplacementGenerator::specifyLoops(
+         const std::string& tag,
+         const std::vector<int>& periodicLoopSlipSystemIDsIn,
+         const std::vector<double>& periodicLoopRadii,
+         const std::vector<long int>& loopSegmentCountsIn,
+         const pybind11::array_t<double,
+                  pybind11::array::c_style | pybind11::array::forcecast>&
+                  loopCentersIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   // copy Nx3 numpy array of points in 3-D to Eigen equivalents
+   Eigen::Matrix<double, Eigen::Dynamic, 3> periodicLoopCenters;
+   periodicLoopCenters.resize( loopCentersIn.shape()[0], loopCentersIn.shape()[1]);
+   auto loopCentersInBuf = loopCentersIn.unchecked<2>();
+   for ( ssize_t ii=0; ii < loopCentersIn.shape()[0]; ++ii)
+      for ( ssize_t jj=0; jj < loopCentersIn.shape()[1]; ++jj)
+         periodicLoopCenters( ii, jj) = loopCentersInBuf( ii, jj);
+
+   // cast vectors of python integers to vector<int> (python int isn't int)
+   std::vector<int> periodicLoopSlipSystemIDs( periodicLoopSlipSystemIDsIn.size(), 0);
+   for ( size_t ii=0; ii < periodicLoopSlipSystemIDsIn.size(); ++ii)
+      periodicLoopSlipSystemIDs[ ii] = static_cast<int>( periodicLoopSlipSystemIDsIn[ ii]);
+
+   std::vector<long int> periodicLoopSides( loopSegmentCountsIn.size(), 0);
+   for ( size_t ii=0; ii < loopSegmentCountsIn.size(); ++ii)
+      periodicLoopSides[ ii] = static_cast<long int>( loopSegmentCountsIn[ ii]);
+
+   // numpy loopRadii input is automatically seen as vector<double>
+
+   // dummy instantiations
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PeriodicLoop", // type
+               "individual", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, //periodicLoopTargetDensityIn, // double
+               0, //periodicLoopSegmentCountIn, // long int
+               0.0, //periodicLoopRadiusDistributionMeanIn // double
+               0.0, //periodicLoopRadiusDistributionStdIn // double
+               0.0, //periodicDipoleTargetDensityIn, // double
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, // prismaticLoopRadiiMean
+               1.0, // prismaticLoopRadiiStd
+               1.0, // prismaticLoopStepMean
+               1.0 // prismaticLoopStepStd
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::setOutputPath( const std::string& outputPath)
+{ // TODO: change return value to allow error checking
+   if ( ddBase == nullptr) readddBase();
+   std::cout << "prior evlFolder: "
+      << ddBase->simulationParameters.traitsIO.evlFolder << std::endl; // debug
+   std::cout << "assigning " << outputPath + "/evl" << " to evlFolder" << std::endl;
+   ddBase->simulationParameters.traitsIO.evlFolder = outputPath + "/evl";
+   ddBase->simulationParameters.traitsIO.auxFolder = outputPath + "/evl";
+   ddBase->simulationParameters.traitsIO.fFolder = outputPath + "/F";
+   ddBase->simulationParameters.traitsIO.fFile = outputPath + "/F/F_0.txt";
+   ddBase->simulationParameters.traitsIO.flabFile = outputPath + "/F/F_labels.txt";
+   std::cout << "results:" << std::endl
+      << " ddBase->simulationParameters.traitsIO.evlFolder: " << ddBase->simulationParameters.traitsIO.evlFolder
+      << std::endl
+      << " ddBase->simulationParameters.traitsIO.auxFolder: "
+      << ddBase->simulationParameters.traitsIO.auxFolder
+      << std::endl
+      << " ddBase->simulationParameters.traitsIO.fFolder: "
+      << ddBase->simulationParameters.traitsIO.fFolder
+      << std::endl;
+
+   // output folders are at:
+   //  ddBase->simulationParameters.traitsIO.evlFolder
+   //  ddBase->simulationParameters.traitsIO.auxFolder
+   //  ddBase->simulationParameters.traitsIO.fFolder
+   return;
+}
+
+void model::AtomDisplacementGenerator::specifyLoopDensitiesPerSlipSystem(
+         const std::string& tag,
+         const std::map<int, double>& periodicLoopTargetDensitiesPerSlipSystemIn,
+         const long int& periodicLoopSegmentCountIn,
+         const double& periodicLoopRadiusDistributionMeanIn,
+         const double& periodicLoopRadiusDistributionStdIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+   // instantiate empty placeholders
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   std::vector<long int> loopSegmentCountsIn;
+   //pybind11::array_t<double,
+   //         pybind11::array::c_style | pybind11::array::forcecast>
+   //         periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic, 3> periodicLoopCenters;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PeriodicLoop", // type
+               "densitiesPerSlipSystem", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, // periodicLoopTargetDensityIn,
+               periodicLoopSegmentCountIn,
+               periodicLoopRadiusDistributionMeanIn,
+               periodicLoopRadiusDistributionStdIn,
+               0.0, //periodicDipoleTargetDensityIn,
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystemIn,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, // prismaticLoopRadiiMean
+               1.0, // prismaticLoopRadiiStd
+               1.0, // prismaticLoopStepMean
+               1.0 // prismaticLoopStepStd
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::specifyLoopDensity(
+         const std::string& tag,
+         const double& periodicLoopTargetDensityIn,
+         const long int& periodicLoopSegmentCountIn,
+         const double& periodicLoopRadiusDistributionMeanIn,
+         const double& periodicLoopRadiusDistributionStdIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   // instantiate empty placeholders
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   std::vector<long int> loopSegmentCountsIn;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   //pybind11::array_t<double,
+   //         pybind11::array::c_style | pybind11::array::forcecast>
+   //         periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic, 3> periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PeriodicLoop", // type
+               "density", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               periodicLoopTargetDensityIn,
+               periodicLoopSegmentCountIn,
+               periodicLoopRadiusDistributionMeanIn,
+               periodicLoopRadiusDistributionStdIn,
+               0.0, //periodicDipoleTargetDensityIn,
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, // prismaticLoopRadiiMean
+               1.0, // prismaticLoopRadiiStd
+               1.0, // prismaticLoopStepMean
+               1.0 // prismaticLoopStepStd
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+   return;
+}
+/**********************************************************************/
+void model::AtomDisplacementGenerator::specifyPrismaticLoops(
+         const std::string& tag,
+         const std::vector<int>& prismaticLoopSlipSystemIDsIn,
+         const std::vector<double>& prismaticLoopRadiiIn,
+         const pybind11::array_t<double,
+                  pybind11::array::c_style | pybind11::array::forcecast>&
+                  prismaticLoopCentersIn,
+         const std::vector<double>& prismaticLoopStepsIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   // copy Nx3 numpy array of points in 3-D to Eigen equivalents
+   Eigen::Matrix<double, Eigen::Dynamic, 3> prismaticLoopCenters;
+   prismaticLoopCenters.resize( prismaticLoopCentersIn.shape()[0], prismaticLoopCentersIn.shape()[1]);
+   auto prismaticLoopCentersInBuf = prismaticLoopCentersIn.unchecked<2>();
+   for ( ssize_t ii=0; ii < prismaticLoopCentersIn.shape()[0]; ++ii)
+      for ( ssize_t jj=0; jj < prismaticLoopCentersIn.shape()[1]; ++jj)
+         prismaticLoopCenters( ii, jj) = prismaticLoopCentersInBuf( ii, jj);
+
+   // cast vectors of python integers to vector<int> (python int isn't int)
+   std::vector<int> prismaticLoopSlipSystemIDs( prismaticLoopSlipSystemIDsIn.size(), 0);
+   for ( size_t ii=0; ii < prismaticLoopSlipSystemIDsIn.size(); ++ii)
+      prismaticLoopSlipSystemIDs[ ii] = static_cast<int>( prismaticLoopSlipSystemIDsIn[ ii]);
+
+   // numpy loopRadii input is automatically seen as vector<double>
+
+   // dummy instantiations
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<long int> periodicLoopSides;
+   std::vector<double> periodicLoopRadii;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   Eigen::Matrix<double, Eigen::Dynamic,3> periodicLoopCenters;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PrismaticLoop", // type
+               "individual", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, //periodicLoopTargetDensityIn, // double
+               0, //periodicLoopSegmentCountIn, // long int
+               0.0, //periodicLoopRadiusDistributionMeanIn // double
+               0.0, //periodicLoopRadiusDistributionStdIn // double
+               0.0, //periodicDipoleTargetDensityIn, // double
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadiiIn,
+               prismaticLoopStepsIn,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, // prismaticLoopRadiiMean
+               1.0, // prismaticLoopRadiiStd
+               1.0, // prismaticLoopStepMean
+               1.0 // prismaticLoopStepStd
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::specifyPrismaticLoopDensitiesPerSlipSystem(
+         const std::string& tag,
+         const std::map<int, double>& prismaticLoopTargetDensitiesPerSlipSystemIn,
+         const double& prismaticLoopRadiiMeanIn,
+         const double& prismaticLoopRadiiStdIn,
+         const double& prismaticLoopStepMeanIn,
+         const double& prismaticLoopStepStdIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+   // instantiate empty placeholders
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   std::vector<long int> loopSegmentCountsIn;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   //pybind11::array_t<double,
+   //         pybind11::array::c_style | pybind11::array::forcecast>
+   //         periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic, 3> periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic, 3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PrismaticLoop", // type
+               "densitiesPerSlipSystem", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, // periodicLoopTargetDensityIn,
+               0, //periodicLoopSegmentCountIn,
+               1.0, //periodicLoopRadiusDistributionMeanIn,
+               1.0, //periodicLoopRadiusDistributionStdIn,
+               0.0, //periodicDipoleTargetDensityIn,
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystemIn,
+               prismaticLoopRadiiMeanIn,
+               prismaticLoopRadiiStdIn,
+               prismaticLoopStepMeanIn,
+               prismaticLoopStepStdIn
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+
+   return;
+}
+
+void model::AtomDisplacementGenerator::specifyPrismaticLoopDensity(
+         const std::string& tag,
+         const double& prismaticLoopTargetDensityIn,
+         const double& prismaticLoopRadiiMeanIn,
+         const double& prismaticLoopRadiiStd,
+         const double& prismaticLoopStepMeanIn,
+         const double& prismaticLoopStepStd
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   // instantiate empty placeholders
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> periodicDipoleExitFaceIDs;
+   Eigen::Matrix< double, Eigen::Dynamic,3> periodicDipolePoints;
+   std::vector<double> periodicDipoleHeights;
+   std::vector<int> periodicDipoleNodes;
+   std::vector<double> periodicDipoleGlideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   std::vector<long int> loopSegmentCountsIn;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   //pybind11::array_t<double,
+   //         pybind11::array::c_style | pybind11::array::forcecast>
+   //         periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic, 3> periodicLoopCenters;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+            new model::MicrostructureSpecification(
+               "PrismaticLoop", // type
+               "density", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs,
+               periodicDipoleExitFaceIDs,
+               periodicDipolePoints,
+               periodicDipoleHeights,
+               periodicDipoleNodes,
+               periodicDipoleGlideSteps,
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, //periodicLoopTargetDensityIn,
+               0, // periodicLoopSegmentCountIn,
+               0.0, //periodicLoopRadiusDistributionMeanIn,
+               0.0, //periodicLoopRadiusDistributionStdIn,
+               0.0, //periodicDipoleTargetDensityIn,
+               prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopRadiiMeanIn,
+               prismaticLoopRadiiStd,
+               prismaticLoopStepMeanIn,
+               prismaticLoopStepStd
+         ));
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+   return;
+}
+
+/**********************************************************************/
+void model::AtomDisplacementGenerator::specifyDipoleDensity(
+               const std::string& tag,
+               const double& periodicDipoleTargetDensityIn
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   // dummy instantiations. TODO: find another way to implement this class
+   Eigen::Matrix<double, Eigen::Dynamic, 3> points;
+   std::vector<double> heights;
+   std::vector<int> periodicDipoleSlipSystemIDs;
+   std::vector<int> exitFaceIDs;//( exitFaceIDsIn.size(), 0);
+   std::vector<int> nodes;//( nodesIn.size(), 0);
+   std::vector<double> glideSteps;
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   Eigen::Matrix<double,Eigen::Dynamic,3> periodicLoopCenters;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+         std::shared_ptr<model::MicrostructureSpecification>(
+            //new model::PeriodicDipoleIndividualSpecification(
+            new model::MicrostructureSpecification(
+               "PeriodicDipole", // type
+               "density", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDs, // std::vector<int>
+               // dipoles
+               exitFaceIDs, // std::vector<int>
+               points, // Eigen::Matrix
+               heights, // std::vector<double>
+               nodes, // std::vector<int>
+               glideSteps, // std::vector<double>
+               // loops
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, //periodicLoopTargetDensityIn,
+               0, //periodicLoopSegmentCountIn,
+               0.0, //periodicLoopRadiusDistributionMeanIn
+               0.0, //periodicLoopRadiusDistributionStdIn
+               periodicDipoleTargetDensityIn,
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, //prismaticLoopRadiiMean // not used
+               1.0, //prismaticLoopRadiiStd // not used
+               1.0, //prismaticLoopStepMean // not used
+               1.0 //prismaticLoopStepStd // not used
+               )
+            )
+         );
+
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+
+   return;
+}
+
+
+void model::AtomDisplacementGenerator::specifyDipoles(
+      const std::string& tag,
+      const std::vector<int>& periodicDipoleSlipSystemIDsIn,
+      const std::vector<int>& exitFaceIDsIn,
+      const pybind11::array_t<double,
+               pybind11::array::c_style | pybind11::array::forcecast>&
+               pointsIn,
+      const std::vector<double>& heights,
+      const std::vector<int>& nodesIn,
+      const std::vector<double>& glideSteps
+      )
+{
+   if ( ddBase == nullptr) readddBase();
+
+   std::cout << "pointsIn.shape()[0]: " << pointsIn.shape()[0] << std::endl; // debug
+   std::cout << "pointsIn.shape()[1]: " << pointsIn.shape()[1] << std::endl; // debug
+   std::cout << "periodicDipoleSlipSystemIDsIn.size(): " << periodicDipoleSlipSystemIDsIn.size() << std::endl; // debug
+   std::cout << "exitFaceIDsIn.size(): " << exitFaceIDsIn.size() << std::endl; // debug
+
+   Eigen::Matrix<double, Eigen::Dynamic, 3> points;
+   points.resize( pointsIn.shape()[0], pointsIn.shape()[1]);
+   auto pointsInBuf = pointsIn.unchecked<2>();
+   for ( ssize_t ii=0; ii < pointsIn.shape()[0]; ++ii)
+      for ( ssize_t jj=0; jj < pointsIn.shape()[1]; ++jj)
+         points( ii, jj) = pointsInBuf( ii, jj);
+   std::cout << "points.size(): " << points.size() << std::endl; // debug
+
+   std::vector<int> periodicDipoleSlipSystemIDs( periodicDipoleSlipSystemIDsIn.size(), 0);
+   for ( size_t ii=0; ii < periodicDipoleSlipSystemIDsIn.size(); ++ii)
+      periodicDipoleSlipSystemIDs[ ii] = static_cast<int>( periodicDipoleSlipSystemIDsIn[ ii]);
+
+   std::vector<int> exitFaceIDs( exitFaceIDsIn.size(), 0);
+   for ( size_t ii=0; ii < exitFaceIDsIn.size(); ++ii)
+      exitFaceIDs[ ii] = static_cast<int>( exitFaceIDsIn[ ii]);
+
+   std::vector<int> nodes( nodesIn.size(), 0);
+   for ( size_t ii=0; ii < nodesIn.size(); ++ii)
+      nodes[ ii] = static_cast<int>( nodesIn[ ii]);
+
+   // dummy instantiations. TODO: find another way to implement this class
+   std::vector<int> periodicLoopSlipSystemIDs;
+   std::vector<double> periodicLoopRadii;
+   std::vector<long int> periodicLoopSides;
+   Eigen::Matrix<double,Eigen::Dynamic,3> periodicLoopCenters;
+   std::map<int, double> periodicLoopTargetDensitiesPerSlipSystem;
+   std::map<int, double> prismaticLoopTargetDensitiesPerSlipSystem;
+   Eigen::Matrix<double, Eigen::Dynamic,3> prismaticLoopCenters;
+   std::vector<double> prismaticLoopRadii;
+   std::vector<double> prismaticLoopSteps;
+   std::vector<int> prismaticLoopSlipSystemIDs;
+
+   microstructureSpecifications.emplace_back(
+         std::shared_ptr<model::MicrostructureSpecification>(
+            //new model::PeriodicDipoleIndividualSpecification(
+            new model::MicrostructureSpecification(
+               "PeriodicDipole", // type
+               "individual", // style
+               tag, // tag // std::string
+               *ddBase,
+               periodicDipoleSlipSystemIDsIn, // std::vector<int>
+               // dipoles
+               exitFaceIDs, // std::vector<int>
+               points, // Eigen::Matrix
+               heights, // std::vector<double>
+               nodes, // std::vector<int>
+               glideSteps, // std::vector<double>
+               // loops
+               periodicLoopSlipSystemIDs,
+               periodicLoopRadii,
+               periodicLoopSides,
+               periodicLoopCenters,
+               0.0, //periodicLoopTargetDensityIn,
+               0, //periodicLoopSegmentCountIn,
+               0.0, //periodicLoopRadiusDistributionMeanIn
+               0.0, //periodicLoopRadiusDistributionStdIn
+               0.0, //periodicDipoleTargetDensityIn,
+               0.0, // prismaticLoopTargetDensityIn,
+               periodicLoopTargetDensitiesPerSlipSystem,
+               prismaticLoopSlipSystemIDs,
+               prismaticLoopCenters,
+               prismaticLoopRadii,
+               prismaticLoopSteps,
+               prismaticLoopTargetDensitiesPerSlipSystem,
+               1.0, //prismaticLoopRadiiMean // not used
+               1.0, // prismaticLoopRadiiStd
+               1.0, //prismaticLoopStepMean // not used
+               1.0 // prismaticLoopStepStd
+               )
+            )
+         );
+
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "instantiating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << " " << spec->style << std::endl; // debug
+   return;
+}
+
+void model::AtomDisplacementGenerator::generateMicrostructure()
+{
+   for ( const auto& spec : microstructureSpecifications) // debug
+      std::cout << "generating a MicrostructureGeneratorInMem with spec: " << spec->microstructureType << std::endl; // debug
+
+   if ( microstructureSpecifications.size() == 0)
+   {
+      std::cout << "error: generateMicrostructure() requires defects to be specified via respective functions" << std::endl;
+      return;
+   }
+   for (const auto& spec : microstructureSpecifications) // debug
+   { // debug
+      std::cout << "spec->tag: " << spec->tag << std::endl; // debug
+      std::cout << "spec->microstructureType: " // debug
+         << spec->microstructureType<< std::endl; // debug
+      std::cout << "spec->style: " << spec->style<< std::endl; // debug
+   } // debug
+   model::MicrostructureGeneratorInMem mg( *ddBase, microstructureSpecifications);
+   return;
+}
+
+void model::AtomDisplacementGenerator::clearMicrostructureSpecifications()
+{
+   microstructureSpecifications.clear();
    return;
 }
 
@@ -1840,11 +2513,98 @@ PYBIND11_MODULE( dd2md, m) {
             //py::arg( "X0").none(false),
             py::arg( "periodicFaceIDs").none(false)
           )
-      .def("regenerateMicrostructure",
+      .def("specifyLoops",
+            &model::AtomDisplacementGenerator::specifyLoops,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "slipSystemIDs").none(false),
+            py::arg( "loopRadii").none(false),
+            py::arg( "loopSegmentCounts").none(false),
+            py::arg( "loopCenters").none(false)
+          )
+      .def("specifyDipoles",
+            &model::AtomDisplacementGenerator::specifyDipoles,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "slipSystemIDs").none(false),
+            py::arg( "exitFaceIDs").none(false),
+            py::arg( "points").none(false),
+            py::arg( "heights").none(false),
+            py::arg( "dipoleNodes").none(false),
+            py::arg( "dipoleGlideSteps").none(false)
+          )
+      .def("specifyLoopDensity",
+            &model::AtomDisplacementGenerator::specifyLoopDensity,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "loopDensity").none(false),
+            py::arg( "loopSegmentCount").none(false),
+            py::arg( "loopRadiusMean").none(false),
+            py::arg( "loopRadiusStd").none(false)
+          )
+      .def("specifyLoopDensitiesPerSlipSystem",
+            &model::AtomDisplacementGenerator::specifyLoopDensitiesPerSlipSystem,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "loopDensitiesPerSlipSystem").none(false),
+            py::arg( "loopSegmentCount").none(false), // keep
+            py::arg( "loopRadiusMean").none(false), // keep
+            py::arg( "loopRadiusStd").none(false) // keep
+          )
+      .def("specifyPrismaticLoops",
+            &model::AtomDisplacementGenerator::specifyPrismaticLoops,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "slipSystemIDs").none(false),
+            py::arg( "prismaticLoopRadii").none(false),
+            py::arg( "prismaticLoopCenters").none(false),
+            py::arg( "prismaticLoopSteps").none(false)
+          )
+      .def("specifyPrismaticLoopDensity",
+            &model::AtomDisplacementGenerator::specifyPrismaticLoopDensity,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "prismaticLoopDensity").none(false),
+            py::arg( "prismaticLoopRadiusMean").none(false),
+            py::arg( "prismaticLoopRadiusStd").none(false),
+            py::arg( "prismaticLoopStepMean").none(false),
+            py::arg( "prismaticLoopStepStd").none(false)
+          )
+      .def("specifyPrismaticLoopDensitiesPerSlipSystem",
+            &model::AtomDisplacementGenerator::specifyPrismaticLoopDensitiesPerSlipSystem,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "prismaticLoopDensitiesPerSlipSystem").none(false),
+            py::arg( "prismaticLoopRadiusMean").none(false), // keep
+            py::arg( "prismaticLoopRadiusStd").none(false), // keep
+            py::arg( "prismaticLoopStepMean").none(false), // keep
+            py::arg( "prismaticLoopStepStd").none(false) // keep
+          )
+      .def("specifyDipoleDensity",
+            &model::AtomDisplacementGenerator::specifyDipoleDensity,
+            py::kw_only(),
+            py::arg( "tag").none(false),
+            py::arg( "dipoleDensity").none(false)
+          )
+      .def("generateMicrostructure", // uses microstructureSpecifications
+         &model::AtomDisplacementGenerator::generateMicrostructure
+         )
+      .def("clearMicrostructureSpecifications", // uses microstructureSpecifications
+         &model::AtomDisplacementGenerator::clearMicrostructureSpecifications
+         )
+      .def("regenerateMicrostructure", // reads inputFiles/initialMicrostructure.txt
             &model::AtomDisplacementGenerator::regenerateMicrostructure
+          )
+      .def("setCurrentStep",
+            &model::AtomDisplacementGenerator::setCurrentStep,
+            py::arg("currentStep").none(false)
           )
       .def("readDefectiveCrystal",
             &model::AtomDisplacementGenerator::readDefectiveCrystal
+          )
+      .def("setOutputPath",
+            &model::AtomDisplacementGenerator::setOutputPath,
+            py::arg( "outputPath").none(false)
           )
       .def("readLammpsBox",
             &model::AtomDisplacementGenerator::readLammpsBox,

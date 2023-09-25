@@ -42,6 +42,11 @@
 #include <Eigen/Dense>
 #include <Eigen/LU>
 
+//#include <ddpy.h>
+#include <MicrostructureGeneratorBaseInMem.h>
+#include <MicrostructureGeneratorInMem.h>
+#include <MicrostructureSpecification.h>
+
 namespace py = pybind11;
 namespace model
 {
@@ -131,7 +136,6 @@ class AtomDisplacementGenerator
       void applyExternalElasticField();
       void resetStaticIDs();
       void readddBase();
-      void setCurrentStep( const long int& step);
       void shift_atoms();//fieldPointsType& fieldPointsIn);
 
       // 
@@ -150,6 +154,7 @@ class AtomDisplacementGenerator
             const std::string& lammpsDataFilePath
             );
       void readBurgersMagnitude( const std::string& materialPath);
+      void setCurrentStep( const long int& step);
       // constructor
       AtomDisplacementGenerator(
             const std::string& modelibFolderPath
@@ -169,10 +174,81 @@ class AtomDisplacementGenerator
          resetStaticIDs();
       };
 
+      std::list<std::shared_ptr<model::MicrostructureSpecification>> microstructureSpecifications;
+
       // public function members
       double getBurgersMagnitude();
       void readDefectiveCrystal();
-      void regenerateMicrostructure();
+      void setOutputPath( const std::string& outputPath);
+
+      void regenerateMicrostructure(); // reads from inputFiles/initialMicrostructure.txt
+      void generateMicrostructure(); // uses microstructureSpecifications
+      void clearMicrostructureSpecifications();
+      void specifyDipoles(
+         const std::string& tag,
+         const std::vector<int>& slipSystemIDs,
+         const std::vector<int>& exitFaceIDs,
+         const pybind11::array_t<double,
+                  pybind11::array::c_style | pybind11::array::forcecast>&
+                  pointsIn,
+         const std::vector<double>& heights,
+         const std::vector<int>& nodes,
+         const std::vector<double>& glideSteps
+         );
+
+      void specifyLoops(
+         const std::string& tag,
+         const std::vector<int>& slipSystemIDs,
+         const std::vector<double>& loopRadii,
+         const std::vector<long int>& loopSegmentCounts, //periodicLoopSides
+         const pybind11::array_t<double,
+                  pybind11::array::c_style | pybind11::array::forcecast>&
+                  loopCenters
+         );
+      void specifyLoopDensity(
+               const std::string& tag,
+               const double& periodicLoopTargetDensityIn,
+               const long int& periodicLoopSegmentCountIn,
+               const double& periodicLoopRadiusDistributionMeanIn,
+               const double& periodicLoopRadiusDistributionStdIn
+         );
+      void specifyLoopDensitiesPerSlipSystem(
+               const std::string& tag,
+               const std::map<int, double>& loopDensitiesPerSlipSystemIn,
+               const long int& periodicLoopSegmentCountIn,
+               const double& periodicLoopRadiusDistributionMeanIn,
+               const double& periodicLoopRadiusDistributionStdIn
+         );
+      void specifyPrismaticLoops(
+         const std::string& tag,
+         const std::vector<int>& slipSystemIDs,
+         const std::vector<double>& prismaticLoopRadii,
+         const pybind11::array_t<double,
+                  pybind11::array::c_style | pybind11::array::forcecast>&
+                  prismaticLoopCenters,
+         const std::vector<double>& prismaticLoopSteps
+         );
+      void specifyPrismaticLoopDensity(
+               const std::string& tag,
+               const double& prismaticLoopTargetDensityIn,
+               const double& prismaticLoopRadiusDistributionMeanIn,
+               const double& prismaticLoopRadiusDistributionStdIn,
+               const double& prismaticLoopStepDistributionMeanIn,
+               const double& prismaticLoopStepDistributionStdIn
+         );
+      void specifyPrismaticLoopDensitiesPerSlipSystem(
+               const std::string& tag,
+               const std::map<int, double>& prismaticLoopDensitiesPerSlipSystemIn,
+               const double& prismaticLoopRadiusDistributionMeanIn,
+               const double& prismaticLoopRadiusDistributionStdIn,
+               const double& prismaticLoopStepsDistributionMeanIn,
+               const double& prismaticLoopStepsDistributionStdIn
+         );
+      void specifyDipoleDensity(
+               const std::string& tag,
+               const double& periodicDipoleTargetDensityIn
+         );
+
       //void computeDisplacements( const std::string& lammpsFilePath);
       void computeDisplacements();
       void applyDisplacements();

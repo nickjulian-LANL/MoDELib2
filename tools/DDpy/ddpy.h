@@ -248,7 +248,6 @@ class DDInterface
       double getBurgersMagnitude();
       void readBurgersMagnitude( const std::string& materialPath);
       void readDefectiveCrystal();
-      void regenerateMicrostructure();
       void writeConfigToTxt();
       void clearMicrostructureSpecifications();
       void specifyDipoles(
@@ -319,7 +318,8 @@ class DDInterface
 
       void setOutputPath( const std::string& outputPath);
 
-      void generateMicrostructure();
+      void generateMicrostructure(); // uses microstructureSpecifications
+      //void regenerateMicrostructure(); // reads from inputFiles/initialMicrostructure.txt
       void regeneratePolycrystalFile(
             const py::array_t<double,
                py::array::c_style | py::array::forcecast>

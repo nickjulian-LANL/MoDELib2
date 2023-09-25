@@ -98,6 +98,8 @@ target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/include/Dislocation
 target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/include/DislocationDynamics/Polycrystals/)
 target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/include/DislocationDynamics/Visualization/)
 target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/include/DislocationDynamics/ElasticFields/)
+#target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/tools/DDpy)
+target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/tools/DDpy/MicrostructureGeneratorInMem)
 #target_include_directories(${DD2MD} PUBLIC ${MoDELibRootDir}/include/DDvtk/)
 
 add_subdirectory(${DD2MD_INCLUDE_Dir}/LmpReader LmpReader)
@@ -111,5 +113,7 @@ add_subdirectory(${MoDELibRootDir}/src/DislocationDynamicsBase DDDBase)
 add_subdirectory(${MoDELibRootDir}/src/DislocationMicrostructure DDDmicrostructure)
 add_subdirectory(${MoDELibRootDir}/src/PolycrystallineMaterials PolyMaterials)
 add_subdirectory(${MoDELibRootDir}/src/DislocationDynamics DDD)
+#add_subdirectory(${MoDELibRootDir}/tools/DDpy DDPY)
+add_subdirectory(${MoDELibRootDir}/tools/DDpy/MicrostructureGeneratorInMem MicrostructureGeneratorInMem)
 #add_subdirectory(${MoDELibRootDir}/src/DDvtk VTK)
 
