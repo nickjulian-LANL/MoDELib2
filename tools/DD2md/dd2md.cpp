@@ -1328,6 +1328,7 @@ model::AtomDisplacementGenerator::getPatchGlidePlanes()
 
 double model::AtomDisplacementGenerator::getBurgersMagnitude()
 {
+   if ( ddBase == nullptr) readddBase();
    std::cout << "ddBase->poly.b_SI: " << ddBase->poly.b_SI << std::endl; // debug
    return ddBase->poly.b_SI/1e-10;
 }
