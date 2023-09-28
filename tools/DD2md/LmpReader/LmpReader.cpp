@@ -781,6 +781,7 @@ int model::LmpReader::readLmpStreamBox(
 
    // empty the vectors to write be written to
    if ( bounds.size() != 0) bounds.clear();
+   if ( tiltFactors.size() != 0) tiltFactors.clear();
 
    // open the file
    std::ifstream inFile(lammpsFilePath.c_str(),std::ifstream::in);

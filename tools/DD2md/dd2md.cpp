@@ -945,13 +945,14 @@ void model::AtomDisplacementGenerator::computeDisplacements()
 
    if ( fieldPoints.size() <= 0)
    {
-      std::cout << "error: computDisplacements() called while fieldPoints"
+      std::cout << "error: computeDisplacements() called while fieldPoints"
          << " is empty" << std::endl;
       return;
    }
 
    if ( debugFlag) std::cout << "Computing DislocationDisplacement at field points..." << std::endl;
    //DC->DN->displacement( fieldPoints);
+   if (displacements.size() != 0) displacements.clear();
    if (displacements.size() != fieldPoints.size())
    {
       displacements.resize( fieldPoints.size());
@@ -994,15 +995,16 @@ void model::AtomDisplacementGenerator::computeDisplacements2()
    if ( debugFlag) std::cout << "Computing dislocationPlasticDisplacement() at field points..." << std::endl;
    // Iterate over fieldPoints and modify by applying
    //  dislocationPlasticDisplacement( ); to each.
+   if (displacements.size() != 0) displacements.clear();
+   if (displacements.size() != fieldPoints.size())
+   {
+      displacements.resize( fieldPoints.size());
+   }
    for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
    {
-      //VectorDim temp( VectorDim::Zero());
-      //temp += dislocationPlasticDisplacement( (burgersMagnitude/(1e-10))*fieldPoints[ ii]);
-      //temp += dislocationPlasticDisplacement(fieldPoints[ ii]);
-      fieldPoints[ ii] = dislocationPlasticDisplacement(
+      displacements[ ii] = dislocationPlasticDisplacement(
            fieldPoints[ ii]
            );
-      //fieldPoints[ ii] = ((1e-10)/burgersMagnitude)*(fieldPoints[ ii] + temp);
    }
    //DC->DN->displacement( fieldPoints);
 
@@ -1389,17 +1391,17 @@ void model::AtomDisplacementGenerator::writeConfigurationToFile(
             (lammpsTiltFactors[2] != 0)
             ))
    {
-      outputFile 
+      outputFile
          << std::setprecision(16)
          << (burgersMagnitude/1e-10) * lammpsTiltFactors[0]
          << " " << std::setprecision(16)
          << (burgersMagnitude/1e-10) * lammpsTiltFactors[1]
          << " " << std::setprecision(16)
          << (burgersMagnitude/1e-10) * lammpsTiltFactors[2]
-         << " xy xz yz" << std::endl << std::endl;
+         << " xy xz yz" << std::endl;
    }
-   std::cout << std::endl;
-   outputFile << "Masses" << std::endl << std::endl;
+
+   outputFile << std::endl << "Masses" << std::endl << std::endl;
    for ( const auto& mm : masses)
    {
       outputFile << mm.first << " " << mm.second << std::endl;
@@ -1784,6 +1786,9 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
                periodicFaceIDsIn
             )
 {
+   if ( DC != nullptr) DC = nullptr;
+   if ( ddBase != nullptr) ddBase = nullptr;
+
    std::cout << "lammps boundaries (regeneratePolycrystalFile): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
@@ -1815,9 +1820,9 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       return;
    }
    VectorDim grain1globalX1;
-   grain1globalX1 << grain1globalX1Np[0], grain1globalX1Np[1], grain1globalX1Np[2]; 
+   grain1globalX1 << grain1globalX1Np[0], grain1globalX1Np[1], grain1globalX1Np[2];
    VectorDim grain1globalX3;
-   grain1globalX3 << grain1globalX3Np[0], grain1globalX3Np[1], grain1globalX3Np[2]; 
+   grain1globalX3 << grain1globalX3Np[0], grain1globalX3Np[1], grain1globalX3Np[2];
    //if (! ((X0Np.shape(0) == 3) ))
    //{
    //   std::cout << "error: regeneratePolycrystalFile( ) requires "
@@ -2173,8 +2178,8 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    //std::cout << std::endl; // debug
 
    //// lammpsDeformedTiltFactors
-   //lammpsDeformedTiltFactors.clear(); 
-   //lammpsDeformedTiltFactors.resize(3); 
+   //lammpsDeformedTiltFactors.clear();
+   //lammpsDeformedTiltFactors.resize(3);
    //lammpsDeformedTiltFactors[0] // xy
    //   = lmpDeformationMatrix(0,0) * lammpsTiltFactors[0];
    //lammpsDeformedTiltFactors[1] // xz
@@ -2188,7 +2193,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    //   std::cout << tmpDbl << ", "; // debug
    //} // debug
    //std::cout << std::endl; // debug
-      
+
 
    //lammpsDeformedBoxDimensions.clear();
    //lammpsDeformedBoxDimensions.resize(3);
@@ -2379,8 +2384,8 @@ std::pair<int,int> model::AtomDisplacementGenerator::limit_denominator(
       invReciprocal = 1.0/remainder;
       coefficient = static_cast<int>( floor( invReciprocal));
       remainder = invReciprocal - coefficient;
-       
-       // numerator2 is older than numerator1 
+
+       // numerator2 is older than numerator1
       numerator2 = numerator1;
       numerator1 = numerator0;
       denominator2 = denominator1;
