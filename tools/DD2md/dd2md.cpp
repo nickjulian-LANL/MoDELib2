@@ -31,6 +31,7 @@ void model::AtomDisplacementGenerator::readLammpsConfigurationFile(
           lmpDeformationMatrix,
           //Eigen::Matrix<double,3,3>::Identity(),
           debugFlag);
+   std::cout << "lmpDeformationMatrix used for lammpsReader.readLmpStream():\n" << lmpDeformationMatrix << std::endl; // debug
    std::cout << "lammps boundaries (before readLmpStream): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
@@ -96,14 +97,30 @@ void model::AtomDisplacementGenerator::readddBase()
    ddBase =  std::unique_ptr<DislocationDynamicsBaseType>(
          new DislocationDynamicsBaseType( dddPath)
          );
-   configFields = std::unique_ptr<DDconfigFields<3>>(
-         new DDconfigFields<3>( *ddBase, configIO));
+   return;
+}
+
+
+void model::AtomDisplacementGenerator::readConfigIO()
+{
+   if ( ddBase == nullptr)
+   {
+      std::cout << "error model::AtomDisplacementGenerator::readConfigIO()"
+        << " called while ddBase == nullptr" << std::endl;
+      return;
+   }
+   configIO = std::make_unique<DDconfigIO<3>>(
+               ddBase->simulationParameters.traitsIO.evlFolder
+               );
+   configFields = std::make_unique<DDconfigFields<3>>(
+                                     *ddBase, *configIO);
    return;
 }
 
 void model::AtomDisplacementGenerator::readDefectiveCrystal()
 {
    if ( ddBase == nullptr) readddBase();
+   readConfigIO();
 
    DC = std::unique_ptr<DefectiveCrystalType>(
          new DefectiveCrystalType( *ddBase)
@@ -220,6 +237,8 @@ void model::AtomDisplacementGenerator::setOutputPath( const std::string& outputP
    //  ddBase->simulationParameters.traitsIO.evlFolder
    //  ddBase->simulationParameters.traitsIO.auxFolder
    //  ddBase->simulationParameters.traitsIO.fFolder
+   configIO->clear();
+   configIO = std::make_unique<DDconfigIO<3>>(outputPath + "/evl");
    return;
 }
 
@@ -878,12 +897,12 @@ void model::AtomDisplacementGenerator::readLammpsBox(
 const model::DDconfigIO<3>& model::AtomDisplacementGenerator::config(
       ) const
 {
-   return configIO;
+   return *configIO;
 }
 
 model::DDconfigIO<3>& model::AtomDisplacementGenerator::config()
 {
-   return configIO;
+   return *configIO;
 }
 
 typename model::AtomDisplacementGenerator::VectorDim
@@ -906,7 +925,7 @@ void model::AtomDisplacementGenerator::readConfiguration(
       const size_t& runID)
 {
    //std::cout << "configIO.getTxtFilename(0): " << configIO.getTxtFilename(0) << std::endl; // debug
-   configIO.read( runID);
+   configIO->read( runID);
    configFields->updateConfiguration();
    return;
 }
@@ -1596,19 +1615,32 @@ void model::AtomDisplacementGenerator::writeDisplacementsToLammpsFile(
    return;
 }
 
+long int model::AtomDisplacementGenerator::getCurrentStep()
+{
+   if ( ddBase == nullptr)
+   {
+      std::cout << "error, model::AtomDisplacementGenerator::getCurrentStep(): ddBase == nullptr. returning -1" << std::endl;
+      return -1;
+   }
+   return ddBase->simulationParameters.runID;
+}
 
 void model::AtomDisplacementGenerator::setCurrentStep( const long int& step)
 {
-   if ( DC == nullptr)
-   {
-      std::cout << "error: cannot setCurrentStep until "
-         << "DefectiveCrystal is instantiated" << std::endl;
-      return;
-   }
+   //if ( DC == nullptr)
+   //{
+   //   std::cout << "error: cannot setCurrentStep until "
+   //      << "DefectiveCrystal is instantiated" << std::endl;
+   //   return;
+   //}
 
    ddBase->simulationParameters.runID = step;
-   DC->externalLoadController->update( DC->plasticStrain());
-   ddBase->simulationParameters.manageRestart();
+   if ( DC != nullptr)
+   {
+      std::cout << "model::AtomDisplacementGenerator::setCurrentStep(): DC != nullptr, updating load and calling managerRestart()" << std::endl; // debug
+      DC->externalLoadController->update( DC->plasticStrain());
+      ddBase->simulationParameters.manageRestart();
+   }
    return;
 }
 
@@ -2062,14 +2094,14 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    //MatrixDim BB( AAinv * C2Ginv*(lammpsBoxEdgesCrystalUnits.transpose())); // transform boxEdge vectors
    //MatrixDim modelibBoxEdges;//( MatrixDim::Zero());
    MatrixDim FF; // FF scales the mesh: y=F(x-x0), where x is the input mesh
-   std::cout << "AA:\n" << AA << std::endl; // debug
-   std::cout << "BB:\n" << BB << std::endl; // debug
+   //std::cout << "AA:\n" << AA << std::endl; // debug
+   //std::cout << "BB:\n" << BB << std::endl; // debug
    for ( size_t jj=0; jj < 3; ++jj)
    {
       VectorDim Bcol( BB( Eigen::seq(0,Eigen::last), jj));
-      std::cout << "Bcol:\n" << Bcol << std::endl; // debug
+      //std::cout << "Bcol:\n" << Bcol << std::endl; // debug
       Bcol /= Bcol.array().abs().maxCoeff(); // rescale box edge vector components to be within [-1,1] interval
-      std::cout << "Bcol rescaled:\n" << Bcol << std::endl; // debug
+      //std::cout << "Bcol rescaled:\n" << Bcol << std::endl; // debug
       Eigen::Matrix<int,3,1> nn; nn << 0,0,0;
       Eigen::Matrix<int,3,1> dd; dd << 1,1,1;
       std::pair<int,int> ff;
@@ -2079,15 +2111,15 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
          nn(ii) = ff.first;
          dd(ii) = ff.second;
       }
-      std::cout << "nn:\n" << nn << std::endl; // debug
-      std::cout << "dd:\n" << dd << std::endl; // debug
-      //dp=np.prod(dd);
+      //std::cout << "nn:\n" << nn << std::endl; // debug
+      //std::cout << "dd:\n" << dd << std::endl; // debug
+      ////dp=np.prod(dd);
       int dp( 1); // product of denominators of box edge vector components
       for ( size_t ii=0; ii < 3; ++ii)
       {
          dp *= dd(ii);
       }
-      std::cout << "dp: " << dp << std::endl; // debug
+      //std::cout << "dp: " << dp << std::endl; // debug
       //nr=np.array([1,1,1], dtype=int)
       Eigen::Matrix<int,3,1> nr; nr << 1, 1, 1;
       //for i in range(0, 3):
@@ -2096,7 +2128,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       {
          nr(ii) = nn(ii) * dp/dd(ii); // numerators multiplied by the denominators missing from their rational expression
       }
-      std::cout << "nr:\n" << nr << std::endl; // debug
+      //std::cout << "nr:\n" << nr << std::endl; // debug
       //nr=nr/np.gcd.reduce(nr)
       // divide out the greatest common divisor of nr's components
       int nrGcd( 1);
@@ -2106,14 +2138,14 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       //L[:,jj]=self.A@nr.transpose()
       VectorDim nrDubl;
       nrDubl << nr(0), nr(1), nr(2);
-      std::cout << "nrDubl:\n" << nrDubl << std::endl; // debug
+      //std::cout << "nrDubl:\n" << nrDubl << std::endl; // debug
       VectorDim AAnr( AA*nrDubl); // L[:,jj]
-      std::cout << "AAnr:\n" << AAnr << std::endl; // debug
+      //std::cout << "AAnr:\n" << AAnr << std::endl; // debug
       //self.F[:,jj]=self.C2G@modelibBoxEdges[:,jj]*self.boxScaling[jj]
       //self.F[:,jj]=self.C2G@L[:,jj]*self.boxScaling[jj]
       // columns of modelibBoxEdges should be lattice vectors (in global coordinates) aligned to box edges
       VectorDim modelibBoxEdgesCol( (C2G*AAnr)* boxScalingNp[jj]); // transform lattice vectors aligned to box edges from crystal coordinates to global coordinates
-      std::cout << "modelibBoxEdgesCol:\n" << modelibBoxEdgesCol << std::endl; // debug
+      //std::cout << "modelibBoxEdgesCol:\n" << modelibBoxEdgesCol << std::endl; // debug
       for ( size_t ii=0; ii < 3; ++ii)
       {
          FF(ii,jj) = modelibBoxEdgesCol(ii);
@@ -2600,6 +2632,9 @@ PYBIND11_MODULE( dd2md, m) {
          )
       .def("regenerateMicrostructure", // reads inputFiles/initialMicrostructure.txt
             &model::AtomDisplacementGenerator::regenerateMicrostructure
+          )
+      .def("getCurrentStep",
+            &model::AtomDisplacementGenerator::getCurrentStep
           )
       .def("setCurrentStep",
             &model::AtomDisplacementGenerator::setCurrentStep,
