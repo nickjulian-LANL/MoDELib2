@@ -1,7 +1,7 @@
 #ifndef dd2md_readLmp_H_
 #define dd2md_readLmp_H_
 
-//#ifndef _MODEL_NON_SINGULAR_DD_ 
+//#ifndef _MODEL_NON_SINGULAR_DD_
 //#define _MODEL_NON_SINGULAR_DD_ 1 // 0 classical theory, 1 Cai's regularization method, 2 Lazar's regularization method
 //#endif
 
@@ -77,7 +77,7 @@ class AtomDisplacementGenerator
       //  to make those slip systems align with modelib slip systems
       MatrixDim lmpDeformationMatrix;
       MatrixDim lmpDeformationMatrixInverse;
-      
+
       MatrixDim C2G; // [[ss],[nn x ss],[nn]
       MatrixDim C2Ginv; // [[ss],[nn x ss],[nn]
 
@@ -139,15 +139,15 @@ class AtomDisplacementGenerator
       void readConfigIO();
       void shift_atoms();//fieldPointsType& fieldPointsIn);
 
-      // 
+      //
       std::pair<int,int> limit_denominator(
          const double& xxIn,
          const int& max_denominator
          );
-      // 
+      //
       const DDconfigIO<3>& config() const;
       DDconfigIO<3>& config();
-      // 
+      //
 
    public:
       void readConfiguration( const size_t& runID);
