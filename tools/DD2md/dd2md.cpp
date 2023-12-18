@@ -58,6 +58,7 @@ void model::AtomDisplacementGenerator::readLammpsConfigurationFile(
    // Shift atoms so that modelib slip systems and lammps slip systems
    //  coincide.
    shift_atoms();
+   enforce_periodicity();
 
    std::cout << "lammps boundaries (readLammpsConfigurationFile): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
@@ -1069,6 +1070,7 @@ void model::AtomDisplacementGenerator::applyDisplacements()
    {
       fieldPoints[ii] += displacements[ii];
    }
+   enforce_periodicity();
    std::cout << "lammps boundaries (applyDisplacements): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
@@ -1469,10 +1471,12 @@ py::array_t<double, py::array::c_style>
    py::array_t<double, py::array::c_style> displacementsTmp;
    int atomCount( displacements.size());
    displacementsTmp.resize( { atomCount, 3});
+
+   py::buffer_info displacementsBuf = displacementsTmp.request();
+   double* displacementsPtr = static_cast<double*>( displacementsBuf.ptr);
+
    for ( int ii=0; ii < atomCount; ++ii)
    {
-      py::buffer_info displacementsBuf = displacementsTmp.request();
-      double* displacementsPtr = static_cast<double*>( displacementsBuf.ptr);
       displacementsPtr[0 + 3*ii]
          = displacements[ii](0) * ddBase->poly.b_SI /1e-10;
       displacementsPtr[1 + 3*ii]
@@ -1481,6 +1485,56 @@ py::array_t<double, py::array::c_style>
          = displacements[ii](2) * ddBase->poly.b_SI /1e-10;
    }
    return displacementsTmp;
+}
+
+py::array_t<double, py::array::c_style>
+   model::AtomDisplacementGenerator::getLammpsBoxPBCVectors()
+{
+   py::array_t<double, py::array::c_style> lammpsBoxPBCVectorsTmp;
+   if ( lammpsBoxPBCVectors.size() == 0)
+   {
+      std::cout << "error, getLammpsBoxPBCVectors() was called before lammpsBoxPBCVectors were evaluated" << std::endl;
+      return lammpsBoxPBCVectorsTmp;
+   }
+
+   int vectorCount( lammpsBoxPBCVectors.size());
+   lammpsBoxPBCVectorsTmp.resize( {vectorCount, 3});
+
+   py::buffer_info lammpsBoxPBCVectorsBuf = lammpsBoxPBCVectorsTmp.request();
+   double* lammpsBoxPBCVectorsPtr = static_cast<double*>( lammpsBoxPBCVectorsBuf.ptr);
+   for ( int ii=0; ii < vectorCount; ++ii)
+   {
+      lammpsBoxPBCVectorsPtr[0 + 3*ii] = lammpsBoxPBCVectors[ii](0);
+      lammpsBoxPBCVectorsPtr[1 + 3*ii] = lammpsBoxPBCVectors[ii](1);
+      lammpsBoxPBCVectorsPtr[2 + 3*ii] = lammpsBoxPBCVectors[ii](2);
+   }
+
+   return lammpsBoxPBCVectorsTmp;
+}
+
+py::array_t<double, py::array::c_style>
+   model::AtomDisplacementGenerator::getLammpsBoxVertices()
+{
+   py::array_t<double, py::array::c_style> lammpsBoxVerticesTmp;
+   if ( lammpsBoxVertices.size() == 0)
+   {
+      std::cout << "error, getLammpsBoxVertices() was called before lammpsBoxVertices were evaluated" << std::endl;
+      return lammpsBoxVerticesTmp;
+   }
+
+   int vertexCount( lammpsBoxVertices.size());
+   lammpsBoxVerticesTmp.resize( {vertexCount, 3});
+
+   py::buffer_info lammpsBoxVerticesBuf = lammpsBoxVerticesTmp.request();
+   double* lammpsBoxVerticesPtr = static_cast<double*>( lammpsBoxVerticesBuf.ptr);
+   for ( int ii=0; ii < vertexCount; ++ii)
+   {
+      lammpsBoxVerticesPtr[0 + 3*ii] = lammpsBoxVertices[ii](0);
+      lammpsBoxVerticesPtr[1 + 3*ii] = lammpsBoxVertices[ii](1);
+      lammpsBoxVerticesPtr[2 + 3*ii] = lammpsBoxVertices[ii](2);
+   }
+
+   return lammpsBoxVerticesTmp;
 }
 
 std::map< size_t, model::AtomDisplacementGenerator::VectorDim> //pybind11::array_t<double, pybind11::array::c_style> >
@@ -1751,6 +1805,7 @@ void model::AtomDisplacementGenerator::shift_atoms(
    displacementVector *= latticeConstant;
    displacementVector = (C2Ginv)*displacementVector;
    std::cout << "displacementVector: \n" << displacementVector << std::endl; // debug
+
    // TODO: incorporate atomic crystallographic orientation rather than use this
    for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
    {
@@ -1785,6 +1840,56 @@ void model::AtomDisplacementGenerator::shift_atoms(
    std::cout << "lammps boundaries (shift_atoms post): " <<  std::endl;// debug
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
+   return;
+}
+
+void model::AtomDisplacementGenerator::enforce_periodicity()
+{
+   // iterate over all positions to find the lowest
+   if ( fieldPoints.size() <= 0)
+   {
+      std::cout << "AtomDisplacementGenerator::enforce_periodicity(): "
+         << "passed an empty set of atoms ..."
+         << std::endl;
+      return;
+   }
+
+   // Iterate over all fieldPoints and translate them if they exceed
+   //  lammpsBoxBounds.
+   double periodX, periodY, periodZ;
+   periodX = lammpsBoxBounds[1] - lammpsBoxBounds[0];
+   periodY = lammpsBoxBounds[3] - lammpsBoxBounds[2];
+   periodZ = lammpsBoxBounds[5] - lammpsBoxBounds[4];
+
+   for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
+   {
+      // translate when points are below lower bounds
+      while ( fieldPoints[ii](0) < lammpsBoxBounds[0])
+      {
+         fieldPoints[ii](0) += periodX;
+      }
+      while ( fieldPoints[ii](1) < lammpsBoxBounds[2])
+      {
+         fieldPoints[ii](1) += periodY;
+      }
+      while ( fieldPoints[ii](2) < lammpsBoxBounds[4])
+      {
+         fieldPoints[ii](2) += periodZ;
+      }
+      // translate when points are above upper bounds
+      while ( fieldPoints[ii](0) > lammpsBoxBounds[1])
+      {
+         fieldPoints[ii](0) -= periodX;
+      }
+      while ( fieldPoints[ii](1) > lammpsBoxBounds[3])
+      {
+         fieldPoints[ii](1) -= periodY;
+      }
+      while ( fieldPoints[ii](2) > lammpsBoxBounds[5])
+      {
+         fieldPoints[ii](2) -= periodZ;
+      }
+   }
    return;
 }
 
@@ -2174,6 +2279,87 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    for ( const auto& bd : lammpsBoxBounds) std::cout << bd << ", "; // debug
    std::cout << std::endl; // debug
 
+   VectorDim edgeVector1, edgeVector2, edgeVector3;
+   edgeVector1 << lammpsBoxBounds[1] - lammpsBoxBounds[0],
+                  0,
+                  0;
+   edgeVector2 << lammpsTiltFactors[0], // xy
+                  lammpsBoxBounds[3] - lammpsBoxBounds[2], // yhi - ylo
+                  0;
+   edgeVector3 << lammpsTiltFactors[1], // xz,
+                  lammpsTiltFactors[2], // yz,
+                  lammpsBoxBounds[5] - lammpsBoxBounds[4];// zhi - zlo
+
+   lammpsBoxPBCVectors.clear();
+   lammpsBoxPBCVectors.push_back( VectorDim());
+   lammpsBoxPBCVectors.push_back( VectorDim());
+   lammpsBoxPBCVectors.push_back( VectorDim());
+   lammpsBoxPBCVectors[0] << edgeVector1(0),
+                               edgeVector1(1),
+                               edgeVector1(2);
+   lammpsBoxPBCVectors[1] << edgeVector2(0),
+                               edgeVector2(1),
+                               edgeVector2(2);
+   lammpsBoxPBCVectors[2] << edgeVector3(0),
+                               edgeVector3(1),
+                               edgeVector3(2);
+   for (size_t ii=0; ii < lammpsBoxPBCVectors.size(); ++ii)
+   {
+      lammpsBoxPBCVectors[ii](0) *= burgersMagnitude/1e-10;
+      lammpsBoxPBCVectors[ii](1) *= burgersMagnitude/1e-10;
+      lammpsBoxPBCVectors[ii](2) *= burgersMagnitude/1e-10;
+      lammpsBoxPBCVectors[ii] = lmpDeformationMatrix * lammpsBoxPBCVectors[ii];
+   }
+
+   lammpsBoxVertices.clear();
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices.push_back( VectorDim());
+   lammpsBoxVertices[0] <<
+            lammpsBoxBounds[0],
+            lammpsBoxBounds[2],
+            lammpsBoxBounds[4];
+   lammpsBoxVertices[1] <<
+            lammpsBoxBounds[0] + edgeVector1(0),
+            lammpsBoxBounds[2] + edgeVector1(1),
+            lammpsBoxBounds[4] + edgeVector1(2);
+   lammpsBoxVertices[2] <<
+            lammpsBoxBounds[0] + edgeVector1(0) + edgeVector2(0),
+            lammpsBoxBounds[2] + edgeVector1(1) + edgeVector2(1),
+            lammpsBoxBounds[4] + edgeVector1(2) + edgeVector2(2);
+   lammpsBoxVertices[3] <<
+            lammpsBoxBounds[0] + edgeVector2(0),
+            lammpsBoxBounds[2] + edgeVector2(1),
+            lammpsBoxBounds[4] + edgeVector2(2);
+   lammpsBoxVertices[4] <<
+            lammpsBoxBounds[0] + edgeVector2(0) + edgeVector3(0),
+            lammpsBoxBounds[2] + edgeVector2(1) + edgeVector3(1),
+            lammpsBoxBounds[4] + edgeVector2(2) + edgeVector3(2);
+   lammpsBoxVertices[5] <<
+            lammpsBoxBounds[0] + edgeVector3(0),
+            lammpsBoxBounds[2] + edgeVector3(1),
+            lammpsBoxBounds[4] + edgeVector3(2);
+   lammpsBoxVertices[6] <<
+            lammpsBoxBounds[0] + edgeVector1(0) + edgeVector3(0),
+            lammpsBoxBounds[2] + edgeVector1(1) + edgeVector3(1),
+            lammpsBoxBounds[4] + edgeVector1(2) + edgeVector3(2);
+   lammpsBoxVertices[7] <<
+            lammpsBoxBounds[0] + edgeVector1(0) + edgeVector2(0) + edgeVector3(0),
+            lammpsBoxBounds[2] + edgeVector1(1) + edgeVector2(1) + edgeVector3(1),
+            lammpsBoxBounds[4] + edgeVector1(2) + edgeVector2(2) + edgeVector3(2);
+   for ( size_t ii=0; ii < lammpsBoxVertices.size(); ++ii)
+   {
+      lammpsBoxVertices[ii](0) *= burgersMagnitude/1e-10;
+      lammpsBoxVertices[ii](1) *= burgersMagnitude/1e-10;
+      lammpsBoxVertices[ii](2) *= burgersMagnitude/1e-10;
+      lammpsBoxVertices[ii] = lmpDeformationMatrix * lammpsBoxVertices[ii];
+   }
+
    ////////////////////////////////////////////////
    /// use the local lmpDeformationMatrix to calculate lammpsDeformedBox
    // the following should be unecessary. lammpsBoxBounds were alread deformed by the LmpReader which was instantiated using lmpDeformationMatrix, which should have been applied to all positions and bounds when the file was read.
@@ -2527,6 +2713,12 @@ PYBIND11_MODULE( dd2md, m) {
             )
       .def("getDisplacementsMap",
             &model::AtomDisplacementGenerator::getDisplacementsMap
+            )
+      .def("getLammpsBoxVertices",
+            &model::AtomDisplacementGenerator::getLammpsBoxVertices
+            )
+      .def("getLammpsBoxPBCVectors",
+            &model::AtomDisplacementGenerator::getLammpsBoxPBCVectors
             )
       .def("writeConfigurationToFile",
             &model::AtomDisplacementGenerator::writeConfigurationToFile,
