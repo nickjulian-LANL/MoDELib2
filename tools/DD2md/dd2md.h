@@ -47,6 +47,16 @@
 #include <MicrostructureGeneratorInMem.h>
 #include <MicrostructureSpecification.h>
 
+// classes and headers for tracking loops
+//template <typename T>
+//class LoopLink;
+//template <typename T>
+//class NetworkLink;
+//#include <LoopLink.h>
+//#include <NetworkLink.h>
+//#include <WeakPtrFactories.h>
+//#include <LoopNetwork.h>
+
 namespace py = pybind11;
 namespace model
 {
@@ -62,6 +72,14 @@ class AtomDisplacementGenerator
       typedef std::vector<std::vector<double>> fieldPointsOutputType;
       typedef model::DislocationDynamicsBase<3> DislocationDynamicsBaseType;
       typedef model::DefectiveCrystal<3,0> DefectiveCrystalType;
+
+      // typedefs useful for tracking loops and network links
+      //typedef typename TypeTraits<Derived>::NetworkLinkType NetworkLinkType;
+      //typedef WeakPtrFactory<Derived,NetworkLinkType> NetworkLinkContainerType;
+      //typedef typename TypeTraits<Derived>::LoopType LoopType;
+      //typedef WeakPtrFactory<Derived,LoopType> LoopContainerType;
+      //typedef LoopNetwork::LoopType LoopType;
+
 
       // private data members
       std::string dddPath; // remove, to be found in ddBase
@@ -123,6 +141,8 @@ class AtomDisplacementGenerator
       pointIDsType pointIDs;
       std::vector<VectorDim> elasticDisplacements;
 
+      // map enumerating loops
+
       std::vector<std::string> acceptableLattices;//({"bcc","fcc"});
       std::vector<std::string> acceptableMaterials;//({"Cu","Fe_320"});
 
@@ -150,6 +170,7 @@ class AtomDisplacementGenerator
       //
 
    public:
+
       void readConfiguration( const size_t& runID);
       void readLammpsConfigurationFile(
             const std::string& lammpsDataFilePath

@@ -945,6 +945,7 @@ double model::AtomDisplacementGenerator::solidAngle(
    return solidAngle((VectorDim()<<x,y,z).finished());
 }
 
+// TODO: create a version of this that takes arguments specifying a subset of all loops and a collection of points
 void model::AtomDisplacementGenerator::computeDisplacements()
       //const std::string& lammpsFilePath)
 {
