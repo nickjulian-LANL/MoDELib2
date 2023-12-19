@@ -80,7 +80,6 @@ class AtomDisplacementGenerator
       //typedef WeakPtrFactory<Derived,LoopType> LoopContainerType;
       //typedef LoopNetwork::LoopType LoopType;
 
-
       // private data members
       std::string dddPath; // remove, to be found in ddBase
       //std::string meshFilePath; // remove, to be found in ddBase
@@ -154,6 +153,7 @@ class AtomDisplacementGenerator
       double burgersMagnitude;
       int solidSolutionNoiseMode;
       int stackingFaultNoiseMode;
+      double machineEpsilon;
 
       // private function members
       void applyExternalElasticField();
@@ -197,6 +197,7 @@ class AtomDisplacementGenerator
          , burgersMagnitude( -1.0)
          , solidSolutionNoiseMode( 0)
          , stackingFaultNoiseMode( 0)
+         , machineEpsilon( std::numeric_limits<double>::epsilon())
       {
          resetStaticIDs();
       };

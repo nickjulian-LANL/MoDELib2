@@ -1845,7 +1845,8 @@ void model::AtomDisplacementGenerator::shift_atoms(
 
 void model::AtomDisplacementGenerator::enforce_periodicity()
 {
-   // iterate over all positions to find the lowest
+   // presume the system box has lowest corner at the origin (0,0,0)
+
    if ( fieldPoints.size() <= 0)
    {
       std::cout << "AtomDisplacementGenerator::enforce_periodicity(): "
@@ -1854,42 +1855,109 @@ void model::AtomDisplacementGenerator::enforce_periodicity()
       return;
    }
 
-   // Iterate over all fieldPoints and translate them if they exceed
-   //  lammpsBoxBounds.
-   double periodX, periodY, periodZ;
-   periodX = lammpsBoxBounds[1] - lammpsBoxBounds[0];
-   periodY = lammpsBoxBounds[3] - lammpsBoxBounds[2];
-   periodZ = lammpsBoxBounds[5] - lammpsBoxBounds[4];
+   if ( lammpsBoxPBCVectors.size() <= 0)
+   {
+      std::cout << "error,"
+         << " AtomDisplacementGenerator::enforce_periodicity()"
+         << " called before lammpsBoxPBCVectors were evaluated."
+         << std::endl;
+      return;
+   }
 
+   std::cout << "lammpsBoxPBCVectors: " << std::endl
+      << lammpsBoxPBCVectors[0] << std::endl  << std::endl 
+      << lammpsBoxPBCVectors[1] << std::endl  << std::endl 
+      << lammpsBoxPBCVectors[2] << std::endl;
+
+   // create halfspace normals
+   double pbcVecMag0, pbcVecMag1, pbcVecMag2;
+   pbcVecMag0 = sqrt(lammpsBoxPBCVectors[0].dot(lammpsBoxPBCVectors[0]));
+   pbcVecMag1 = sqrt(lammpsBoxPBCVectors[1].dot(lammpsBoxPBCVectors[1]));
+   pbcVecMag2 = sqrt(lammpsBoxPBCVectors[2].dot(lammpsBoxPBCVectors[2]));
+    
+   std::vector<VectorDim> halfspaceNormals;
+   halfspaceNormals.resize(3); 
+
+   halfspaceNormals[0]
+      = lammpsBoxPBCVectors[1].cross( lammpsBoxPBCVectors[2]);
+   halfspaceNormals[0]
+      /= sqrt( halfspaceNormals[0].dot( halfspaceNormals[0]));
+
+   halfspaceNormals[1]
+      = lammpsBoxPBCVectors[2].cross( lammpsBoxPBCVectors[0]);
+   halfspaceNormals[1]
+      /= sqrt( halfspaceNormals[1].dot( halfspaceNormals[1]));
+
+   halfspaceNormals[2]
+      = lammpsBoxPBCVectors[0].cross( lammpsBoxPBCVectors[1]);
+   halfspaceNormals[2]
+      /= sqrt( halfspaceNormals[2].dot( halfspaceNormals[2]));
+
+
+   for ( size_t ii=0; ii < halfspaceNormals.size(); ++ii)
+   {
+      if ( abs( halfspaceNormals[ii](0)) <= machineEpsilon)
+         halfspaceNormals[ii](0) = 0.0;
+      if ( abs( halfspaceNormals[ii](1)) <= machineEpsilon)
+         halfspaceNormals[ii](1) = 0.0;
+      if ( abs( halfspaceNormals[ii](2)) <= machineEpsilon)
+         halfspaceNormals[ii](2) = 0.0;
+   }
+
+   std::cout << "halfspaceNormals:" << std::endl
+      << halfspaceNormals[0] << std::endl << std::endl
+      << halfspaceNormals[1] << std::endl << std::endl
+      << halfspaceNormals[2] << std::endl;
+   std::cout << "pbcVecMag[0-2]: " 
+      << pbcVecMag0 << ", " << pbcVecMag1 << ", " << pbcVecMag2 << std::endl;
+   std::cout << "halfspaceNormals magnitudes:" << std::endl
+      << halfspaceNormals[0].dot( halfspaceNormals[0] ) << ", "
+      << halfspaceNormals[1].dot( halfspaceNormals[1] ) << ", "
+      << halfspaceNormals[2].dot( halfspaceNormals[2] ) << std::endl;
+
+   std::vector<VectorDim> pbcVectorsWithoutB;
+   for ( size_t ii=0; ii < 3; ++ii)
+      pbcVectorsWithoutB.push_back(  lammpsBoxPBCVectors[ ii] /( burgersMagnitude/1e-10));
+
+   std::vector<double> pbcVecDotHSN;
+   for ( size_t ii=0; ii < 3; ++ii)
+   {
+      pbcVecDotHSN.push_back(
+            pbcVectorsWithoutB[ii].dot( halfspaceNormals[ii]) );
+      if ( abs( pbcVecDotHSN[ii]) <= machineEpsilon) pbcVecDotHSN[ii] = 0.0;
+   }
+
+   std::cout << "pbcVecDotHSN:" << std::endl;
+   for ( size_t ii=0; ii < pbcVecDotHSN.size(); ++ii)
+      std::cout << pbcVecDotHSN[ii] << std::endl << std::endl;
+
+   double dotProdTmp; 
+   // Iterate over fieldPoints and shift them into the appropriate
+   //   halfspaces.
+   std::cout << "machineEpsilon: " << machineEpsilon << std::endl;
    for ( size_t ii=0; ii < fieldPoints.size(); ++ii)
    {
-      // translate when points are below lower bounds
-      while ( fieldPoints[ii](0) < lammpsBoxBounds[0])
+      for ( size_t jj=0; jj < 3; ++jj)
       {
-         fieldPoints[ii](0) += periodX;
-      }
-      while ( fieldPoints[ii](1) < lammpsBoxBounds[2])
-      {
-         fieldPoints[ii](1) += periodY;
-      }
-      while ( fieldPoints[ii](2) < lammpsBoxBounds[4])
-      {
-         fieldPoints[ii](2) += periodZ;
-      }
-      // translate when points are above upper bounds
-      while ( fieldPoints[ii](0) > lammpsBoxBounds[1])
-      {
-         fieldPoints[ii](0) -= periodX;
-      }
-      while ( fieldPoints[ii](1) > lammpsBoxBounds[3])
-      {
-         fieldPoints[ii](1) -= periodY;
-      }
-      while ( fieldPoints[ii](2) > lammpsBoxBounds[5])
-      {
-         fieldPoints[ii](2) -= periodZ;
+         dotProdTmp = fieldPoints[ii].dot( halfspaceNormals[ jj]);
+         if ( abs( dotProdTmp) <= machineEpsilon) dotProdTmp = 0.0;
+         while ( dotProdTmp < 0)
+         {
+            //std::cout << "dotProdTmp: " << dotProdTmp << ", ";
+            //std::cout << "fieldPoints[ii]:" << fieldPoints[ii] << std::endl;
+            fieldPoints[ii] += pbcVectorsWithoutB[ jj];
+            dotProdTmp = fieldPoints[ii].dot( halfspaceNormals[ jj]);
+            if ( abs( dotProdTmp) <= machineEpsilon) dotProdTmp = 0.0;
+         }
+         while (dotProdTmp > pbcVecDotHSN[ jj])
+         {
+            fieldPoints[ii] -= pbcVectorsWithoutB[ jj];
+            dotProdTmp = fieldPoints[ii].dot( halfspaceNormals[ jj]);
+            if ( abs( dotProdTmp) <= machineEpsilon) dotProdTmp = 0.0;
+         }
       }
    }
+
    return;
 }
 
@@ -2255,6 +2323,7 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       for ( size_t ii=0; ii < 3; ++ii)
       {
          FF(ii,jj) = modelibBoxEdgesCol(ii);
+         if ( abs( FF(ii,jj)) <= machineEpsilon) FF(ii,jj) = 0.0;
       }
    }
    std::cout << "FF:\n" << FF << std::endl; // debug
@@ -2268,7 +2337,20 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
    //  planes coincide with DDD slip planes.
 
    lmpDeformationMatrix = FF * (lammpsBoxEdges.inverse()) ;
+   for ( size_t ii=0; ii < 3; ++ii)
+      for ( size_t jj=0; jj < 3; ++jj)
+      {
+         if ( abs( lmpDeformationMatrix(ii,jj)) <= machineEpsilon)
+            lmpDeformationMatrix(ii,jj) = 0.0;
+      }
    lmpDeformationMatrixInverse =  lmpDeformationMatrix.inverse();
+   for ( size_t ii=0; ii < 3; ++ii)
+      for ( size_t jj=0; jj < 3; ++jj)
+      {
+         if ( abs( lmpDeformationMatrixInverse(ii,jj)) <= machineEpsilon)
+            lmpDeformationMatrixInverse(ii,jj) = 0.0;
+      }
+   
    std::cout << "lmpDeformationMatrix :\n" << lmpDeformationMatrix // debug
       << std::endl; // debug
    std::cout << "lmpDeformationMatrixInverse :\n" // debug
@@ -2305,10 +2387,22 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
                                edgeVector3(2);
    for (size_t ii=0; ii < lammpsBoxPBCVectors.size(); ++ii)
    {
+      if ( abs(lammpsBoxPBCVectors[ii](0)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](0) = 0.0;
+      if ( abs(lammpsBoxPBCVectors[ii](1)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](1) = 0.0;
+      if ( abs(lammpsBoxPBCVectors[ii](2)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](2) = 0.0;
       lammpsBoxPBCVectors[ii](0) *= burgersMagnitude/1e-10;
       lammpsBoxPBCVectors[ii](1) *= burgersMagnitude/1e-10;
       lammpsBoxPBCVectors[ii](2) *= burgersMagnitude/1e-10;
       lammpsBoxPBCVectors[ii] = lmpDeformationMatrix * lammpsBoxPBCVectors[ii];
+      if ( abs(lammpsBoxPBCVectors[ii](0)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](0) = 0.0;
+      if ( abs(lammpsBoxPBCVectors[ii](1)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](1) = 0.0;
+      if ( abs(lammpsBoxPBCVectors[ii](2)) <= machineEpsilon)
+         lammpsBoxPBCVectors[ii](2) = 0.0;
    }
 
    lammpsBoxVertices.clear();
@@ -2358,6 +2452,12 @@ void model::AtomDisplacementGenerator::regeneratePolycrystalFile(
       lammpsBoxVertices[ii](1) *= burgersMagnitude/1e-10;
       lammpsBoxVertices[ii](2) *= burgersMagnitude/1e-10;
       lammpsBoxVertices[ii] = lmpDeformationMatrix * lammpsBoxVertices[ii];
+      if ( abs(lammpsBoxVertices[ii](0)) <= machineEpsilon)
+         lammpsBoxVertices[ii](0) = 0.0;
+      if ( abs(lammpsBoxVertices[ii](1)) <= machineEpsilon)
+         lammpsBoxVertices[ii](1) = 0.0;
+      if ( abs(lammpsBoxVertices[ii](2)) <= machineEpsilon)
+         lammpsBoxVertices[ii](2) = 0.0;
    }
 
    ////////////////////////////////////////////////
