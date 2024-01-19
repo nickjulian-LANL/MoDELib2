@@ -145,12 +145,18 @@ class DDInterface
                   std::vector<double>
                > // time series of stress tensor component
             > stressTensorComponents;
+
+      // NOTE: resolved shear stress and BCC stress ratio at each time step
+      //  and for each slip system is calculated from the measured
+      //  stress tensor inside of getMechanicalMeasurements().
+
       //std::map< std::pair<size_t,size_t>, // keys are matrix indices: 11, 22, 33, 12, 13, 23
       //   std::shared_ptr< std::vector<double> > // time series of stress tensor component
       //      > strainTensorComponents;
 
       size_t stepsBetweenMeasurements;
 
+      std::map<std::string, double> mobilityParameters; //bcc_tauC, bcc_a0, bcc_a1, bcc_a2, bcc_a2, bcc_a3, bcc_a4;
 
       DDInterface( const std::string& dddFolderPathIn):
           dddFolderPath( dddFolderPathIn)
@@ -451,13 +457,25 @@ double gaussian( const double& xx, const double& sigma, const double& mu)
          );
 }
 
+double stress_ratio_BCC(
+      const double& a0, const double& a1,
+      const double& a2, const double& a3,
+      const double& tauC,
+      const DDInterface::MatrixDim& stress,
+      const DDInterface::VectorDim& nHat,
+      const DDInterface::VectorDim& bHat
+      );
+
 //   //std::map< size_t, VectorDim> printSlipSystemNormals()
 //   //std::map< std::pair<size_t,size_t>, model::ReciprocalLatticeVector<3>>
 //   // printSlipSystemNormals()
 //   //std::map< std::pair<size_t,size_t>, VectorDim> printSlipSystemNormals()
 //   //std::map< std::pair<size_t,size_t>, std::string> printSlipSystemNormals()
 
-
+double sigmoid( const double& xx)
+{ // also defined in DislocationMobilityBCC.h
+   return ( 2/(1 + exp( 2 * xx)));
+}
 
 //}; // class DefectiveCrystalInterface
 

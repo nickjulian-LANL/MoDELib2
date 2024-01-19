@@ -642,6 +642,37 @@ void ddpy::DDInterface::readDefectiveCrystal()
          new DefectiveCrystalType( *ddBase)
          );
    //DC->simulationParameters.manageRestart();
+   // if BCC, then load mobility parameters from text file
+   if ( DC->DN->poly.crystalStructure.compare( "BCC") == 0) // match returns 0
+   {
+      //try
+      //{
+      double tauC( model::TextFileParser(DC->DN->poly.materialFile).readScalar<double>("tauC_SI",true)); // [Pa], if not [Pa], then: /DC->DN->poly.mu_SI);
+      mobilityParameters["tauC"] = tauC;
+
+      double a0( model::TextFileParser(DC->DN->poly.materialFile).readScalar<double>("a0",true));
+      mobilityParameters["a0"] = a0;
+
+      double a1( model::TextFileParser(DC->DN->poly.materialFile).readScalar<double>("a1",true));
+      mobilityParameters["a1"] = a1;
+
+      double a2( model::TextFileParser(DC->DN->poly.materialFile).readScalar<double>("a2",true));
+      mobilityParameters["a2"] = a2;
+
+      double a3( model::TextFileParser(DC->DN->poly.materialFile).readScalar<double>("a3",true));
+      mobilityParameters["a3"] = a3;
+      //}
+      //catch (...)
+      //{
+
+      //}
+   }
+   //std::cout << "mobilityParameters:" << std::endl; // debug
+   //std::cout << "tauC: " << mobilityParameters["tauC"] << std::endl; // debug
+   //std::cout << "a0: " << mobilityParameters["a0"] << std::endl; // debug
+   //std::cout << "a1: " << mobilityParameters["a1"] << std::endl; // debug
+   //std::cout << "a2: " << mobilityParameters["a2"] << std::endl; // debug
+   //std::cout << "a3: " << mobilityParameters["a3"] << std::endl; // debug
    return;
 }
 
@@ -1485,6 +1516,7 @@ ddpy::DDInterface::getMechanicalMeasurements()
    const auto& grain = *(DC->DN->poly.grains.begin());
    MatrixDim tmpTensor; // for resolving tensors onto slip systems
    std::shared_ptr< std::vector< double> > rss;
+   std::shared_ptr< std::vector< double> > customResolvedStress;
    // determine quantities indexed by slip system
    for ( const auto& ss : grain.second.singleCrystal->slipSystems())
    {
@@ -1503,8 +1535,19 @@ ddpy::DDInterface::getMechanicalMeasurements()
       //      //std::make_shared< std::vector<double> >( times->size())
       //      );
       ////measurements["resolvedShearStress"][ ss->sID]->reserve( times->size());
+      measurements.try_emplace(
+            "customResolvedStress",
+            std::map<
+                  ssize_t,
+                  pybind11::array_t< double, pybind11::array::c_style>
+               >()
+            );
+
       rss = std::make_shared< std::vector< double> >();// times->size());
       rss->reserve( times->size());
+
+      customResolvedStress = std::make_shared< std::vector< double> >();
+      customResolvedStress->reserve( times->size());
 
       // iterate over time, evaluate resolved shear stress and strain,
       //  and assign them to output variables
@@ -1524,19 +1567,37 @@ ddpy::DDInterface::getMechanicalMeasurements()
          }
          // evaluate resolved shear stress
          //(*(measurements["resolvedShearStress"][ ss->sID]))[ tt]
+         // tau = s.transpose() * S * n // an equivalent expression
+
          rss->push_back(
-               (
-                  tmpTensor * ( // [Pa]
-                     ss->unitNormal // [b] or unitless ?
-                     //   * ddBase->poly.b_SI // [m/b]
-                     ) //[Pa m] or [Pa] ?
-               ).dot( ss->unitSlip // [b] or unitless ?
-                  //* ( ddBase->poly.b_SI // [m/b]
-                  //   )
-                  )); // [Pa]
+                  (ss->unitSlip).transpose()
+                  * ( tmpTensor * (ss->unitNormal))
+               );
+
+         if ( DC->DN->poly.crystalStructure.compare("BCC") == 0) // match
+         {
+            customResolvedStress->push_back(
+                  stress_ratio_BCC(
+                     mobilityParameters["a0"],
+                     mobilityParameters["a1"],
+                     mobilityParameters["a2"],
+                     mobilityParameters["a3"],
+                     mobilityParameters["tauC"], // [Pa]
+                     tmpTensor, // [Pa]
+                     ss->unitNormal,
+                     ss->unitSlip
+                     )
+                  );
+         }
+         else
+         {// TODO: how should this have been handled for non-BCC lattice?
+            customResolvedStress->push_back(0.0);
+         }
       }
       measurements[ "resolvedShearStress"][ ss->sID]
          = pybind11::cast( *rss);
+      measurements[ "customResolvedStress"][ ss->sID]
+         = pybind11::cast( *customResolvedStress);
    } // for ( const auto& ss : grain.second.singleCrystal->slipSystems())
    return std::make_tuple(
          timesPy,
@@ -2599,9 +2660,9 @@ void ddpy::DDInterface::regeneratePolycrystalFile(
       return;
    }
    VectorDim grain1globalX1;
-   grain1globalX1 << grain1globalX1Np[0], grain1globalX1Np[1], grain1globalX1Np[2]; 
+   grain1globalX1 << grain1globalX1Np[0], grain1globalX1Np[1], grain1globalX1Np[2];
    VectorDim grain1globalX3;
-   grain1globalX3 << grain1globalX3Np[0], grain1globalX3Np[1], grain1globalX3Np[2]; 
+   grain1globalX3 << grain1globalX3Np[0], grain1globalX3Np[1], grain1globalX3Np[2];
    VectorDim x0;
    x0 << x0Np[0], x0Np[1], x0Np[2];
    //if (! ((X0Np.shape(0) == 3) ))
@@ -2662,7 +2723,6 @@ void ddpy::DDInterface::regeneratePolycrystalFile(
       return;
    }
 
-   //lattice = latticeIn; // assign member of AtomDisplacementGenerator
 
    std::cout << "lattice: " << latticeIn << ", material: " << materialIn << std::endl; // debug
 
@@ -2975,8 +3035,8 @@ void ddpy::DDInterface::regeneratePolycrystalFile(
    //std::cout << std::endl; // debug
 
    //// lammpsDeformedTiltFactors
-   //lammpsDeformedTiltFactors.clear(); 
-   //lammpsDeformedTiltFactors.resize(3); 
+   //lammpsDeformedTiltFactors.clear();
+   //lammpsDeformedTiltFactors.resize(3);
    //lammpsDeformedTiltFactors[0] // xy
    //   = lmpDeformationMatrix(0,0) * lammpsTiltFactors[0];
    //lammpsDeformedTiltFactors[1] // xz
@@ -2990,7 +3050,7 @@ void ddpy::DDInterface::regeneratePolycrystalFile(
    //   std::cout << tmpDbl << ", "; // debug
    //} // debug
    //std::cout << std::endl; // debug
-      
+
 
    //lammpsDeformedBoxDimensions.clear();
    //lammpsDeformedBoxDimensions.resize(3);
@@ -3133,7 +3193,7 @@ pybind11::array_t<double, pybind11::array::c_style>
       std::cout << "error: nonUniformConvolutionWithAGaussian() was given domain and range arrays of differing sizes, "
          << "times.shape(0) " << times.shape(0)
          << ", yy.shape(0) " << yy.shape(0)
-         << std::endl; 
+         << std::endl;
       pybind11::array_t<double, pybind11::array::c_style> tmp;
       return tmp;
    }
@@ -3150,7 +3210,7 @@ pybind11::array_t<double, pybind11::array::c_style>
       std::cout << "error: nonUniformConvolutionWithAGaussian() was given"
          << " an out of bounds smoothedStartIdx of " << smoothedStartIdx
          << ", while yy.shape(0) is " << yy.shape(0)
-         << std::endl; 
+         << std::endl;
       pybind11::array_t<double, pybind11::array::c_style> tmp;
       return tmp;
    }
@@ -3159,7 +3219,7 @@ pybind11::array_t<double, pybind11::array::c_style>
       std::cout << "error: nonUniformConvolutionWithAGaussian() was given"
          << " an out of bounds smoothedEndIdx of " << smoothedStartIdx
          << ", while yy.shape(0) is " << yy.shape(0)
-         << std::endl; 
+         << std::endl;
       pybind11::array_t<double, pybind11::array::c_style> tmp;
       return tmp;
    }
@@ -3224,7 +3284,7 @@ pybind11::array_t<double, pybind11::array::c_style>
          << "times.shape(0) " << times.shape(0)
          << ", yy.shape(0) " << yy.shape(0)
          << "; returning an empty array"
-         << std::endl; 
+         << std::endl;
       pybind11::array_t<double, pybind11::array::c_style> tmp;
       return tmp;
    }
@@ -3253,7 +3313,7 @@ pybind11::array_t<double, pybind11::array::c_style>
             << " to a time that is within sigmaCount * sigma"
             << sigmaCount << "*" << sigma
             << " from the first or last time value "
-            << " times[0] " << times[0] << ", times[times.shape(0)-1] " 
+            << " times[0] " << times[0] << ", times[times.shape(0)-1] "
             << times[times.shape(0)-1]
             << "; returning an empty array"
             << std::endl;
@@ -3337,8 +3397,8 @@ std::pair<int,int> ddpy::DDInterface::limit_denominator(
       invReciprocal = 1.0/remainder;
       coefficient = static_cast<int>( floor( invReciprocal));
       remainder = invReciprocal - coefficient;
-       
-       // numerator2 is older than numerator1 
+
+       // numerator2 is older than numerator1
       numerator2 = numerator1;
       numerator1 = numerator0;
       denominator2 = denominator1;
@@ -3397,6 +3457,80 @@ std::pair<int,int> ddpy::DDInterface::limit_denominator(
    }
 }
 
+//double ddpy::custom_resolved_stress(
+//      const std::shared_ptr<model::DislocationMobilityBase>& mobility,
+//      const ddpy::DDInterface::MatrixDim& stress,
+//      const ddpy::DDInterface::VectorDim& nHat, // unit normal vector of slip system
+//      const ddpy::DDInterface::VectorDim& bHat // normal vector parallel to burgers vector
+//      )
+//{
+//   return std::nan("");
+//}
+
+double ddpy::stress_ratio_BCC(
+      //const std::shared_ptr<model::DislocationMobilityBCC>& mobility,
+      const double& a0, const double& a1,
+      const double& a2, const double& a3,
+      const double& tauC, // [Pa]
+      const ddpy::DDInterface::MatrixDim& stress, // [Pa]
+      const ddpy::DDInterface::VectorDim& nHat, // unit normal vector of slip system
+      const ddpy::DDInterface::VectorDim& bHat // normal vector parallel to burgers vector
+      )
+{
+   // evaluate resolved stress ratio, specific to BCC materials
+   // DislocationMobilityBCC.cpp:108
+   // tau = s.transpose() * S * n
+   // tauOrt = n.cross(s).transpos()*S*n
+   // tau1 = s.transpose()*S*n1
+   // tauOrt1 = n1.cross(s).transpose()*S*n1
+   // den = a0*tauC*sigmoid((a2*tauOrt + a3*tauOrt1)/(a0*tauC))
+   // num = fabs(tau + a1*tau1)
+   // Theta = num/den
+   // tau1 = s.transpose()*S*n1
+
+   // norms and vectors required for stress ratio calculations
+   const DDInterface::VectorDim
+      n1 = Eigen::AngleAxisd( // construct rotation matrix
+               std::numbers::pi/3.0, // angle of rotation
+               bHat) // vector to rotate about
+            * nHat; // *n , rotate glide plane normal
+
+   const double tau = bHat.transpose() * ( stress * nHat); // [Pa]
+   const double tau1 = bHat.transpose() * ( stress * n1); // [Pa]
+
+   // tauOrt = n.cross(s).transpose()*S*n
+   const double tauOrt = nHat.cross( bHat).transpose() * stress * nHat;
+
+   // tauOrt1 = n1.cross(s).transpose()*S*n1
+   const double tauOrt1 = n1.cross( bHat).transpose() * stress * n1;
+
+   // den = a0*tauC*sigmoid((a2*tauOrt + a3*tauOrt1)/(a0*tauC))
+   const double denominator = a0 * tauC // [Pa]
+                  * sigmoid( // defined in DislocationMobilityBCC.h
+                        ( a2 * tauOrt + a3 * tauOrt1)
+                        /( a0 * tauC)
+                        );
+   const double numerator = std::fabs( tau + a1 * tau1);
+
+   //std::cout << "inside stress_ratio_BCC" << std::endl;
+   //std::cout << "numerator: " << numerator << std::endl;
+   //std::cout << "denominator: " << denominator << std::endl;
+   //std::cout << "a0: " << a0 << std::endl;
+   //std::cout << "a1: " << a1 << std::endl;
+   //std::cout << "a2: " << a2 << std::endl;
+   //std::cout << "a3: " << a3 << std::endl;
+   //std::cout << "tauC: " << tauC << std::endl;
+   //std::cout << "tau: " << tau << std::endl;
+   //std::cout << "tau1: " << tau1 << std::endl;
+   //std::cout << "tauOrt: " << tauOrt << std::endl;
+   //std::cout << "tauOrt1: " << tauOrt1 << std::endl;
+   //std::cout << "bHat: " << bHat << std::endl;
+   //std::cout << "nHat: " << nHat << std::endl;
+   //std::cout << "stress: " << stress << std::endl;
+   //std::cout << "sigmoid: " << sigmoid( (a2*tauOrt + a3*tauOrt1)/(a0*tauC)) << std::endl;
+
+   return numerator / denominator;
+}
 
 
 PYBIND11_MODULE( ddpy, m) {
