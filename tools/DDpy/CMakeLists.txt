@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1.0)
 #cmake_policy(SET CMP0057 NEW)
 project(ddpy VERSION 1.0.0 LANGUAGES CXX)
 
-option(USE_NOISE_GENERATOR "Use fftw to generate the noise" ON)
+option(USE_NOISE_GENERATOR "Use fftw to generate the noise" OFF)
 
 set(MoDELibRootDir "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 set(DDPY_INCLUDE_Dir "${CMAKE_CURRENT_SOURCE_DIR}")
