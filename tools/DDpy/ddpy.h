@@ -159,6 +159,7 @@ class DDInterface
 
       std::map<std::string, double> mobilityParameters; //bcc_tauC, bcc_a0, bcc_a1, bcc_a2, bcc_a2, bcc_a3, bcc_a4;
 
+
       DDInterface( const std::string& dddFolderPathIn):
           dddFolderPath( dddFolderPathIn)
           , boxBounds( std::vector<double>({0,100,0,100,0,100}))
@@ -183,6 +184,7 @@ class DDInterface
                })
           , debugFlag( true)
           , stepsBetweenMeasurements( 1)
+          //, c2g( MatrixDim::Identity(3,3))
           //, stepsBetweenStrainRateMeasurements( 1)
           //, stepsBetweenDensityMeasurements( 1)
       {
@@ -207,12 +209,13 @@ class DDInterface
       std::map<std::tuple<size_t,size_t>, double>
          getDensityPerSlipSystem();
       ////std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
-      //std::map< std::pair<size_t,size_t>, VectorDim>
-      //   getSlipSystemNormals() const;
-      //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
-      //std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1> >
       //py::dict
-      //   getSlipSystemBurgersVectors() const;
+      std::map< std::pair<size_t,size_t>, VectorDim>
+         getSlipSystemNormals() const;
+      //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
+      //py::dict
+      std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1> >
+         getSlipSystemBurgersVectors() const;
 
       std::tuple<
          //std::shared_ptr<
@@ -469,11 +472,6 @@ double stress_ratio_BCC(
       const DDInterface::VectorDim& bHat
       );
 
-//   //std::map< size_t, VectorDim> printSlipSystemNormals()
-//   //std::map< std::pair<size_t,size_t>, model::ReciprocalLatticeVector<3>>
-//   // printSlipSystemNormals()
-//   //std::map< std::pair<size_t,size_t>, VectorDim> printSlipSystemNormals()
-//   //std::map< std::pair<size_t,size_t>, std::string> printSlipSystemNormals()
 
 double sigmoid( const double& xx)
 { // also defined in DislocationMobilityBCC.h

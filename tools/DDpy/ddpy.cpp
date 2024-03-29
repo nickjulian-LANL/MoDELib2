@@ -170,83 +170,77 @@ ddpy::DDInterface::getPlasticStrains()
    return plasticStrains;
 }
 
-//std::map<std::pair< size_t, size_t>, ddpy::DDInterface::VectorDim>
-//   ddpy::DDInterface::getSlipSystemNormals() const
-//{
-//   size_t grainCount = 0;
-//   size_t slipSystemCount = 0;
-//   //std::map< std::pair<size_t,size_t>, model::ReciprocalLatticeVector<3>> normals;
-//   std::map< std::pair<size_t,size_t>, VectorDim> normals;
-//   //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
-//      normals;
-//   if ( DC == NULL)
-//   {
-//      std::cout << "error: getSlipSystemNormals(), "
-//        << " DefectiveCrystal not yet initialized" << std::endl;
-//      return normals;
-//   }
-//   //std::map< std::pair<size_t,size_t>, std::string> normals;
-//   // ((grain number, slip system number), plane normal)
-//   for ( const auto& grain : DC->poly.grains)
-//   {
-//      std::cout << "grain " << grainCount << std::endl;
-//      for ( const auto& ss : grain.second.singleCrystal->slipSystems())
-//      { // loop over slip system
-//         //std::cout << "slip system " << slipSystemCount
-//         //   << " plane normal:" << std::endl
-//         //   << " (" << std::endl << ss->unitNormal
-//         //   << ")" << std::endl;
-//         normals.push_back(
-//               std::tuple( grainCount, slipSystemCount, ss->unitNormal)
-//               );
-//         ++slipSystemCount;
-//      }
-//      ++grainCount;
-//   }
-//   for ( const auto& nn : normals)
-//   {
-//      std::cout << "grain " << std::get<0>( nn)
-//         << " slip system " << std::get<1>( nn)
-//         << std::endl << std::get<2>( nn) << std::endl;
-//   }
-//   return normals;
-//}
+std::map<std::pair< size_t, size_t>, ddpy::DDInterface::VectorDim>
+   ddpy::DDInterface::getSlipSystemNormals() const
+{
+   size_t grainCount = 0;
+   size_t slipSystemCount = 0;
+   //std::map< std::pair<size_t,size_t>, model::ReciprocalLatticeVector<3>> normals;
+   std::map< std::pair<size_t,size_t>, VectorDim> normals;
+   //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
+   //   normals;
+   if ( DC == NULL)
+   {
+      std::cout << "error: getSlipSystemNormals(), "
+        << " DefectiveCrystal not yet initialized" << std::endl;
+      return normals;
+   }
+   //std::map< std::pair<size_t,size_t>, std::string> normals;
+   // ((grain number, slip system number), plane normal)
+   for ( const auto& grain : DC->DN->poly.grains)
+   {
+      std::cout << "grain " << grainCount << std::endl;
+      MatrixDim c2gInv( grain.second.singleCrystal->C2G.inverse());
+      for ( const auto& ss : grain.second.singleCrystal->slipSystems())
+      { // loop over slip system
+         std::cout << "grain " << grainCount
+            << ", slip system " << slipSystemCount
+            << ", plane normal:" << std::endl
+            << " (" << std::endl << c2gInv * ss->unitNormal
+            << ")" << std::endl;
+         normals[ std::make_pair( grainCount, slipSystemCount)] = c2gInv * ss->unitNormal;
+         ++slipSystemCount;
+      }
+      ++grainCount;
+   }
+   return normals;
+}
 
 //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
-//std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1> >
-//   ddpy::DDInterface::getSlipSystemBurgersVectors() const
-//{
-//   size_t grainCount = 0;
-//   size_t slipSystemCount = 0;
-//   //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
-//   std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1>>
-//      burgersVectors;
-//   if ( DC == NULL)
-//   {
-//      std::cout << "error: getSlipSystemBurgersVectors(), "
-//        << " DefectiveCrystal not yet initialized" << std::endl;
-//      return burgersVectors;
-//   }
-//   for ( const auto& grain : DC->poly.grains)
-//   {
-//      ++grainCount;
-//      std::cout << "grain " << grainCount << std::endl;
-//      for ( const auto& ss : grain.second.singleCrystal->slipSystems())
-//      { // loop over slip system
-//         ++slipSystemCount;
-//         burgersVectors.emplace(
-//               std::make_pair(
-//                  std::make_pair( grainCount, slipSystemCount),
-//                  ss->unitSlip)
-//               );
-//         //std::cout << "slip system " << slipSystemCount
-//         //   << " burgers vector:" << std::endl
-//         //   << " (" << std::endl << ss->unitSlip
-//         //   << ")" << std::endl;
-//      }
-//   }
-//   return burgersVectors;
-//}
+std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1> >
+   ddpy::DDInterface::getSlipSystemBurgersVectors() const
+{
+   size_t grainCount = 0;
+   size_t slipSystemCount = 0;
+   //std::list<std::tuple< size_t, size_t, Eigen::Matrix<double,3,1>>>
+   std::map< std::pair<size_t,size_t>, Eigen::Matrix<double,3,1>>
+      burgersVectors;
+   if ( DC == NULL)
+   {
+      std::cout << "error: getSlipSystemBurgersVectors(), "
+        << " DefectiveCrystal not yet initialized" << std::endl;
+      return burgersVectors;
+   }
+   for ( const auto& grain : DC->DN->poly.grains)
+   {
+      MatrixDim c2gInv( grain.second.singleCrystal->C2G.inverse());
+      std::cout << "grain " << grainCount << std::endl;
+      std::cout << "c2gInv: " << std::endl << c2gInv << std::endl; // debug
+      for ( const auto& ss : grain.second.singleCrystal->slipSystems())
+      { // loop over slip system
+         std::cout << "grain " << grainCount
+            << ", slip system " << slipSystemCount
+            << ", burgers vector:" << std::endl
+            << " (" << std::endl << c2gInv * ss->unitSlip
+            << ")" << std::endl;
+
+         burgersVectors[ std::make_pair( grainCount, slipSystemCount)] = c2gInv * ss->unitSlip;
+         ++slipSystemCount;
+      }
+      ++grainCount;
+   }
+   return burgersVectors;
+}
 
 double ddpy::DDInterface::getBurgersMagnitude()
 {
@@ -3772,13 +3766,12 @@ PYBIND11_MODULE( ddpy, m) {
       .def("clearMechanicalMeasurements", // TODO
             &ddpy::DDInterface::clearMechanicalMeasurements // TODO
           )
-
-      //.def("getSlipSystemNormals"
-      //      &ddpy::DDInterface::getSlipSystemNormals
-      //    )
-      //.def("getSlipSystemBurgersVectors"
-      //      &ddpy::DDInterface::getSlipSystemBurgersVectors
-      //    )
+      .def("getSlipSystemNormals",
+            &ddpy::DDInterface::getSlipSystemNormals
+          )
+      .def("getSlipSystemBurgersVectors",
+            &ddpy::DDInterface::getSlipSystemBurgersVectors
+          )
       ;
    m.def("nonUniformConvolutionWithAGaussian",
          &ddpy::nonUniformConvolutionWithAGaussian,
