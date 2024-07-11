@@ -62,6 +62,7 @@ namespace model
         
         public:
         
+        
         GalerkinClimbSolver(const DislocationNetworkType&,const ClusterDynamics<dim>* const );
         Eigen::VectorXd getNodeVelocities() const override;
         void computeClimbScalarVelocities() override;

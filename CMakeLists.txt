@@ -1,6 +1,7 @@
+# cmake .. -DCMAKE_CXX_COMPILER=/opt/local/bin/g++-mp-11
 
 # https://mcilloni.ovh/2021/02/09/cxx-cross-clang/
-#export LDFLAGS=-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+#export LDFLAGS=-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib 
 #LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system"
 
 
@@ -23,7 +24,6 @@ endif()
 #set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
 #list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
 
-cmake_policy(SET CMP0057 NEW)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +32,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-### Boost ###
+### Boost ### 
 find_package(Boost)
 if(Boost_FOUND)
 	message(STATUS "Boost_VERSION:" ${Boost_VERSION})
@@ -69,13 +69,14 @@ else()
 endif()
 
 ### fftw3 ### find_package is currently broken. Workaround using find_library
-#find_library(FFTW3_LIBRARIES fftw3)
+find_library(FFTW3_LIBRARIES fftw3)  
 if(FFTW3_LIBRARIES)
 	cmake_path(GET FFTW3_LIBRARIES PARENT_PATH FFTW3_LIBRARY_DIRS)
 	set(FFTW3_INCLUDE_DIRS ${FFTW3_LIBRARY_DIRS}/../include)
 	message(STATUS "FFTW3_LIBRARIES:" ${FFTW3_LIBRARIES})
 	message(STATUS "FFTW3_LIBRARY_DIRS:" ${FFTW3_LIBRARY_DIRS})
 	message(STATUS "FFTW3_INCLUDE_DIRS:" ${FFTW3_INCLUDE_DIRS})
+	include_directories(${BOOST_INCLUDE_DIRS})
 	include_directories(${FFTW3_INCLUDE_DIRS})
 	add_definitions(-D _MODEL_GLIDE_PLANE_NOISE_GENERATOR_)
 else()
@@ -83,28 +84,23 @@ else()
 endif()
 
 ### pybind11 ###
-if(USE_PYBIND11)
-	find_package(Python COMPONENTS Interpreter Development)
-	if(Python_FOUND)
-		message(STATUS "Python_VERSION:" ${Python_VERSION})
-		find_package(pybind11 CONFIG REQUIRED)
-	else()
-		message(WARNING "Python not found, pybind11 is disabled")
-	endif()
-endif()
-
+find_package(Python COMPONENTS Interpreter Development)
+if(Python_FOUND)
+	message(STATUS "Python_VERSION:" ${Python_VERSION})
+#	find_package(pybind11 CONFIG REQUIRED)
 if(pybind11_FOUND)
 	message(STATUS "pybind11_VERSION:" ${pybind11_VERSION})
-	set(pybind11_LIBRARIES pybind11::embed pybind11::headers pybind11::module)
+	set(pybind11_LIBRARIES pybind11::embed)
 	message(STATUS "pybind11_LIBRARIES: ${pybind11_LIBRARIES}")
-	add_definitions(-D_MODEL_PYBIND11_)
-	Python_add_library(MoDELib SHARED "")
+	add_definitions(-D _MODEL_PYBIND11_)
 else()
-	message(WARNING "pybind11 is disabled")
-	add_library(MoDELib "")
+	message(WARNING "pybind11 not found, pybind11 is disabled")
+endif()
+else()
+	message(WARNING "Python not found, pybind11 is disabled")
 endif()
 
-#add_library(MoDELib "")
+add_library(MoDELib "")
 set(MoDELib_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 #include_directories ( ${EIGEN3_INCLUDE_DIRS} )
@@ -140,7 +136,6 @@ endif()
 
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/ src)
-target_link_libraries(MoDELib PUBLIC ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES})
 
 target_link_libraries(MoDELib ${FFTW3_LIBRARIES} ${VTK_LIBRARIES} Qt6::Widgets Qt6::OpenGL Qt6::Core ${pybind11_LIBRARIES} Eigen3::Eigen)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools tools)
