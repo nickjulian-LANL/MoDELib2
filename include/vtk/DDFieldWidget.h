@@ -63,8 +63,8 @@ namespace model
 
 
     struct DDPlaneField : public QWidget
-    , public TriangularMesh
-    , public std::deque<FieldDataPnt>
+    /*                */, public TriangularMesh
+    /*                */, public std::deque<FieldDataPnt>
     {
         
         Q_OBJECT
@@ -90,7 +90,6 @@ namespace model
         std::shared_ptr<MeshPlane<3>> plane;
         
     public slots:
-        
         void resetPlane();
         void modify();
         
@@ -104,7 +103,6 @@ namespace model
         void plotField(const int& valID,const bool& useDD,const bool& useIN,const vtkSmartPointer<vtkLookupTable>& lut);
 
     };
-
 
     struct DDFieldWidget : public QWidget
     {
@@ -127,7 +125,6 @@ namespace model
         vtkSmartPointer<vtkLookupTable> lut;
         vtkSmartPointer<vtkScalarBarActor> scalarBar;
 
-        
         vtkGenericOpenGLRenderWindow* const renWin;
         vtkRenderer* const renderer;
         const DDconfigFields<3>& configFields;
