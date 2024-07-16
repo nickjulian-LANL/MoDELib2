@@ -23,6 +23,7 @@ endif()
 #set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
 #list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
 
+cmake_policy(SET CMP0057 NEW)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -81,8 +82,29 @@ else()
   message(WARNING "library ${FFTW3_LIBRARIES} not found, noise generator is disabled")
 endif()
 
+### pybind11 ###
+if(USE_PYBIND11)
+	find_package(Python COMPONENTS Interpreter Development)
+	if(Python_FOUND)
+		message(STATUS "Python_VERSION:" ${Python_VERSION})
+		find_package(pybind11 CONFIG REQUIRED)
+	else()
+		message(WARNING "Python not found, pybind11 is disabled")
+	endif()
+endif()
 
-add_library(MoDELib "")
+if(pybind11_FOUND)
+	message(STATUS "pybind11_VERSION:" ${pybind11_VERSION})
+	set(pybind11_LIBRARIES pybind11::embed pybind11::headers pybind11::module)
+	message(STATUS "pybind11_LIBRARIES: ${pybind11_LIBRARIES}")
+	add_definitions(-D_MODEL_PYBIND11_)
+	Python_add_library(MoDELib SHARED "")
+else()
+	message(WARNING "pybind11 is disabled")
+	add_library(MoDELib "")
+endif()
+
+#add_library(MoDELib "")
 set(MoDELib_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 #include_directories ( ${EIGEN3_INCLUDE_DIRS} )
@@ -118,7 +140,7 @@ endif()
 
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/ src)
-target_link_libraries(MoDELib ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES})
+target_link_libraries(MoDELib PUBLIC ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES})
 
 target_link_libraries(MoDELib ${FFTW3_LIBRARIES} ${VTK_LIBRARIES} Qt6::Widgets Qt6::OpenGL Qt6::Core ${pybind11_LIBRARIES} Eigen3::Eigen)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools tools)
