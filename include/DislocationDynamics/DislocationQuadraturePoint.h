@@ -22,10 +22,18 @@
 #include <DefectiveCrystalParameters.h>
 #include <Polygon2D.h>
 #include <CatmullRomSplineSegment.h>
-#include <DislocationSegment.h>
+#include <ClusterDynamicsParameters.h>
+#include <InclusionMicrostructure.h>
+
+//#include <DislocationSegment.h>
 
 namespace model
 {
+
+    template <int dim, short unsigned int corder>
+    class DislocationSegment;
+
+
     template<int dim,int corder>
     struct DislocationQuadraturePoint
     {
@@ -49,6 +57,8 @@ namespace model
         const size_t sourceID;
         const size_t sinkID;
         const int qID;
+        const double abscissa;
+        const double weight;
         const Eigen::Matrix<double,1,Ncoeff> SF;    // Spline shape-functions at this quadrature point
         const VectorDim r;                          // position
         const VectorDim ru;                         // parametric tangent dr/du with u in [0:1]
@@ -60,10 +70,14 @@ namespace model
         VectorDim pkForce;
         VectorDim stackingFaultForce;
         VectorDim lineTensionForce;
-        VectorDim glideVelocity;
+        VectorDim velocity;
         double elasticEnergyPerLength;
         double coreEnergyPerLength;
         int inclusionID;
+        std::pair<VectorDim,VectorDim> slipVectors;
+        Eigen::Matrix<double,1,ClusterDynamicsParameters<dim>::mSize> cCD;
+        Eigen::Matrix<double,1,ClusterDynamicsParameters<dim>::mSize> cDD;
+
         
         DislocationQuadraturePoint(const LinkType& parentSegment,
                                    const int& q,const int& qOrder,
@@ -86,7 +100,7 @@ namespace model
                                            );
         
  
-        void updateForcesAndVelocities(const LinkType& parentSegment);
+        void updateForcesAndVelocities(const LinkType& parentSegment,const bool& isClimbStep);
         MatrixDim forceToStress(const VectorDim& force,const VectorDim& unitTangent,const LinkType& parentSegment) const;
         
     };
@@ -116,16 +130,15 @@ namespace model
         VectorDim pkKernel(const int& k) const;
         MatrixDim stressKernel(const int& k) const;
         VectorDim glideVelocityKernel(const int& k) const;
-        void updateForcesAndVelocitiesKernel(const LinkType& parentSegment,const StraightDislocationSegment<dim>& ss,const double& L0,const VectorDim& c);
+        void updateKernel(const LinkType& parentSegment,const StraightDislocationSegment<dim>& ss,const double& L0,const VectorDim& c);
+//        void updateForcesAndVelocitiesKernelShifted(const LinkType& parentSegment,const StraightDislocationSegment<dim>& ss,const double& L0,const VectorDim& c,const VectorDim& shift,const double& weight);
+//        MatrixDim stressGradient(const LinkType& parentSegment,const StraightDislocationSegment<dim>& ss,const VectorDim& x,const VectorDim& shift) const;
+//        double energyGradient(const LinkType& parentSegment,const StraightDislocationSegment<dim>& ss,const VectorDim& x,const VectorDim& rl,const VectorDim& shift) const;
 
     public:
         
-        void updateForcesAndVelocities(const LinkType& parentSegment,
-                                       const double&,
-                                       const double& );
-        void updateQuadraturePoints(const LinkType& parentSegment,
-                                    const double& quadPerLength,
-                                    const bool& isClimbStep);
+        void update(const LinkType& parentSegment,const bool& isClimbStep);
+        void create(const LinkType& parentSegment,const double& quadPerLength,const bool& isClimbStep);
         const DislocationQuadraturePointContainerType& quadraturePoints() const;
         DislocationQuadraturePointContainerType& quadraturePoints();
         const DislocationQuadraturePointType& quadraturePoint(const int& k) const;

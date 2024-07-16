@@ -21,8 +21,6 @@
 namespace model
 {
     
-    /**************************************************************************/
-    /**************************************************************************/
     template <typename TestType, typename _IntegrationListType>
     class LinearWeakList : public LinearWeakExpression<LinearWeakList<TestType,_IntegrationListType> >
     {
@@ -39,11 +37,8 @@ namespace model
         constexpr static int dofPerElement=TypeTraits<TrialFunctionType>::dofPerElement;
         typedef Eigen::Matrix<double,dofPerElement,1> ElementVectorType;
 
-
-
     public:
 
-//        const TestType& testExp;
         ExpressionRef<TestExpression<TestType>> testExp;
         const _IntegrationListType& list;
 
@@ -53,7 +48,6 @@ namespace model
         /*init list */ testExp(_testExp),
         /*init list */ list(_list)
         {
-            std::cout<<greenColor<<"Creating LinearWeakList "<<defaultColor<<std::endl;
         }
 
         /**********************************************************************/
@@ -62,37 +56,24 @@ namespace model
         /*init list */ testExp(std::move(_testExp)),
         /*init list */ list(_list)
         {
-            std::cout<<greenColor<<"Creating LinearWeakList "<<defaultColor<<std::endl;
         }
-//
-////        /**********************************************************************/
-////        size_t gSize() const
-////        {
-////            return testExp.gSize();
-////        }
-//
-        /**********************************************************************/
+
         Eigen::Matrix<double,Eigen::Dynamic,1> globalVector() const
         {
-
-            std::cout<<"Assembling LinearWeakList (list size="<<list.size()<<") ..."<<std::flush;
-            const auto t0= std::chrono::system_clock::now();
-
             Eigen::Matrix<double,Eigen::Dynamic,1> _globalVector(Eigen::Matrix<double,Eigen::Dynamic,1>::Zero(TrialBase<TrialFunctionType>::gSize()));
-
-
+            
             for (size_t k=0;k<list.size();++k)
             {
                 const ElementType& ele(list[k].ele);  // element
                 const int f(list[k].boundaryFace); //    face ID
                 const Eigen::Matrix<double,dim+1,1>& bary(list[k].domainBary);
-
+                                
                 const ElementVectorType ve(testExp().sfm(ele,bary).transpose()
                                            *list[k]
                                            *JGNselector<3>::jGN(ele.jGN(bary,f))
                                            *list[k].weight
                                            );
-
+                
                 for (int i=0;i<dofPerElement;++i)
                 {
                     const size_t  nodeID_I(i/dofPerNode);
@@ -101,7 +82,6 @@ namespace model
                     _globalVector(gI) += ve(i);
                 }
             }
-            std::cout<<" done.["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<std::endl;
 
             return _globalVector;
         }

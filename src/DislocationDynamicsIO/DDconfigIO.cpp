@@ -39,37 +39,37 @@ namespace model
 {
 
 
-    template <int dim>
-    void DDconfigIO<dim>::finalize()
+template <int dim>
+void DDconfigIO<dim>::finalize()
+{
+    
+    // node map
+    for(size_t k=0;k<loopNodes().size();++k)
     {
-        
-        // node map
-        for(size_t k=0;k<loopNodes().size();++k)
-        {
-            loopNodeMap().insert(std::make_pair(loopNodes()[k].sID,k));
-        }
-        
-        // node map
-        for(size_t k=0;k<nodes().size();++k)
-        {
-            nodeMap().emplace(nodes()[k].sID,k);
-        }
-        
-        // loop map
-        for(size_t k=0;k<loops().size();++k)
-        {
-            loopMap().emplace(loops()[k].sID,k);
-        }
+        loopNodeMap().insert(std::make_pair(loopNodes()[k].sID,k));
     }
-
-
-
-    template <int dim>
-    DDconfigIO<dim>::DDconfigIO(const std::string& folderName,const std::string& suffix) :
-    /* init */ DDbaseIO(folderName,"evl",suffix)
+    
+    // node map
+    for(size_t k=0;k<nodes().size();++k)
     {
-        
+        nodeMap().emplace(nodes()[k].sID,k);
     }
+    
+    // loop map
+    for(size_t k=0;k<loops().size();++k)
+    {
+        loopMap().emplace(loops()[k].sID,k);
+    }
+}
+
+
+
+template <int dim>
+DDconfigIO<dim>::DDconfigIO(const std::string& folderName,const std::string& suffix) :
+/* init */ DDbaseIO(folderName,"evl",suffix)
+{
+    
+}
 
 template <int dim>
 void DDconfigIO<dim>::clear()
@@ -85,83 +85,85 @@ void DDconfigIO<dim>::clear()
     nodeMap().clear();
     loopNodeMap().clear();
     loopMap().clear();
+    displacementMatrix().setZero(0,2*dim);
+    cdMatrix().setZero(0,ClusterDynamicsParameters<dim>::mSize+ClusterDynamicsParameters<dim>::iSize);
 }
 
 
-    template <int dim>
-    const std::vector<DislocationNodeIO<dim>>& DDconfigIO<dim>::nodes() const
-    {
-        return *this;
-    }
+template <int dim>
+const std::vector<DislocationNodeIO<dim>>& DDconfigIO<dim>::nodes() const
+{
+    return *this;
+}
 
-    template <int dim>
-    std::vector<DislocationNodeIO<dim>>& DDconfigIO<dim>::nodes()
-    {
-        return *this;
-    }
+template <int dim>
+std::vector<DislocationNodeIO<dim>>& DDconfigIO<dim>::nodes()
+{
+    return *this;
+}
 
-    template <int dim>
-    const std::vector<DislocationLoopNodeIO<dim>>& DDconfigIO<dim>::loopNodes() const
-    {
-        return *this;
-    }
+template <int dim>
+const std::vector<DislocationLoopNodeIO<dim>>& DDconfigIO<dim>::loopNodes() const
+{
+    return *this;
+}
 
-    template <int dim>
-    std::vector<DislocationLoopNodeIO<dim>>& DDconfigIO<dim>::loopNodes()
-    {
-        return *this;
-    }
+template <int dim>
+std::vector<DislocationLoopNodeIO<dim>>& DDconfigIO<dim>::loopNodes()
+{
+    return *this;
+}
 
-    template <int dim>
-    const std::vector<DislocationLoopIO<dim>>& DDconfigIO<dim>::loops() const
-    {
-        return *this;
-    }
+template <int dim>
+const std::vector<DislocationLoopIO<dim>>& DDconfigIO<dim>::loops() const
+{
+    return *this;
+}
 
-    template <int dim>
-    std::vector<DislocationLoopIO<dim>>& DDconfigIO<dim>::loops()
-    {
-        return *this;
-    }
+template <int dim>
+std::vector<DislocationLoopIO<dim>>& DDconfigIO<dim>::loops()
+{
+    return *this;
+}
 
-    template <int dim>
-    const DislocationLoopIO<dim>& DDconfigIO<dim>::loop(const size_t& loopID) const
+template <int dim>
+const DislocationLoopIO<dim>& DDconfigIO<dim>::loop(const size_t& loopID) const
+{
+    const auto loopIter(loopMap().find(loopID));
+    if(loopIter!=loopMap().end())
     {
-        const auto loopIter(loopMap().find(loopID));
-        if(loopIter!=loopMap().end())
-        {
-            return loops()[loopIter->second];
-        }
-        else
-        {
-            throw std::runtime_error("loopID not found");
-            return loops()[0];
-        }
+        return loops()[loopIter->second];
     }
+    else
+    {
+        throw std::runtime_error("loopID not found");
+        return loops()[0];
+    }
+}
 
-    template <int dim>
-    const std::vector<DislocationLoopLinkIO<dim>>& DDconfigIO<dim>::loopLinks() const
-    {
-        return *this;
-    }
+template <int dim>
+const std::vector<DislocationLoopLinkIO<dim>>& DDconfigIO<dim>::loopLinks() const
+{
+    return *this;
+}
 
-    template <int dim>
-    std::vector<DislocationLoopLinkIO<dim>>& DDconfigIO<dim>::loopLinks()
-    {
-        return *this;
-    }
+template <int dim>
+std::vector<DislocationLoopLinkIO<dim>>& DDconfigIO<dim>::loopLinks()
+{
+    return *this;
+}
 
-    template <int dim>
-    const std::vector<SphericalInclusionIO<dim>>& DDconfigIO<dim>::sphericalInclusions() const
-    {
-        return *this;
-    }
+template <int dim>
+const std::vector<SphericalInclusionIO<dim>>& DDconfigIO<dim>::sphericalInclusions() const
+{
+    return *this;
+}
 
-    template <int dim>
-    std::vector<SphericalInclusionIO<dim>>& DDconfigIO<dim>::sphericalInclusions()
-    {
-        return *this;
-    }
+template <int dim>
+std::vector<SphericalInclusionIO<dim>>& DDconfigIO<dim>::sphericalInclusions()
+{
+    return *this;
+}
 
 template <int dim>
 const std::vector<PolyhedronInclusionIO<dim> >& DDconfigIO<dim>::polyhedronInclusions() const
@@ -205,41 +207,69 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
 
 
 
-    template <int dim>
-    const std::map<size_t,const size_t>& DDconfigIO<dim>::nodeMap() const
-    {
-        return _nodeMap;
-    }
+template <int dim>
+const std::map<size_t,const size_t>& DDconfigIO<dim>::nodeMap() const
+{
+    return _nodeMap;
+}
 
-    template <int dim>
-    std::map<size_t,const size_t>& DDconfigIO<dim>::nodeMap()
-    {
-        return _nodeMap;
-    }
+template <int dim>
+std::map<size_t,const size_t>& DDconfigIO<dim>::nodeMap()
+{
+    return _nodeMap;
+}
 
-    template <int dim>
-    const std::map<size_t,const size_t>& DDconfigIO<dim>::loopNodeMap() const
-    {
-        return _loopNodeMap;
-    }
+template <int dim>
+const std::map<size_t,const size_t>& DDconfigIO<dim>::loopNodeMap() const
+{
+    return _loopNodeMap;
+}
 
-    template <int dim>
-    std::map<size_t,const size_t>& DDconfigIO<dim>::loopNodeMap()
-    {
-        return _loopNodeMap;
-    }
+template <int dim>
+std::map<size_t,const size_t>& DDconfigIO<dim>::loopNodeMap()
+{
+    return _loopNodeMap;
+}
 
-    template <int dim>
-    const std::map<size_t, const size_t>& DDconfigIO<dim>::loopMap() const
-    {
-        return _loopMap;
-    }
+template <int dim>
+const std::map<size_t, const size_t>& DDconfigIO<dim>::loopMap() const
+{
+    return _loopMap;
+}
 
-    template <int dim>
-    std::map<size_t, const size_t>& DDconfigIO<dim>::loopMap()
-    {
-        return _loopMap;
-    }
+template <int dim>
+std::map<size_t, const size_t>& DDconfigIO<dim>::loopMap()
+{
+    return _loopMap;
+}
+
+template <int dim>
+const typename DDconfigIO<dim>::CDMatrixType& DDconfigIO<dim>::cdMatrix() const
+{
+    return _cdMatrix;
+}
+
+
+template <int dim>
+typename DDconfigIO<dim>::CDMatrixType& DDconfigIO<dim>::cdMatrix()
+{
+    return _cdMatrix;
+}
+
+template <int dim>
+const typename DDconfigIO<dim>::DispMatrixType& DDconfigIO<dim>::displacementMatrix() const
+{
+    return _dispMatrix;
+}
+
+template <int dim>
+typename DDconfigIO<dim>::DispMatrixType& DDconfigIO<dim>::displacementMatrix()
+{
+    return _dispMatrix;
+}
+
+
+
 
     template <int dim>
     std::map<std::pair<size_t,size_t>,DislocationSegmentIO<dim>> DDconfigIO<dim>::segments() const
@@ -322,6 +352,8 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
                 {
                     assert(iter->second.meshLocation==link.meshLocation);
                 }
+                
+                iter->second.grainIDs.insert(loop.grainID);
             }
         }
         
@@ -377,6 +409,8 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
         file<<polyhedronInclusions().size()<<"\n";
         file<<polyhedronInclusionNodes().size()<<"\n";
         file<<polyhedronInclusionEdges().size()<<"\n";
+        file<<displacementMatrix().rows()<<"\n";
+        file<<cdMatrix().rows()<<"\n";
 
         // Write Nodes
         for(const auto& node : nodes())
@@ -424,6 +458,17 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
         {
             file<<pie<<"\n";
         }
+        
+        if(displacementMatrix().size())
+        {
+            file<<displacementMatrix()<<"\n";
+        }
+        
+        if(cdMatrix().size())
+        {
+            file<<cdMatrix()<<"\n";
+        }
+
     }
 
     template <int dim>
@@ -445,6 +490,9 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
             const size_t nPI(polyhedronInclusions().size());
             const size_t nPIn(polyhedronInclusionNodes().size());
             const size_t nPIe(polyhedronInclusionEdges().size());
+            const size_t nDIS(displacementMatrix().rows());
+            const size_t nCD(cdMatrix().rows());
+
 
             binWrite(file,nV);
             binWrite(file,nL);
@@ -454,6 +502,8 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
             binWrite(file,nPI);
             binWrite(file,nPIn);
             binWrite(file,nPIe);
+            binWrite(file,nDIS);
+            binWrite(file,nCD);
 
 
             // Write Nodes
@@ -504,6 +554,17 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
                 binWrite(file,pie);
             }
             
+
+            if(displacementMatrix().rows()>0)
+            {
+                throw std::runtime_error("Binary output of FEM displacement is disabled");
+            }
+            
+            if(cdMatrix().rows()>0)
+            {
+                throw std::runtime_error("Binary output of CD disabled");
+            }
+            
             file.close();
             std::cout<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
             
@@ -541,19 +602,7 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
     template <int dim>
     void DDconfigIO<dim>::readBin(const size_t& runID)
     {
-        
-//        nodes().clear();
-//        loops().clear();
-//        loopLinks().clear();
-//        loopNodes().clear();
-//        sphericalInclusions().clear();
-//        polyhedronInclusions().clear();
-//        polyhedronInclusionNodes().clear();
-//        polyhedronInclusionEdges().clear();
-//        nodeMap().clear();
-//        loopNodeMap().clear();
-//        loopMap().clear();
-  
+          
         clear();
         
         const std::string filename(this->getBinFilename(runID));
@@ -581,6 +630,8 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
             infile.read (reinterpret_cast<char*>(&sizePIn), 1*sizeof(sizePIn));
             size_t sizePIe;
             infile.read (reinterpret_cast<char*>(&sizePIe), 1*sizeof(sizePIe));
+            size_t sizeCD;
+            infile.read (reinterpret_cast<char*>(&sizeCD), 1*sizeof(sizeCD));
 
             // Read vertices
             nodes().resize(sizeV);
@@ -604,6 +655,10 @@ std::vector<PolyhedronInclusionEdgeIO>& DDconfigIO<dim>::polyhedronInclusionEdge
             polyhedronInclusionEdges().resize(sizePIe);
             infile.read (reinterpret_cast<char*>(polyhedronInclusionEdges().data()),polyhedronInclusionEdges().size()*sizeof(PolyhedronInclusionEdgeIO));
 
+            if(sizeCD>0)
+            {
+                throw std::runtime_error("Binary reading of CD disabled");
+            }
             
             infile.close();
             finalize();
@@ -660,24 +715,15 @@ void DDconfigIO<dim>::print() const
     std::cout<<"  "<<polyhedronInclusions().size()<<" polyhedronInclusions "<<std::endl;
     std::cout<<"  "<<polyhedronInclusionNodes().size()<<" polyhedronInclusionNodes "<<std::endl;
     std::cout<<"  "<<polyhedronInclusionEdges().size()<<" polyhedronInclusionEdges "<<std::endl;
+    std::cout<<"  "<<displacementMatrix().rows()<<"x"<<displacementMatrix().cols()<<" displacement values "<<std::endl;
+    std::cout<<"  "<<cdMatrix().rows()<<"x"<<cdMatrix().cols()<<" clusterDynamics values "<<std::endl;
+
 }
 
     template <int dim>
     void DDconfigIO<dim>::readTxtStream(std::istream &infile)
     {
-        
-//        nodes().clear();
-//        loops().clear();
-//        loopLinks().clear();
-//        loopNodes().clear();
-//        sphericalInclusions().clear();
-//        polyhedronInclusions().clear();
-//        polyhedronInclusionNodes().clear();
-//        polyhedronInclusionEdges().clear();
-//        nodeMap().clear();
-//        loopNodeMap().clear();
-//        loopMap().clear();
-            
+                    
         clear();
         size_t sizeV;
         size_t sizeL;
@@ -687,6 +733,9 @@ void DDconfigIO<dim>::print() const
         size_t sizePI;
         size_t sizePIn;
         size_t sizePIe;
+        size_t sizeDISP;
+        size_t sizeCD;
+
         
         std::string line;
         std::stringstream ss;
@@ -739,8 +788,19 @@ void DDconfigIO<dim>::print() const
         ss >> sizePIe;
         ss.str("");
         ss.clear();
+
+        std::getline(infile, line);
+        ss<<line;
+        ss >> sizeDISP;
+        ss.str("");
+        ss.clear();
         
-        nodes().clear();
+        std::getline(infile, line);
+        ss<<line;
+        ss >> sizeCD;
+        ss.str("");
+        ss.clear();
+        
         for(size_t k=0; k<sizeV; ++k)
         {
             std::getline(infile, line);
@@ -750,7 +810,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        loops().clear();
         for(size_t k=0; k<sizeL; ++k)
         {
             std::getline(infile, line);
@@ -760,7 +819,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        loopLinks().clear();
         for(size_t k=0; k<sizeE; ++k)
         {
             std::getline(infile, line);
@@ -770,7 +828,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        loopNodes().clear();
         for(size_t k=0; k<sizeLN; ++k)
         {
             std::getline(infile, line);
@@ -780,7 +837,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        sphericalInclusions().clear();
         for(size_t k=0; k<sizeEI; ++k)
         {
             std::getline(infile, line);
@@ -790,7 +846,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        polyhedronInclusions().clear();
         for(size_t k=0; k<sizePI; ++k)
         {
             std::getline(infile, line);
@@ -800,7 +855,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        polyhedronInclusionNodes().clear();
         for(size_t k=0; k<sizePIn; ++k)
         {
             std::getline(infile, line);
@@ -810,7 +864,6 @@ void DDconfigIO<dim>::print() const
             ss.clear();
         }
         
-        polyhedronInclusionEdges().clear();
         for(size_t k=0; k<sizePIe; ++k)
         {
             std::getline(infile, line);
@@ -819,10 +872,34 @@ void DDconfigIO<dim>::print() const
             ss.str("");
             ss.clear();
         }
+
+        displacementMatrix().setZero(sizeDISP,2*dim);
+        for(size_t i=0; i<sizeDISP; ++i)
+        {
+            std::getline(infile, line);
+            ss<<line;
+            for(int j=0;j<2*dim;++j)
+            {
+                ss >> displacementMatrix()(i,j);
+            }
+            ss.str("");
+            ss.clear();
+        }
         
+        cdMatrix().setZero(sizeCD,ClusterDynamicsParameters<dim>::mSize+ClusterDynamicsParameters<dim>::iSize);
+        for(size_t i=0; i<sizeCD; ++i)
+        {
+            std::getline(infile, line);
+            ss<<line;
+            for(int j=0;j<ClusterDynamicsParameters<dim>::mSize+ClusterDynamicsParameters<dim>::iSize;++j)
+            {
+                ss >> cdMatrix()(i,j);
+            }
+            ss.str("");
+            ss.clear();
+        }
         
         finalize();
-        
     }
 
 

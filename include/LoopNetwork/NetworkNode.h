@@ -225,7 +225,23 @@ namespace model
         {/*!\returns The NetworkComponent::snID() of the component
           * containing this.
           */
-            return this->network().globalNodeID(this->sID);
+            const auto nodeIter(this->network().networkNodes().find(this->sID));
+            if(nodeIter!=this->network().networkNodes().end())
+            {
+                return std::distance(this->network().networkNodes().begin(),nodeIter);
+            }
+            else
+            {
+                throw std::runtime_error("NetworkNode "+std::to_string(this->sID)+" not found in calling NetworkNode::gID().");
+                return 0;
+            }
+//            return ;
+//            size_t globalNodeID(const size_t& sID) const
+//            {
+//                
+//            }
+//            
+//            return this->network().globalNodeID(this->sID);
         }
         
         /**********************************************************************/

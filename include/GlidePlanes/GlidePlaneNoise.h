@@ -18,7 +18,7 @@
 #ifdef _MODEL_GLIDE_PLANE_NOISE_GENERATOR_
 //#include <complex.h>
 #include <fftw3.h>
-#include <boost/math/special_functions/bessel.hpp>
+//#include <boost/math/special_functions/bessel.hpp>
 #endif
 
 #include <DislocationFieldBase.h>
@@ -80,7 +80,7 @@ namespace model
         
         static void Read_noise_vtk(const char *fname, REAL_SCALAR *Noise, int Nr,const double& MSS);
         
-        SolidSolutionNoiseReader(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+        SolidSolutionNoiseReader(const PolycrystallineMaterialBase& mat,
                                  const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A);
         
         
@@ -105,7 +105,7 @@ namespace model
         const GridSizeType gridSize;
         const GridSpacingType gridSpacing_A;
         
-        SolidSolutionNoise(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+        SolidSolutionNoise(const PolycrystallineMaterialBase& mat,
                            const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A, const int& solidSolutionNoiseMode);
         
     };
@@ -132,7 +132,7 @@ namespace model
         int NK;
         REAL_SCALAR Norm;
 
-        SolidSolutionNoiseGenerator(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+        SolidSolutionNoiseGenerator(const PolycrystallineMaterialBase& mat,
                                     const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A);
         
         
@@ -172,8 +172,7 @@ namespace model
 
 
         
-        StackingFaultNoise(const std::string&, // noiseFile
-                           const PolycrystallineMaterialBase& mat,
+        StackingFaultNoise(const PolycrystallineMaterialBase& mat,
                            const NoiseTraitsBase::GridSizeType& gridSize,
                            const NoiseTraitsBase::GridSpacingType& gridSpacing_SI);
         
@@ -194,7 +193,7 @@ namespace model
         const std::shared_ptr<StackingFaultNoise> stackingFault;
                 
         
-        GlidePlaneNoise(const std::string& noiseFile,const PolycrystallineMaterialBase& mat);
+        GlidePlaneNoise(const PolycrystallineMaterialBase& mat);
         
         GridSizeType rowAndColIndices(const int& storageIndex) const;
         

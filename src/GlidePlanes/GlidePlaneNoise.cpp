@@ -20,6 +20,7 @@
 #ifdef _MODEL_GLIDE_PLANE_NOISE_GENERATOR_
 #include <fftw3.h>
 #include <boost/math/special_functions/bessel.hpp>
+#include <cmath>
 #endif
 
 #include <PolycrystallineMaterialBase.h>
@@ -137,14 +138,14 @@ namespace model
         }
     }
 
-    SolidSolutionNoiseReader::SolidSolutionNoiseReader(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+    SolidSolutionNoiseReader::SolidSolutionNoiseReader(const PolycrystallineMaterialBase& mat,
                                                        const typename SolidSolutionNoiseReader::GridSizeType& _gridSize, const typename SolidSolutionNoiseReader::GridSpacingType& _gridSpacing_A)
     {
         std::cout<<"Reading SolidSolutionNoise files"<<std::endl;
 
-        const std::string fileName_xz(std::filesystem::path(noiseFile).parent_path().string()+"/"+TextFileParser(noiseFile).readString("solidSolutionNoiseFile_xz",true));
+        const std::string fileName_xz(std::filesystem::path(mat.materialFile).parent_path().string()+"/"+TextFileParser(mat.materialFile).readString("solidSolutionNoiseFile_xz",true));
         const auto gridSize_xz(Read_dimensions(fileName_xz.c_str()));
-        const std::string fileName_yz(std::filesystem::path(noiseFile).parent_path().string()+"/"+TextFileParser(noiseFile).readString("solidSolutionNoiseFile_yz",true));
+        const std::string fileName_yz(std::filesystem::path(mat.materialFile).parent_path().string()+"/"+TextFileParser(mat.materialFile).readString("solidSolutionNoiseFile_yz",true));
         const auto gridSize_yz(Read_dimensions(fileName_yz.c_str()));
         const double MSSS_SI(TextFileParser(mat.materialFile).readScalar<double>("MSSS_SI",true));
         const double MSS(std::sqrt(MSSS_SI)/mat.mu_SI);
@@ -201,7 +202,7 @@ namespace model
         return *this;
     }
 
-    SolidSolutionNoise::SolidSolutionNoise(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+    SolidSolutionNoise::SolidSolutionNoise(const PolycrystallineMaterialBase& mat,
                                            const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A, const int& solidSolutionNoiseMode) :
     /* init */ gridSize(_gridSize)
     /* init */,gridSpacing_A(_gridSpacing_A)
@@ -212,14 +213,14 @@ namespace model
             case 1:
             {// read noise
                 std::cout<<greenBoldColor<<"Reading SolidSolutionNoise"<<defaultColor<<std::endl;
-                noiseVector()=(SolidSolutionNoiseReader(noiseFile,mat,gridSize,gridSpacing_A));
+                noiseVector()=(SolidSolutionNoiseReader(mat,gridSize,gridSpacing_A));
                 break;
             }
                 
             case 2:
             {// compute noise
                 std::cout<<greenBoldColor<<"Generating SolidSolutionNoise"<<defaultColor<<std::endl;
-                noiseVector()=(SolidSolutionNoiseGenerator(noiseFile,mat,gridSize,gridSpacing_A));
+                noiseVector()=(SolidSolutionNoiseGenerator(mat,gridSize,gridSpacing_A));
                 break;
             }
                 
@@ -252,7 +253,7 @@ namespace model
 
 #ifdef _MODEL_GLIDE_PLANE_NOISE_GENERATOR_
 
-SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& noiseFile,const PolycrystallineMaterialBase& mat,
+SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const PolycrystallineMaterialBase& mat,
                                                         const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A) :
 /*init*/ NX(_gridSize(0))     // dimension along x
 /*init*/,NY(_gridSize(1))     // dimension along y
@@ -260,10 +261,10 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
 /*init*/,DX(_gridSpacing_A(0))     // grid spacing [AA]
 /*init*/,DY(_gridSpacing_A(1))     // grid spacing [AA]
 /*init*/,DZ(_gridSpacing_A(1))     // grid spacing [AA]
-/*init*/,a(TextFileParser(noiseFile).readScalar<double>("spreadLstress_A",true))      // spreading length for stresses [AA]
-/*init*/,a_cai(TextFileParser(noiseFile).readScalar<double>("a_cai_A",true))
+/*init*/,a(TextFileParser(mat.materialFile).readScalar<double>("spreadLstress_A",true))      // spreading length for stresses [AA]
+/*init*/,a_cai(TextFileParser(mat.materialFile).readScalar<double>("a_cai_A",true))
 ///*init*/,a_cai(DislocationFieldBase<3>::a*mat.b_SI*1e10)  // spreading length for non-singular dislocaion theory [AA]
-/*init*/,seed(TextFileParser(noiseFile).readScalar<double>("seed",true))  // random seed
+/*init*/,seed(TextFileParser(mat.materialFile).readScalar<double>("seed",true))  // random seed
 /*init*/,LX(NX*DX)
 /*init*/,LY(NY*DY)
 /*init*/,LZ(NZ*DZ)
@@ -391,8 +392,8 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
     }
     
     // ouput vtk files
-    const std::string fileName_xz(std::filesystem::path(noiseFile).parent_path().string()+"/"+TextFileParser(noiseFile).readString("solidSolutionNoiseFile_xz",true));
-    const std::string fileName_yz(std::filesystem::path(noiseFile).parent_path().string()+"/"+TextFileParser(noiseFile).readString("solidSolutionNoiseFile_yz",true));
+    const std::string fileName_xz(std::filesystem::path(mat.materialFile).parent_path().string()+"/"+TextFileParser(mat.materialFile).readString("solidSolutionNoiseFile_xz",true));
+    const std::string fileName_yz(std::filesystem::path(mat.materialFile).parent_path().string()+"/"+TextFileParser(mat.materialFile).readString("solidSolutionNoiseFile_yz",true));
     std::cout<<"Writing noise file "<<fileName_xz<<std::endl;
     Write_field_slice(Rr_xz, fileName_xz.c_str());
     std::cout<<"Writing noise file "<<fileName_yz<<std::endl;
@@ -408,6 +409,7 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
         if(k>0)
         {
             return a*k*sqrt(0.5*boost::math::cyl_bessel_k(2,a*k));
+//            return a*k*sqrt(0.5*std::cyl_bessel_k(2,a*k));
         }
         else
         {
@@ -450,7 +452,7 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
 
 #else
 
-SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& noiseFile,const PolycrystallineMaterialBase& ,
+SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const PolycrystallineMaterialBase& mat,
                                                         const GridSizeType& _gridSize, const GridSpacingType& _gridSpacing_A) :
 /*init*/ NX(_gridSize(0))     // dimension along x
 /*init*/,NY(_gridSize(1))     // dimension along y
@@ -458,10 +460,10 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
 /*init*/,DX(_gridSpacing_A(0))     // grid spacing [AA]
 /*init*/,DY(_gridSpacing_A(1))     // grid spacing [AA]
 /*init*/,DZ(_gridSpacing_A(1))     // grid spacing [AA]
-/*init*/,a(TextFileParser(noiseFile).readScalar<double>("spreadLstress_A",true))      // spreading length for stresses [AA]
-/*init*/,a_cai(TextFileParser(noiseFile).readScalar<double>("a_cai_A",true))
+/*init*/,a(TextFileParser(mat.materialFile).readScalar<double>("spreadLstress_A",true))      // spreading length for stresses [AA]
+/*init*/,a_cai(TextFileParser(mat.materialFile).readScalar<double>("a_cai_A",true))
 ///*init*/,a_cai(DislocationFieldBase<3>::a*mat.b_SI*1e10)  // spreading length for non-singular dislocaion theory [AA]
-/*init*/,seed(TextFileParser(noiseFile).readScalar<double>("seed",true))  // random seed
+/*init*/,seed(TextFileParser(mat.materialFile).readScalar<double>("seed",true))  // random seed
 /*init*/,LX(NX*DX)
 /*init*/,LY(NY*DY)
 /*init*/,LZ(NZ*DZ)
@@ -511,8 +513,7 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
         fclose(OutFile);
     }
 
-    StackingFaultNoise::StackingFaultNoise(const std::string&, // noiseFile
-                                           const PolycrystallineMaterialBase& mat,
+    StackingFaultNoise::StackingFaultNoise(const PolycrystallineMaterialBase& mat,
                                            const NoiseTraitsBase::GridSizeType& gridSize,
                                            const NoiseTraitsBase::GridSpacingType& gridSpacing_SI)
     {
@@ -553,12 +554,12 @@ SolidSolutionNoiseGenerator::SolidSolutionNoiseGenerator(const std::string& nois
         
     }
 
-    GlidePlaneNoise::GlidePlaneNoise(const std::string& noiseFile,const PolycrystallineMaterialBase& mat) :
-    /* init */ UniformPeriodicGrid<2>(TextFileParser(noiseFile).readMatrix<int,1,2>("gridSize",true),TextFileParser(noiseFile).readMatrix<double,1,2>("gridSpacing_SI",true)/mat.b_SI)
-    /* init */,solidSolutionNoiseMode(TextFileParser(noiseFile).readScalar<int>("solidSolutionNoiseMode"))
-    /* init */,stackingFaultNoiseMode(TextFileParser(noiseFile).readScalar<int>("stackingFaultNoiseMode"))
-    /* init */,solidSolution(solidSolutionNoiseMode? new SolidSolutionNoise(noiseFile,mat,gridSize,this->gridSpacing*mat.b_SI*1.0e10,solidSolutionNoiseMode) : nullptr)
-    /* init */,stackingFault(stackingFaultNoiseMode? new StackingFaultNoise(noiseFile,mat,gridSize,this->gridSpacing*mat.b_SI) : nullptr)
+    GlidePlaneNoise::GlidePlaneNoise(const PolycrystallineMaterialBase& mat) :
+    /* init */ UniformPeriodicGrid<2>(TextFileParser(mat.materialFile).readMatrix<int,1,2>("gridSize",true),TextFileParser(mat.materialFile).readMatrix<double,1,2>("gridSpacing_SI",true)/mat.b_SI)
+    /* init */,solidSolutionNoiseMode(TextFileParser(mat.materialFile).readScalar<int>("solidSolutionNoiseMode"))
+    /* init */,stackingFaultNoiseMode(TextFileParser(mat.materialFile).readScalar<int>("stackingFaultNoiseMode"))
+    /* init */,solidSolution(solidSolutionNoiseMode? new SolidSolutionNoise(mat,gridSize,this->gridSpacing*mat.b_SI*1.0e10,solidSolutionNoiseMode) : nullptr)
+    /* init */,stackingFault(stackingFaultNoiseMode? new StackingFaultNoise(mat,gridSize,this->gridSpacing*mat.b_SI) : nullptr)
     {
         if(solidSolution)
         {

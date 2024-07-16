@@ -13,6 +13,7 @@
 #ifndef model_DislocationGlideSolverFactory_h_
 #define model_DislocationGlideSolverFactory_h_
 
+#include <DislocationVelocitySolverBase.h>
 #include <memory>
 #include <Eigen/Dense>
 
@@ -20,11 +21,11 @@ namespace model
 {
     
     template <typename DislocationNetworkType>
-    struct DislocationGlideSolverBase
+    struct DislocationGlideSolverBase : public DislocationVelocitySolverBase<DislocationNetworkType>
     {
-        const DislocationNetworkType& DN;
+//        const DislocationNetworkType& DN;
         DislocationGlideSolverBase(const DislocationNetworkType& );
-        virtual Eigen::VectorXd getNodeVelocities() const = 0;
+//        virtual Eigen::VectorXd getNodeVelocities() const = 0;
     };
 
     template <typename DislocationNetworkType>

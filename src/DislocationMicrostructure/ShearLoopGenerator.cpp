@@ -63,6 +63,7 @@ namespace model
         }
         
         const int grainID(found.second->region->regionID);
+//        std::cout<<"grainID="<<grainID<<std::endl;
         assert(mg.ddBase.poly.grains.size()==1 && "Periodic dislocations only supported for single crystals");
         const auto& grain(mg.ddBase.poly.grain(grainID));
         
@@ -75,7 +76,8 @@ namespace model
             GlidePlaneKey<3> glidePlaneKey(planeIndex, slipSystem.n);
             std::shared_ptr<PeriodicGlidePlane<3>> glidePlane(mg.ddBase.periodicGlidePlaneFactory.get(glidePlaneKey));
             const VectorDimD P0(glidePlane->referencePlane->snapToPlane(center));
-            
+//            std::cout<<"P0="<<P0.transpose()<<std::endl;
+
             std::vector<VectorDimD> loopNodePos;
             for(size_t k=0;k< sides;++k)
             {

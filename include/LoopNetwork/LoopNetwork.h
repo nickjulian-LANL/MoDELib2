@@ -71,11 +71,6 @@ namespace model
         }
     };
     
-    
-    
-
-    
-    
     template<typename Derived>
     class LoopNetwork : public CRTP<Derived>
     /*               */,public WeakPtrFactory<Derived,typename TypeTraits<Derived>::LoopType>
@@ -97,7 +92,6 @@ namespace model
         typedef std::map<typename LoopLinkType::KeyType,LoopLinkType> LoopLinkContainerType;
         typedef WeakPtrFactory<Derived,LoopNodeType> LoopNodeContainerType;
         typedef WeakPtrFactory<Derived,NetworkNodeType> NetworkNodeContainerType;
-//        typedef KeyConstructableWeakPtrFactory<Derived,NetworkLinkType> NetworkLinkContainerType;
         typedef WeakPtrFactory<Derived,NetworkLinkType> NetworkLinkContainerType;
         typedef typename LoopNodeContainerType::SharedPtrType SharedLoopNodePtrType;
         typedef typename NetworkNodeContainerType::SharedPtrType SharedNetworkNodePtrType;
@@ -137,21 +131,16 @@ namespace model
             return *this;
         }
         
-        
-        /**********************************************************************/
         const LoopLinkContainerType& loopLinks() const
         {
             return *this;
         }
         
-        /**********************************************************************/
         NetworkLinkContainerType& networkLinks()
         {
             return *this;
         }
         
-        
-        /**********************************************************************/
         const NetworkLinkContainerType& networkLinks() const
         {
             return *this;
@@ -177,12 +166,8 @@ namespace model
                         {
                             std::shared_ptr<LoopType> newLoop(loops().clone(loop->key));
                             
-                            // const auto cloneNi(loopNodes().clone(Ni->key,newLoop,networkNodes().clone(Ni->networkNode->key)));
-                            // const auto cloneNj(loopNodes().clone(Nj->key,newLoop,networkNodes().clone(Nj->networkNode->key)));
-
                             const auto cloneNi(loopNodes().clone(Ni->key,newLoop,Ni->networkNode));
                             const auto cloneNj(loopNodes().clone(Nj->key,newLoop,Nj->networkNode));
-
 
                             std::vector<std::tuple<std::shared_ptr<LoopNodeType>,std::shared_ptr<LoopNodeType>>> linksToDisconect;
                             while(currLink->source!=Nj)
@@ -190,7 +175,6 @@ namespace model
                                 linksToDisconect.emplace_back(currLink->source,currLink->sink);
                                 currLink=currLink->next;
                             }
-                            
                             
                             for(const auto& tup : linksToDisconect)
                             {
@@ -207,7 +191,6 @@ namespace model
                                 connect(source,sink,newLoop);
                             }
                             
-                            //                                    connect(std::get<1>(linksToDisconect.back()),std::get<0>(linksToDisconect.front()),newLoop); // cloneNj->cloneNi
                             connect(cloneNj,cloneNi,newLoop); // cloneNj->cloneNi
                             connect(std::get<0>(linksToDisconect.front()),std::get<1>(linksToDisconect.back()),loop); // Ni->Nj
                             return std::make_pair(cloneNi,cloneNj);
@@ -218,7 +201,6 @@ namespace model
             return std::make_pair(SharedLoopNodePtrType(nullptr),SharedLoopNodePtrType(nullptr));
         }
         
-        /**********************************************************************/
         void connect(const SharedLoopNodePtrType& n0,
                      const SharedLoopNodePtrType& n1,
                      const std::shared_ptr<LoopType>& tempLoop)
@@ -243,7 +225,6 @@ namespace model
             }
         }
 
-        /**********************************************************************/
         size_t disconnect(const SharedLoopNodePtrType& n0, const SharedLoopNodePtrType& n1, const std::shared_ptr<LoopType>& loop)
         {
             VerboseLoopNetwork(1,"disconnecting "<<n0->sID<<"->"<<n1->sID<<" ("<<loop->sID<<")"<<std::endl);
@@ -251,10 +232,10 @@ namespace model
         }
 
     public:
-        //
+        
         static int verboseLevel;
 
-        /**********************************************************************/
+        
         void insertLoop(const std::shared_ptr<LoopType>& loop,
                         const std::vector<std::shared_ptr<LoopNodeType>> nodes)
         {/*!@param[in] nodes in the loop
@@ -276,7 +257,6 @@ namespace model
             loop->update();
         }
         
-        /**********************************************************************/
         void deleteLoop(const size_t& loopID)
         {
             for(typename LoopLinkContainerType::const_iterator loopIter=loopLinks().begin();
@@ -293,7 +273,6 @@ namespace model
             }
         }
         
-        
         SharedNetworkNodePtrType expandNetworkLink(const std::shared_ptr<NetworkLinkType>& Lij, const SharedNetworkNodePtrType& networkNode)
         {
             VerboseLoopNetwork(1,"expanding NetworkLink "<<Lij->tag()<<" at node "<<networkNode->tag()<<std::endl);
@@ -305,7 +284,6 @@ namespace model
             return networkNode;
         }
         
-        /**********************************************************************/
         SharedLoopNodePtrType expandLoopLink(const LoopLinkType& Lij, const SharedLoopNodePtrType& loopNode)
         {
             VerboseLoopNetwork(1,"expanding LoopLink "<<Lij.tag()<<" at node "<<loopNode->tag()<<std::endl);
@@ -318,7 +296,6 @@ namespace model
             return loopNode;
         }
 
-        /**********************************************************************/
         void removeNetworkNode(const size_t& nodeID)
         {
             if(networkNodes().find(nodeID)!=networkNodes().end())
@@ -341,7 +318,6 @@ namespace model
             }
         }
         
-        /**********************************************************************/
         void removeLoopNode(const size_t& nodeID)
         {
             if(loopNodes().find(nodeID)!=loopNodes().end())
@@ -392,7 +368,6 @@ namespace model
             }
         }
 
-        /**********************************************************************/
         bool contractLoopNodes(const LoopNodeType* const Ni,const LoopNodeType* const Nj)
         {
             if(Ni!=nullptr && Nj!=nullptr)
@@ -405,7 +380,6 @@ namespace model
             return false;
         }
         
-        /**********************************************************************/
         bool contractLoopNodes(const SharedLoopNodePtrType& Ni,const SharedLoopNodePtrType& Nj)
         {
             if(Nj->isContractableTo(Ni.get()))
@@ -422,86 +396,8 @@ namespace model
             return false;
         }
         
-        /**********************************************************************/
-        //Giacomo Version (Original Version Working Contraction does not happen if Ni loop nodes is changed by the cutLoop Operation)
-        // bool contractNetworkNodes(const SharedNetworkNodePtrType& Ni,const SharedNetworkNodePtrType& Nj)
-        // {
-        //     if(Nj->isContractableTo(Ni))
-        //     {
-        //         std::deque<std::pair<const LoopNodeType* const,const LoopNodeType* const>> loopNodesToContract;
-        //         std::deque<std::pair<const size_t,      const size_t>> loopNodesToReassign;
-
-
-        //         // Contraction should get a precendence over reassignment
-        //         for(const auto& loopNodeI : Ni->loopNodes())
-        //         {
-        //                 for(const auto& loopNodeJ : Nj->loopNodes())
-        //                 {
-        //                     if(loopNodeJ->isContractableTo(loopNodeI))
-        //                     {// this implies loopNodeI and loopNodeJ in same loop
-        //                         std::cout<<"Contractable loop nodes  "<<loopNodeI->tag()<<" -> "<<loopNodeJ->tag()<<std::endl;
-        //                         // std::cout<<"Contractable loop nodes networkID "<<loopNodeI->networkNode->sID<<" -> "<<loopNodeJ->networkNode->sID<<std::endl;
-        //                         loopNodesToContract.emplace_back(loopNodeI,loopNodeJ);
-        //                     }
-        //                     else
-        //                     {// two cases: 1) loopNodeI and loopNodeJ in different loops 2) loopNodeI and loopNodeJ in same loop but notContractable
-        //                         std::cout<<"Assignable loop nodes "<<loopNodeI->tag()<<" -> "<<loopNodeJ->tag()<<std::endl;
-        //                         // std::cout<<"Assignable loop nodes networkID "<<loopNodeI->networkNode->sID<<" -> "<<loopNodeJ->networkNode->sID<<std::endl;
-        //                         loopNodesToReassign.emplace_back(loopNodeI->sID,loopNodeJ->sID);
-        //                     }
-        //                 }
-        //         }
-                
-        //         std::cout<<"LoopNodesToContract=>reassign size "<<loopNodesToContract.size()<<"=>"<<loopNodesToReassign.size()<<std::endl;
-        //         for(const auto pair : loopNodesToContract)
-        //         {
-        //             contractLoopNodes(pair.first,pair.second);
-        //         }
-                
-        //         // std::cout<<"Loop Node Contraction successful "<<std::endl;
-
-        //         for (auto &pair : loopNodesToReassign)
-        //         {
-        //             auto loopNodeIPtr(loopNodes().get(pair.first));
-        //             auto loopNodeJPtr(loopNodes().get(pair.second));
-        //             if (loopNodeIPtr && loopNodeJPtr)
-        //             {
-        //                 loopNodeJPtr->networkNode->removeLoopNode(loopNodeJPtr.get());
-        //                 loopNodeJPtr->networkNode = loopNodeIPtr->networkNode;
-        //                 loopNodeJPtr->networkNode->addLoopNode(loopNodeJPtr.get());
-                        
-        //                 if (loopNodeJPtr->prev.second)
-        //                 {
-        //                     loopNodeJPtr->prev.second->resetNetworkLink();
-        //                 }
-        //                 if (loopNodeJPtr->next.second)
-        //                 {
-        //                     loopNodeJPtr->next.second->resetNetworkLink();
-        //                 }
-        //             }
-        //         }
-        //         std::cout<<"After contraction and reassignemnt "<<std::endl;
-        //         std::cout<<"Ni "<<std::endl;
-        //         for (const auto& niLN : Ni->loopNodes())
-        //         {
-        //             std::cout<<niLN->tag()<<std::endl;
-        //         }
-        //         std::cout<<"Nj "<<std::endl;
-        //         for (const auto& njLN : Nj->loopNodes())
-        //         {
-        //             std::cout<<njLN->tag()<<std::endl;
-        //         }
-
-        //         return true;
-        //     }
-
-        //     return false;
-        // }
-
-        
-//Updated Version for sequential removal
         bool contractNetworkNodes(const SharedNetworkNodePtrType& Ni,const SharedNetworkNodePtrType& Nj)
-        {
+        {//Updated Version for sequential removal
             if(Nj->isContractableTo(Ni))
             {
                 std::deque<std::pair<const LoopNodeType* const,const LoopNodeType* const>> loopNodesToContract;
@@ -521,24 +417,19 @@ namespace model
                         }
                 }
                 
-                // std::cout<<"LoopNodesToContract size "<<loopNodesToContract.size()<<std::endl;
                 for(const auto pair : loopNodesToContract)
                 {
                     contractLoopNodes(pair.first,pair.second);
                     
                 }
-                // std::cout<<"Loop Node Contraction successful "<<std::endl;
 
-                std::deque<std::pair<const LoopNodeType* const,      LoopNodeType* const>> loopNodesToReassign;
-
+                std::deque<std::pair<const LoopNodeType* const,LoopNodeType* const>> loopNodesToReassign;
                 for(const auto& loopNodeI : Ni->loopNodes())
                 {
                         for(const auto& loopNodeJ : Nj->loopNodes())
                         {
                             if(!loopNodeJ->isContractableTo(loopNodeI))
                             { // this implies loopNodeI and loopNodeJ in same loop
-                                // std::cout << "Reassignable loop nodes  " << loopNodeI->sID << " -> " << loopNodeJ->sID << std::endl;
-                                // std::cout << "Reassignable loop nodes networkID " << loopNodeI->networkNode->sID << " -> " << loopNodeJ->networkNode->sID << std::endl;
                                 loopNodesToReassign.emplace_back(loopNodeI,loopNodeJ);
                             }
                             else
@@ -548,8 +439,6 @@ namespace model
                         }
                 }
                 
-                // std::cout<<"loopNodesToReassign size "<<loopNodesToReassign.size()<<std::endl;
-
                 for(auto& pair : loopNodesToReassign)
                 {
                     pair.second->networkNode->removeLoopNode(pair.second);
@@ -573,42 +462,29 @@ namespace model
             return false;
         }
         
-        
-        /**********************************************************************/
         void printLoops() const
         {
             for(const auto& loop : loops())
             {
-//                if(!loop.second.expired())
-//                {
                     loop.second.lock()->printLoop();
-//                }
             }
         }
         
-        /**********************************************************************/
         void printLoopNodes() const
         {
             std::cout<<"Printing LoopNodes "<<loopNodes().size()<<std::endl;
             for(const auto& node : loopNodes())
             {
-//                if(!node.second.expired())
-//                {
                     std::cout<<node.second.lock()->tag()<<std::endl;
-//                }
             }
         }
         
-        /**********************************************************************/
         void printNetworkNodes() const
         {
             std::cout<<"Printing NetworkNodes "<<networkNodes().size()<<std::endl;
             for(const auto& node : networkNodes())
             {
-//                if(!node.second.expired())
-//                {
                     std::cout<<node.second.lock()->tag()<<std::endl;
-//                }
             }
         }
 
@@ -619,3 +495,118 @@ namespace model
     
 }
 #endif
+
+
+//Giacomo Version (Original Version Working Contraction does not happen if Ni loop nodes is changed by the cutLoop Operation)
+// bool contractNetworkNodes(const SharedNetworkNodePtrType& Ni,const SharedNetworkNodePtrType& Nj)
+// {
+//     if(Nj->isContractableTo(Ni))
+//     {
+//         std::deque<std::pair<const LoopNodeType* const,const LoopNodeType* const>> loopNodesToContract;
+//         std::deque<std::pair<const size_t,      const size_t>> loopNodesToReassign;
+
+
+//         // Contraction should get a precendence over reassignment
+//         for(const auto& loopNodeI : Ni->loopNodes())
+//         {
+//                 for(const auto& loopNodeJ : Nj->loopNodes())
+//                 {
+//                     if(loopNodeJ->isContractableTo(loopNodeI))
+//                     {// this implies loopNodeI and loopNodeJ in same loop
+//                         std::cout<<"Contractable loop nodes  "<<loopNodeI->tag()<<" -> "<<loopNodeJ->tag()<<std::endl;
+//                         // std::cout<<"Contractable loop nodes networkID "<<loopNodeI->networkNode->sID<<" -> "<<loopNodeJ->networkNode->sID<<std::endl;
+//                         loopNodesToContract.emplace_back(loopNodeI,loopNodeJ);
+//                     }
+//                     else
+//                     {// two cases: 1) loopNodeI and loopNodeJ in different loops 2) loopNodeI and loopNodeJ in same loop but notContractable
+//                         std::cout<<"Assignable loop nodes "<<loopNodeI->tag()<<" -> "<<loopNodeJ->tag()<<std::endl;
+//                         // std::cout<<"Assignable loop nodes networkID "<<loopNodeI->networkNode->sID<<" -> "<<loopNodeJ->networkNode->sID<<std::endl;
+//                         loopNodesToReassign.emplace_back(loopNodeI->sID,loopNodeJ->sID);
+//                     }
+//                 }
+//         }
+        
+//         std::cout<<"LoopNodesToContract=>reassign size "<<loopNodesToContract.size()<<"=>"<<loopNodesToReassign.size()<<std::endl;
+//         for(const auto pair : loopNodesToContract)
+//         {
+//             contractLoopNodes(pair.first,pair.second);
+//         }
+        
+//         // std::cout<<"Loop Node Contraction successful "<<std::endl;
+
+//         for (auto &pair : loopNodesToReassign)
+//         {
+//             auto loopNodeIPtr(loopNodes().get(pair.first));
+//             auto loopNodeJPtr(loopNodes().get(pair.second));
+//             if (loopNodeIPtr && loopNodeJPtr)
+//             {
+//                 loopNodeJPtr->networkNode->removeLoopNode(loopNodeJPtr.get());
+//                 loopNodeJPtr->networkNode = loopNodeIPtr->networkNode;
+//                 loopNodeJPtr->networkNode->addLoopNode(loopNodeJPtr.get());
+                
+//                 if (loopNodeJPtr->prev.second)
+//                 {
+//                     loopNodeJPtr->prev.second->resetNetworkLink();
+//                 }
+//                 if (loopNodeJPtr->next.second)
+//                 {
+//                     loopNodeJPtr->next.second->resetNetworkLink();
+//                 }
+//             }
+//         }
+//         std::cout<<"After contraction and reassignemnt "<<std::endl;
+//         std::cout<<"Ni "<<std::endl;
+//         for (const auto& niLN : Ni->loopNodes())
+//         {
+//             std::cout<<niLN->tag()<<std::endl;
+//         }
+//         std::cout<<"Nj "<<std::endl;
+//         for (const auto& njLN : Nj->loopNodes())
+//         {
+//             std::cout<<njLN->tag()<<std::endl;
+//         }
+
+//         return true;
+//     }
+
+//     return false;
+// }
+
+
+//Giacomo Version
+// void removeLoopNode(const SharedLoopNodePtrType& node)
+// {
+//     // std::cout<<" Starting to remove loopNode "<<std::endl;
+//     if(node)
+//     {
+//         const auto loop(node->loop());
+//         std::cout<<" LoopNodes size of the loop "<<node->loop()->isLoop()<<" "<<node->loop()->linkSequence().size()<<std::endl;
+//         if(loop)
+//         {
+//             std::cout<<"Getting prev"<<std::endl;
+//             std::cout<<" Checking previous "<<(node->prev.first==nullptr)<<std::endl;
+//             std::cout<<" Checking next "<<(node->next.first==nullptr)<<std::endl;
+//             const SharedLoopNodePtrType prev(loopNodes().get(node->prev.first->key));
+//             // std::cout<<"Getting Next"<<std::endl;
+//             const SharedLoopNodePtrType next(loopNodes().get(node->next.first->key));
+//             // std::cout<<"Moving onto disconnecting"<<std::endl;
+//             if(prev)
+//             {
+//                 // std::cout<<"Disconnecting Prev"<<std::endl;
+//                 disconnect(prev,node,loop);
+//             }
+//             if(next)
+//             {
+//                 // std::cout<<"Disconnecting Next"<<std::endl;
+
+//                 disconnect(node,next,loop);
+//             }
+//             if(prev && next)
+//             {
+//                 // std::cout<<"Connecting Prev and Next"<<std::endl;
+
+//                 connect(prev,next,loop);
+//             }
+//         }
+//     }
+// }

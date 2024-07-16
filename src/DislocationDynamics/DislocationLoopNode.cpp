@@ -19,33 +19,6 @@
 namespace model
 {
     
-//    template <int dim, short unsigned int corder>
-//    DislocationLoopNode<dim,corder>::DislocationLoopNode(typename DislocationLoopNode<dim,corder>::LoopNetworkType* const net,
-//                                                                           const std::shared_ptr<typename DislocationLoopNode<dim,corder>::LoopType>& loop,
-//                                                                           const std::shared_ptr<typename DislocationLoopNode<dim,corder>::NetworkNodeType>& networkNode,
-//                                                                           const size_t& edgeID) :
-//    /* init */ LoopNode<DislocationLoopNode>(net,loop,networkNode)
-//    /* init */,_periodicPlanePatch(loop->periodicGlidePlane? loop->periodicGlidePlane->getPatch(this->get_P()) : nullptr)
-//    /* init */,periodicPlaneEdge(_periodicPlanePatch? _periodicPlanePatch->edges()[edgeID] : nullptr)
-//    {
-//
-//    }
-    
-    // template <int dim, short unsigned int corder>
-    // DislocationLoopNode<dim,corder>::DislocationLoopNode(typename DislocationLoopNode<dim,corder>::LoopNetworkType* const net,
-    //                                                                        const std::shared_ptr<typename DislocationLoopNode<dim,corder>::LoopType>& loop,
-    //                                                                        const std::shared_ptr<typename DislocationLoopNode<dim,corder>::NetworkNodeType>& networkNode,
-    //                                                                        const VectorDim& P,
-    //                                                                        const std::shared_ptr<PeriodicPlanePatch<dim>>& patch_in,
-    //                                                                        const std::pair<const std::shared_ptr<PeriodicPlaneEdge<dim>>,const std::shared_ptr<PeriodicPlaneEdge<dim>>>& edge_in) :    /* init */ LoopNode<DislocationLoopNode>(net,loop,networkNode)
-    // /* init */,SplineNodeType(P)
-    // /* init */,_periodicPlanePatch(patch_in)
-    // /* init */,periodicPlaneEdge(edge_in)
-    // {
-    //     VerboseDislocationLoopNode(1,"Creating LoopNode "<<this->tag()<<std::endl;);
-        
-    // }
-
     template <int dim, short unsigned int corder>
     DislocationLoopNode<dim,corder>::DislocationLoopNode(typename DislocationLoopNode<dim,corder>::LoopNetworkType* const net,
                                                                            const std::shared_ptr<typename DislocationLoopNode<dim,corder>::LoopType>& loop,
@@ -59,7 +32,6 @@ namespace model
     /* init */,SplineNodeType(P)
     /* init */,_periodicPlanePatch(patch_in)
     /* init */,periodicPlaneEdge(edge_in)
-//    /* init */,_auxperiodicPlanePatch(auxPatch_in)
     {
         VerboseDislocationLoopNode(1,"Creating LoopNode "<<this->tag()<<std::endl;);
         if (periodicPlaneEdge.second!=nullptr)
@@ -81,7 +53,6 @@ namespace model
     /* init */,SplineNodeType(loopLink->periodicPlanePatch()? networkNode->get_P()-loopLink->periodicPlanePatch()->shift : networkNode->get_P())
     /* init */,_periodicPlanePatch(loopLink->periodicPlanePatch())
     /* init */,periodicPlaneEdge(std::make_pair(nullptr,nullptr))
-//    /* init */,_auxperiodicPlanePatch(std::set<std::shared_ptr<PeriodicPlanePatch<dim>>>{nullptr}
     {
         VerboseDislocationLoopNode(1,"Creating LoopNode without PeriodicPlaneEdge "<<this->tag()<<std::endl;);
         
@@ -104,30 +75,8 @@ namespace model
     template <int dim, short unsigned int corder>
     void DislocationLoopNode<dim,corder>::initFromFile(const std::string& fileName)
     {
-        verboseDislocationLoopNode=TextFileParser(fileName).readScalar<int>("verboseDislocationLoopNode",true);
+        verboseDislocationLoopNode=TextFileParser(fileName).readScalar<int>("verboseDislocationLoopNode",false);
     }
-
-    // template <int dim, short unsigned int corder>
-    // const DislocationLoopNode<dim, corder> *DislocationLoopNode<dim, corder>::periodicPrev() const
-    // {
-    //     auto currentPrev(this->prev.first);
-    //     while (currentPrev->periodicPlaneEdge)
-    //     {
-    //         currentPrev = currentPrev->prev.first;
-    //     }
-    //     return currentPrev;
-    // }
-
-    // template <int dim, short unsigned int corder>
-    // const DislocationLoopNode<dim, corder> *DislocationLoopNode<dim, corder>::periodicNext() const
-    // {
-    //     auto currentNext(this->next.first);
-    //     while (currentNext->periodicPlaneEdge)
-    //     {
-    //         currentNext = currentNext->next.first;
-    //     }
-    //     return currentNext;
-    // }
 
     template <int dim, short unsigned int corder>
     const DislocationLoopNode<dim,corder>* DislocationLoopNode<dim,corder>::periodicPrev() const
@@ -205,119 +154,6 @@ namespace model
         return temp;
     }
 
-//     /**********************************************************************/
-//     template <int dim, short unsigned int corder>
-//     void DislocationLoopNode<dim,corder>::addLoopLink(LoopLinkType* const pL)
-//     {/*@param[in] pL LoopLink pointer
-//       *
-//       * This functin overrides LoopNode::addLoopLink
-//       */
-        
-//         VerboseDislocationLoopNode(2,"DislocationLoopNode "<<this->sID<<" addLoopLink "<<pL->tag()<<std::endl;);
-//         LoopNode<LoopNodeType>::addLoopLink(pL); // forward to base class
-//         if(periodicPlanePatch())
-//         {
-//             this->networkNode->addGlidePlane(periodicPlanePatch()->glidePlane.get());
-//         }
-//         else
-//         {
-//             this->networkNode->addGlidePlane(pL->loop->glidePlane.get());
-//         }
-
-// //        updatePeriodicNodes(pL);
-//     }
-    
-    
-//     /**********************************************************************/
-//     template <int dim, short unsigned int corder>
-//     void DislocationLoopNode<dim,corder>::removeLoopLink(LoopLinkType* const pL)
-//     {/*@param[in] pL LoopLink pointer
-//       * This functin overrides LoopNode::removeLoopLink
-//       */
-// //LoopNode        VerbosePlanarDislocationNode(2,"PlanarDislocationNode "<<this->sID<<" removeLoopLink "<<pL->tag()<<std::endl;);
-//         VerboseDislocationLoopNode(2,"DislocationLoopNode "<<this->sID<<" removeLoopLink "<<pL->tag()<<std::endl;);
-//         LoopNode<LoopNodeType>::removeLoopLink(pL); // forward to base class
-//         VerboseDislocationLoopNode(3,"networkNode->glidePlanes().size()= "<<this->networkNode->glidePlanes().size()<<std::endl;);
-//         this->networkNode->confinedObject().clear();
-//         //        VerboseDislocationLoopNode(3,"networkNode->glidePlanes().size()= "<<this->networkNode->glidePlanes().size()<<std::endl;);
-//         //Add the glidePlanes due to other loopnodes in the networknode //Added by Yash
-
-//         for (const auto& loopNode : this->networkNode->loopNodes())
-//         {
-//             if (loopNode != this)
-//             {
-//                 if (loopNode->periodicPlanePatch())
-//                 {
-//                     this->networkNode->addGlidePlane(loopNode->periodicPlanePatch()->glidePlane.get());
-//                 }
-//             }
-//         }
-
-//         //Giacomo Version
-//         if(this->prev.second)
-//         {
-//             if(periodicPlanePatch())
-//             {
-//                 VerboseDislocationLoopNode(3,"prev="<<this->prev.second->tag()<<std::endl;);
-//                 this->networkNode->addGlidePlane(periodicPlanePatch()->glidePlane.get());
-//             }
-//             else
-//             {
-//                 this->networkNode->addGlidePlane(this->prev.second->loop->glidePlane.get());
-//             }
-//         }
-//         if(this->next.second)
-//         {
-//             if(periodicPlanePatch())
-//             {
-//                 VerboseDislocationLoopNode(3,"next="<<this->next.second->tag()<<std::endl;);
-//                 this->networkNode->addGlidePlane(periodicPlanePatch()->glidePlane.get());
-//             }
-//             else
-//             {
-//                 this->networkNode->addGlidePlane(this->next.second->loop->glidePlane.get());
-//             }
-//         }
-//         // //Yash Version (Do this for all the loop nodes of this network node)
-//         // for (const auto& loopNode : this->networkNode->loopNodes())
-//         // {
-//         //     if (loopNode->prev.second)
-//         //     {
-//         //         if (loopNode->periodicPlanePatch())
-//         //         {
-//         //             VerboseDislocationLoopNode(3, "prev=" << loopNode->prev.second->tag() << std::endl;);
-//         //             loopNode->networkNode->addGlidePlane(loopNode->periodicPlanePatch()->glidePlane.get());
-//         //         }
-//         //         else
-//         //         {
-//         //             loopNode->networkNode->addGlidePlane(loopNode->prev.second->loop->glidePlane.get());
-//         //         }
-//         //     }
-//         //     if (loopNode->next.second)
-//         //     {
-//         //         if (loopNode->periodicPlanePatch())
-//         //         {
-//         //             VerboseDislocationLoopNode(3, "next=" << loopNode->next.second->tag() << std::endl;);
-//         //             loopNode->networkNode->addGlidePlane(loopNode->periodicPlanePatch()->glidePlane.get());
-//         //         }
-//         //         else
-//         //         {
-//         //             loopNode->networkNode->addGlidePlane(loopNode->next.second->loop->glidePlane.get());
-//         //         }
-//         //     }
-//         // }
-        
-
-//         VerboseDislocationLoopNode(3,"DislocationLoopNode "<<this->sID<<" removeLoopLink DONE"<<std::endl;);
-
-// //        for(const auto& loopLink : this->loopLinks())
-// //        {
-// //            this->networkNode->addGlidePlane(loopLink->loop()->glidePlane.get());
-// //        }
-        
-// //        VerbosePlanarDislocationNode(2,"PlanarDislocationNode "<<this->sID<<" finished removeLoopLink "<<pL->tag()<<std::endl;);
-//     }
-
     template <int dim, short unsigned int corder>
     void DislocationLoopNode<dim,corder>::set_P(const typename DislocationLoopNode<dim,corder>::VectorLowerDim& newP)
     {
@@ -385,7 +221,7 @@ namespace model
             assert(this->loop()->glidePlane->contains(newP));
         }
         
-        if(this->network().simulationParameters.isPeriodicSimulation())
+        if(this->network().ddBase.isPeriodicDomain)
         {
             if(!periodicPlaneEdge.first)
             {// only move loop nodes not on patch boundaries
@@ -563,6 +399,7 @@ namespace model
         else
         {
             SplineNodeType::set_P(newP);
+            this->networkNode->set_P(_periodicPlanePatch->glidePlane->snapToPlane(this->get_P()+_periodicPlanePatch->shift));
 //            assert(false && "FINISH HERE");
         }
     }
@@ -572,23 +409,6 @@ namespace model
     {
         return _periodicPlanePatch;
     }
-
-    // template <int dim, short unsigned int corder>
-    // void DislocationLoopNode<dim,corder>::updateConfinedGeometry()
-    // {
-    //     //This will update the confinement of the loop nodes
-    //     // for (const auto &loopNode : this->networkNode->loopNodes())
-    //     // {
-    //     //     if (loopNode->periodicPlanePatch())
-    //     //     {
-    //     //         this->networkNode->addGlidePlane(loopNode->periodicPlanePatch()->glidePlane.get());
-    //     //     }
-    //     // }
-    //     if (this->periodicPlanePatch())
-    //     {
-    //         this->networkNode->addGlidePlane(this->periodicPlanePatch()->glidePlane.get());
-    //     }
-    // }
 
     template <int dim, short unsigned int corder>
     void DislocationLoopNode<dim,corder>::updateGeometry()
@@ -973,59 +793,6 @@ namespace model
         }
         
         return isMovable;
-
-        
-//        if(isMovable && this->loop()->isSessile)
-//        {
-//
-//        }
-//
-//        if(this->network().simulationParameters.isPeriodicSimulation() && this->isBoundaryNode())
-//        {// cannot move boundary nodes under periodic simulations
-//            return (X-this->get_P()).squaredNorm()<FLT_EPSILON;
-//        }
-//        else
-//        {
-//            bool isMovable=true;
-//
-//            VerboseDislocationNode(4,"checking if PlanarDislocationNode "<<this->sID<< " isMovable:"<<std::endl;);
-//
-//            for(const auto& gp : this->glidePlanes())
-//            {// X must be contained by all glidePlanes
-//                isMovable*=gp->contains(X);
-//            }
-//            VerboseDislocationNode(4,"  meshPlanes contains X? "<<isMovable<<std::endl;);
-//
-//            if(isMovable)
-//            {
-//                for(const auto& pair : this->neighbors())
-//                {
-//                    if(std::get<1>(pair.second)->isSessile())
-//                    {// sessile segments cannot change direction if this node is moved
-//                        const double currentNorm((std::get<0>(pair.second)->get_P()-this->get_P()).norm());
-//                        const double newNorm((std::get<0>(pair.second)->get_P()-X).norm());
-//                        if(currentNorm>FLT_EPSILON && newNorm>FLT_EPSILON)
-//                        {
-//                            const bool sessileNeighborMovable=((std::get<0>(pair.second)->get_P()-X).cross(std::get<0>(pair.second)->get_P()-this->get_P()).norm()<FLT_EPSILON*currentNorm*newNorm);
-//                            VerboseDislocationNode(4,"  sessileNeighbor "<<std::get<1>(pair.second)->tag()<< " movable?"<<sessileNeighborMovable<<std::endl;);
-//                            isMovable=(isMovable&&sessileNeighborMovable);
-//                            //                                isMovable*=sessileNeighborMovable;
-//                            if(!isMovable)
-//                            {
-//                                break;
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if(isMovable && this->isOnBoundary())
-//            {
-//                isMovable*=this->boundingBoxSegments().contains(X);
-//            }
-//        }
-        
-        
     }
     
     template <int dim, short unsigned int corder>

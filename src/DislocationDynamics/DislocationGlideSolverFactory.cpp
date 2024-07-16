@@ -23,8 +23,9 @@ namespace model
 {
     
     template <typename DislocationNetworkType>
-    DislocationGlideSolverBase<DislocationNetworkType>::DislocationGlideSolverBase(const DislocationNetworkType& DN_in) :
-    /* init */ DN(DN_in)
+    DislocationGlideSolverBase<DislocationNetworkType>::DislocationGlideSolverBase(const DislocationNetworkType& DN) :
+//    /* init */ DN(DN_in)
+    /* init */ DislocationVelocitySolverBase<DislocationNetworkType>(DN)
     {
         
     }
@@ -42,7 +43,7 @@ std::shared_ptr<DislocationGlideSolverBase<DislocationNetworkType>> DislocationG
         }
     else
     {
-        throw std::runtime_error("Unknown glide solver type '"+solverType+"'");
+        std::cout<<redBoldColor<<"Unknown glide solver type "<<solverType<<". Glide disabled."<<defaultColor<<std::endl;
         return nullptr;
     }
     

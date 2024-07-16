@@ -24,7 +24,7 @@ namespace model
     public:
         
         /**********************************************************************/
-        VectorDim displacement(const VectorDim& x) const
+        VectorDim displacement(const VectorDim&) const
         {/*!\param[in] P position vector
           * \returns The displacement field in the DefectiveCrystal at P
           */
@@ -34,13 +34,13 @@ namespace model
         
         /**********************************************************************/
         template<typename ElementType>
-        void displacement(std::vector<FEMnodeEvaluation<ElementType,dim,1>>& fieldPoints) const
+        void displacement(std::vector<FEMnodeEvaluation<ElementType,dim,1>>&) const
         {
 
         }
         
         /**********************************************************************/
-        MatrixDim stress(const VectorDim& x) const
+        MatrixDim stress(const VectorDim&) const
         {/*!\param[in] P position vector
           * \returns The stress field in the DefectiveCrystal at P
           * Note:

@@ -1,5 +1,3 @@
-include_directories(${MoDELibRootDir}/include/Utilities/)
-include_directories(${MoDELibRootDir}/include/Geometry/)
 target_sources(${PROJECT_NAME} PRIVATE 
 		${CMAKE_CURRENT_SOURCE_DIR}/FiniteLineSegment.cpp
 		${CMAKE_CURRENT_SOURCE_DIR}/LineLineIntersection.cpp

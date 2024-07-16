@@ -1,7 +1,9 @@
 microstructureFile = ../../../MicrostructureLibrary/periodicDipole.txt;
 #microstructureFile = ../../../MicrostructureLibrary/periodicDipoleDensity.txt;
-#microstructureFile = ../../../MicrostructureLibrary/periodicLoopDensity.txt;
-#microstructureFile = ../../../MicrostructureLibrary/periodicLoops.txt;
+microstructureFile = ../../../MicrostructureLibrary/shearLoopsDensity.txt;
+#microstructureFile = ../../../MicrostructureLibrary/shearLoops.txt;
+#microstructureFile = ../../../MicrostructureLibrary/frankLoopsDensity.txt;
+#microstructureFile = ../../../MicrostructureLibrary/frankLoops.txt;
 #microstructureFile = ../../../MicrostructureLibrary/prismaticLoops.txt;
 #microstructureFile = ../../../MicrostructureLibrary/prismaticLoopDensity.txt;
 #microstructureFile = ../../../MicrostructureLibrary/sphericalInclusionsDensity.txt;

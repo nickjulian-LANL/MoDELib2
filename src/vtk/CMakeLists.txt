@@ -1,37 +1,26 @@
-include_directories(${MoDELibRootDir}/include/Utilities/)
-include_directories(${MoDELibRootDir}/include/Geometry/)
-include_directories(${MoDELibRootDir}/include/Mesh/)
-include_directories(${MoDELibRootDir}/include/GlidePlanes/)
-include_directories(${MoDELibRootDir}/include/vtk/)
-include_directories(${MoDELibRootDir}/include/DislocationDynamicsIO/)
-include_directories(${MoDELibRootDir}/include/PolycrystallineMaterials/)
-include_directories(${MoDELibRootDir}/include/Lattices/)
-include_directories(${MoDELibRootDir}/include/IO/)
-include_directories(${MoDELibRootDir}/include/Math/)
-
 target_sources(${PROJECT_NAME} PRIVATE 
-	${MoDELibRootDir}/include/vtk/SimplicialMeshActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/SimplicialMeshActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/SimplicialMeshActor.cpp
-	${MoDELibRootDir}/include/vtk/DDqtMainWindow.h
+	${MoDELib_INCLUDE_DIR}/vtk/DDqtMainWindow.h
 	${CMAKE_CURRENT_SOURCE_DIR}/DDqtMainWindow.cpp
-	${MoDELibRootDir}/include/vtk/DDqtVTKwidget.h
+	${MoDELib_INCLUDE_DIR}/vtk/DDqtVTKwidget.h
 	${CMAKE_CURRENT_SOURCE_DIR}/DDqtVTKwidget.cpp
-	${MoDELibRootDir}/include/vtk/DDconfigVtk.h
-	${CMAKE_CURRENT_SOURCE_DIR}/DDconfigVtk.cpp
-	${MoDELibRootDir}/include/vtk/NetworkNodeActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/DefectiveCrystalActor.h
+	${CMAKE_CURRENT_SOURCE_DIR}/DefectiveCrystalActor.cpp
+	${MoDELib_INCLUDE_DIR}/vtk/NetworkNodeActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/NetworkNodeActor.cpp
-	${MoDELibRootDir}/include/vtk/NetworkLinkActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/NetworkLinkActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/NetworkLinkActor.cpp
-	${MoDELibRootDir}/include/vtk/InclusionActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/InclusionActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/InclusionActor.cpp
-	${MoDELibRootDir}/include/vtk/NetworkLoopActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/NetworkLoopActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/NetworkLoopActor.cpp
-	${MoDELibRootDir}/include/vtk/GlidePlaneActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/GlidePlaneActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/GlidePlaneActor.cpp
-	${MoDELibRootDir}/include/vtk/ChartActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/ChartActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/ChartActor.cpp
-	${MoDELibRootDir}/include/vtk/QuadratureActor.h
+	${MoDELib_INCLUDE_DIR}/vtk/QuadratureActor.h
 	${CMAKE_CURRENT_SOURCE_DIR}/QuadratureActor.cpp
-	${MoDELibRootDir}/include/vtk/DDFieldWidget.h
+	${MoDELib_INCLUDE_DIR}/vtk/DDFieldWidget.h
 	${CMAKE_CURRENT_SOURCE_DIR}/DDFieldWidget.cpp
 	)

@@ -26,8 +26,6 @@ namespace model
     class DislocationLoop : public Loop<DislocationLoop<_dim,corder>>
     {
 
-        
-        
     public:
         
         typedef TypeTraits<DislocationLoop<_dim,corder>> TraitsType;
@@ -88,18 +86,18 @@ namespace model
         void updateSlipSystem();
         void updateGeometry();
         void updateRates();
-        MatrixDim plasticDistortion() const;
-        MatrixDim plasticDistortionRate() const;
+        MatrixDim averagePlasticDistortion() const;
+        MatrixDim averagePlasticDistortionRate() const;
         VectorDim burgers() const;
         const std::shared_ptr<SlipSystem>&  slipSystem() const;
         bool isVirtualBoundaryLoop() const;
         double solidAngle(const VectorDim& x) const;
         void crossSlipBranches(std::deque<std::pair<std::deque<std::shared_ptr<LoopNodeType>>,int>>& csNodes) const;
-        int windingNumber(const VectorDim& pt);
-        int windingNumber(const Eigen::Matrix<double,_dim-1,1>& ptLocal,const std::shared_ptr<GlidePlane<_dim>>& ptPlane);
+//        int windingNumber(const VectorDim& pt);
+//        int windingNumber(const Eigen::Matrix<double,_dim-1,1>& ptLocal,const std::shared_ptr<GlidePlane<_dim>>& ptPlane);
         const DislocationLoopPatches<_dim>& patches() const;
 //        const std::vector<VectorDim>& barycentricNodes() const;
-        void computeStackingFaultForces();
+//        void computeStackingFaultForces();
 
         static void initFromFile(const std::string&);
         static double planarSolidAngle(const VectorDim& x,const VectorDim& planePoint,const VectorDim& rhN,const std::vector<std::pair<VectorDim,VectorDim>>& polygonSegments);

@@ -19,7 +19,10 @@
 #include <PrismaticLoopGenerator.h>
 #include <SphericalInclusionsGenerator.h>
 #include <PolyhedronInclusionsGenerator.h>
-#include <IrradiationDefectsGenerator.h>
+#include <StackingFaultTetrahedraGenerator.h>
+#include <FrankLoopsGenerator.h>
+#include <PlanarLoopGenerator.h>
+#include <ClusterDynamicsParameters.h>
 
 #include <VTKGenerator.h>
 
@@ -60,16 +63,14 @@ void MicrostructureGenerator::readMicrostructureFile()
     this->clear();
     configIO.clear();
     auxIO.clear();
-//    configIO.reset(new DDconfigIO<3>(ddBase.simulationParameters.traitsIO.evlFolder));
-//    auxIO.reset(new DDauxIO<3>(ddBase.simulationParameters.traitsIO.auxFolder));
 
 
     const auto microstructureFiles(TextFileParser(ddBase.simulationParameters.traitsIO.microstructureFile).readStringVector("microstructureFile"));
     for(const auto& pair : microstructureFiles)
     {
         const std::string microstructureFileName(std::filesystem::path(ddBase.simulationParameters.traitsIO.microstructureFile).parent_path().string()+"/"+TextFileParser::removeSpaces(pair.first));
-        const std::string microstructureType(TextFileParser(microstructureFileName).readString("type",false));
-        const std::string tag(TextFileParser(microstructureFileName).readString("tag",false));
+        const std::string microstructureType(TextFileParser::removeSpaces(TextFileParser(microstructureFileName).readString("type",false)));
+        const std::string tag(TextFileParser::removeSpaces(TextFileParser(microstructureFileName).readString("tag",false)));
         bool success(false);
         if(microstructureType=="PeriodicDipole")
         {
@@ -78,6 +79,10 @@ void MicrostructureGenerator::readMicrostructureFile()
         else if(microstructureType=="ShearLoop")
         {
             success=this->emplace(tag,new ShearLoopGenerator(microstructureFileName)).second;
+        }
+        else if(microstructureType=="PlanarLoop")
+        {
+            success=this->emplace(tag,new PlanarLoopGenerator(microstructureFileName)).second;
         }
         else if(microstructureType=="PrismaticLoop")
         {
@@ -91,9 +96,13 @@ void MicrostructureGenerator::readMicrostructureFile()
         {
             success=this->emplace(tag,new PolyhedronInclusionsGenerator(microstructureFileName)).second;
         }
-        else if(microstructureType=="Irradiation")
+        else if(microstructureType=="StackingFaultTetrahedra")
         {
-            success=this->emplace(tag,new IrradiationDefectsGenerator(microstructureFileName)).second;
+            success=this->emplace(tag,new StackingFaultTetrahedraGenerator(microstructureFileName)).second;
+        }
+        else if(microstructureType=="FrankLoops")
+        {
+            success=this->emplace(tag,new FrankLoopsGenerator(microstructureFileName)).second;
         }
         else if(microstructureType=="VTK")
         {
@@ -101,7 +110,7 @@ void MicrostructureGenerator::readMicrostructureFile()
         }
         else
         {
-            std::cout<<"unkown microstructure type "<<microstructureType<<std::endl;
+            std::runtime_error("Unkown microstructure type "+microstructureType+".");
         }
         if(!success)
         {
@@ -222,7 +231,7 @@ DDauxIO<3>& MicrostructureGenerator::aux()
     size_t MicrostructureGenerator::insertNetworkNode(const VectorDimD& networkNodePos)
     {
         const size_t networkNodeID(configIO.nodes().size());
-        configIO.nodes().emplace_back(networkNodeID,networkNodePos,Eigen::Matrix<double,1,3>::Zero(),1.0,0);
+        configIO.nodes().emplace_back(networkNodeID,networkNodePos,Eigen::Matrix<double,1,3>::Zero(),Eigen::Array<double,1,ClusterDynamicsParameters<3>::mSize>::Zero(),1.0,0);
         return networkNodeID;
     }
 
@@ -262,6 +271,14 @@ size_t MicrostructureGenerator::insertInclusion(const std::map<size_t,Eigen::Vec
                 const size_t sourceID(startNodeID +std::distance(polyNodes.begin(),sourceIter));
                 const size_t sinkID(startNodeID +std::distance(polyNodes.begin(),sinkIter));
                 configIO.polyhedronInclusionEdges().emplace_back(inclusionID,faceID,sourceID,sinkID);
+            }
+            else
+            {
+                std::cout<<"inclusionID="<<inclusionID<<std::endl;
+                std::cout<<"faceID="<<faceID<<std::endl;
+                std::cout<<"node "<<pair.second[k]<<" found? "<<(sourceIter!=polyNodes.end())<<std::endl;
+                std::cout<<"node "<<pair.second[k1]<<" found? "<<(sinkIter!=polyNodes.end())<<std::endl;
+                throw std::runtime_error("Cannot insert polyhedronInclusionEdge.");
             }
         }
     }

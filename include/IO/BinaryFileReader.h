@@ -39,7 +39,6 @@ namespace model
         
     public:
         
-        /**********************************************************************/
         BinaryFileReader(const std::string& filename) :
         /* init list */ _bytes_in_file(0)
         /* init list */,_success(false)
@@ -86,14 +85,12 @@ namespace model
             
         }
         
-        /**********************************************************************/
-        const size_t& bytes() const
+        size_t bytes() const
         {/*! The number of bytes in the file read
           */
             return _bytes_in_file;
         }
         
-        /**********************************************************************/
         const bool& success() const
         {/*! The number of bytes in the file read
           */
@@ -104,28 +101,3 @@ namespace model
     
 } // namespace model
 #endif
-
-//        /**********************************************************************/
-//        ~BinaryFileReader()
-//        {/*! Destructor
-//          */
-//            //		delete[] memblock;
-//            		delete memblock;
-//        }
-
-//        /**********************************************************************/
-//        const size_t& size() const
-//        {/*! The number of DataType(s) elements read and stored in this
-//          */
-//            return _array_size;
-//        }
-
-
-//        /**********************************************************************/
-//        const DataType& operator[](const size_t& k) const
-//        {/*! @param[in] k the position in the BinaryFileReader container
-//          *  \returns the k-th DataType element in the BinaryFileReader container
-//          */
-//            assert( k<_array_size && "Index out of bound.");
-//            return memblock[k];
-//        }

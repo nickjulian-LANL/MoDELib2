@@ -10,6 +10,7 @@
 #define model_DislocationSegmentIO_H_
 
 #include <tuple>
+#include <set>
 #include <iomanip>
 
 namespace model
@@ -19,7 +20,7 @@ namespace model
     struct DislocationSegmentIO
     {
         
-                typedef Eigen::Matrix<double,dim,1> VectorDim;
+        typedef Eigen::Matrix<double,dim,1> VectorDim;
 //        size_t loopID;          // sID
         const size_t sourceID;          // sID
         const size_t sinkID;          // sID
@@ -29,6 +30,7 @@ namespace model
         VectorDim n;
 
         int  meshLocation;
+        std::set<int> grainIDs;
 //        int loopCounter;
 //        bool isGlissile
         
@@ -53,6 +55,7 @@ namespace model
         /* init */ b(VectorDim::Zero()),
         /* init */ n(VectorDim::Zero()),
         /* init */ meshLocation(-1)
+//        /* init */ grainID(-2) // -2 means never assigned
 //        loopCounter(0),
 //        isGlissile(true)
 //        /* init */ meshLocation(meshLocation_in)

@@ -14,7 +14,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_executable(${PROJECT_NAME} DDqt.cxx)
+add_executable(DDqt DDqt.cxx)
 
 if(USE_NOISE_GENERATOR)
 	find_library(FFTW3_LIBRARIES fftw3 REQUIRED)

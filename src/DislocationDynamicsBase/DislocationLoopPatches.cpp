@@ -12,6 +12,7 @@
 
 
 #include <DislocationLoopPatches.h>
+#include <Polygon2D.h>
 
 namespace model
 {
@@ -117,6 +118,9 @@ const typename DislocationLoopPatches<dim>::VectorDim DislocationLoopPatches<dim
 template <int dim>
 double DislocationLoopPatches<dim>::solidAngle(const VectorDim& x) const
 {
+//    const double a2(DislocationFieldBase<dim>::a2); // this is wrong, we are on the unif sphere so a must be << 1
+    const double a2(1.0e-2);
+    const double oneA2=sqrt(1.0+a2);
     double temp(0.0);
     const VectorDim rhA(orientedArea());
     const double rhAnorm(rhA.norm());
@@ -155,9 +159,8 @@ double DislocationLoopPatches<dim>::solidAngle(const VectorDim& x) const
                                     const VectorDim e2(e3.cross(e1));
                                     const double ydy(e1.dot(Y1));
                                     const double w=sqrt((1.0-ydy)/(1.0+ydy));
-                                    const double oneA2=sqrt(1.0+DislocationFieldBase<dim>::a2);
                                     const double s3(s.dot(e3));
-                                    const double s3A2=sqrt(std::pow(s3,2)+DislocationFieldBase<dim>::a2);
+                                    const double s3A2=sqrt(std::pow(s3,2)+a2);
                                     temp+=2.0*s3/oneA2/s3A2*atan(s3A2*w/(oneA2-s.dot(e1)-s.dot(e2)*w));
                                 }
                             }
@@ -168,6 +171,46 @@ double DislocationLoopPatches<dim>::solidAngle(const VectorDim& x) const
         }
     }
     return temp;
+}
+
+template <int dim>
+int DislocationLoopPatches<dim>::windingNumber(const VectorDim& pt) const
+{/*!\param[in] pts,vector of positions about which to compute the winding number of this loop
+  
+  */
+    int wn(0);
+    for(const auto& pair : localPatches())
+    {
+        if(pair.first->glidePlane)
+        {
+            if(pair.first->glidePlane->contains(pt))
+            {
+                const auto localPt(pair.first->glidePlane->localPosition(pt));
+                wn+=Polygon2D::windingNumber(localPt,pair.second);
+            }
+        }
+    }
+    return wn;
+}
+
+template <int dim>
+int DislocationLoopPatches<dim>::windingNumber(const Eigen::Matrix<double,dim-1,1>& localPt,const std::shared_ptr<GlidePlane<dim>>& ptPlane) const
+{/*!\param[in] pts,vector of positions about which to compute the winding number of this loop
+  
+  */
+    int wn(0);
+    for(const auto& pair : localPatches())
+    {
+        if(pair.first->glidePlane)
+        {
+            if(pair.first->glidePlane==ptPlane)
+            {
+                //const auto localPt(pair.first->glidePlane->localPosition(pt));
+                wn+=Polygon2D::windingNumber(localPt,pair.second);
+            }
+        }
+    }
+    return wn;
 }
 
 template <int dim>

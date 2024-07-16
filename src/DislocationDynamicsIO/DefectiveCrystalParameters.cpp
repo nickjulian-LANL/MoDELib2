@@ -10,6 +10,7 @@
 #ifndef model_DefectiveCrystalParameters_cpp_
 #define model_DefectiveCrystalParameters_cpp_
 
+#include <cfloat>
 #include <DefectiveCrystalParameters.h>
 
 namespace model
@@ -72,35 +73,45 @@ namespace model
         /**********************************************************************/
         DefectiveCrystalParameters::DefectiveCrystalParameters(const std::string& folderName) :
         /* init */ traitsIO(folderName)
-        /* init */,simulationType(TextFileParser(traitsIO.ddFile).readScalar<int>("simulationType",true))
+//        /* init */,simulationType(TextFileParser(traitsIO.ddFile).readScalar<int>("simulationType",true))
+        /* init */,useFEM(TextFileParser(traitsIO.ddFile).readScalar<int>("useFEM",true))
+        /* init */,useElasticDeformation(TextFileParser(traitsIO.ddFile).readScalar<int>("useElasticDeformation",true))
         /* init */,useDislocations(TextFileParser(traitsIO.ddFile).readScalar<int>("useDislocations",true))
+        /* init */,useClusterDynamics(TextFileParser(traitsIO.ddFile).readScalar<int>("useClusterDynamics",true))
         /* init */,useCracks(TextFileParser(traitsIO.ddFile).readScalar<int>("useCracks",true))
-        /* init */,periodicImageSize(simulationType==DDtraitsIO::PERIODIC_IMAGES? TextFileParser(traitsIO.ddFile).readArray<int>("periodicImageSize",true) : std::vector<int>())
+        /* init */,useInclusions(TextFileParser(traitsIO.ddFile).readScalar<int>("useInclusions",true))
+//        /* init */,correctPeriodicGradients(simulationType==DDtraitsIO::PERIODIC_IMAGES? TextFileParser(traitsIO.ddFile).readScalar<int>("correctPeriodicGradients",true) : 0)
+//        /* init */,periodicImageCentered(simulationType==DDtraitsIO::PERIODIC_IMAGES? TextFileParser(traitsIO.ddFile).readScalar<int>("periodicImageCentered",true) : 0)
         /* init */,Nsteps(TextFileParser(traitsIO.ddFile).readScalar<size_t>("Nsteps",true))
-        /* init */,timeIntegrationMethod(TextFileParser(traitsIO.ddFile).readScalar<int>("timeIntegrationMethod",true))
+//        /* init */,timeIntegrationMethod(TextFileParser(traitsIO.ddFile).readScalar<int>("timeIntegrationMethod",true))
         /* init */,useSubCycling(TextFileParser(traitsIO.ddFile).readScalar<int>("useSubCycling",true))
         /* init */,subcyclingBins(getSubCyclingSet(TextFileParser(traitsIO.ddFile).readArray<int>("subcyclingBins",true)))
         /* init */,externalLoadControllerName(TextFileParser(traitsIO.ddFile).readString("externalLoadControllerName",true))
-        /* init */,virtualSegmentDistance((simulationType==DDtraitsIO::FINITE_FEM || simulationType==DDtraitsIO::PERIODIC_FEM || simulationType==DDtraitsIO::PERIODIC_IMAGES)? TextFileParser(traitsIO.ddFile).readScalar<double>("virtualSegmentDistance",true) : 0.0)
         /* init */,use_stochasticForce(TextFileParser(traitsIO.ddFile).readScalar<int>("use_stochasticForce",true))
         /* init */,periodicFaceIDs(TextFileParser(traitsIO.polyFile).template readSet<int>("periodicFaceIDs",true))
+        /* init */,dtMax(TextFileParser(traitsIO.ddFile).template readScalar<double>("dtMax",true))
+        /* init */,outputFrequency(TextFileParser(traitsIO.ddFile).readScalar<int>("outputFrequency",true))
+        /* init */,outputBinary(TextFileParser(traitsIO.ddFile).readScalar<int>("outputBinary",true))
         /* init */,runID(TextFileParser(traitsIO.ddFile).readScalar<long int>("startAtTimeStep",true))
         /* init */,totalTime(0.0)
         /* init */,dt(10.0)
         {
-            assert(Nsteps>=0 && "Nsteps MUST BE >= 0");
+            
+            if (Nsteps < 0)
+            {
+                throw std::runtime_error("Nsteps MUST BE >= 0.");
+            }
 
+            if (dtMax < FLT_EPSILON)
+            {
+                throw std::runtime_error("dtMax must be > FLT_EPSILON.");
+            }
+            
             manageRestart();
 
             
         }
         
-
-        
-        bool DefectiveCrystalParameters::isPeriodicSimulation() const
-        {
-            return simulationType==DDtraitsIO::PERIODIC_IMAGES || simulationType==DDtraitsIO::PERIODIC_FEM;
-        }
         
   }
 #endif

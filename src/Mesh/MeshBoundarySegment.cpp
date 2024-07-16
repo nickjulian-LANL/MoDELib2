@@ -19,25 +19,28 @@
 namespace model
 {
 
-template <int dim>
-typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicShift() const
-{
-    VectorDim temp(VectorDim::Zero());
-    for(const auto& face : faces)
+    template <int dim>
+    typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicShift() const
     {
-        if(face->periodicFacePair.second)
+        VectorDim temp(VectorDim::Zero());
+        for(const auto& face : faces)
         {
-            temp+=face->periodicFacePair.first;
+            if(face->periodicFacePair.second)
+            {
+                temp+=face->periodicFacePair.first;
+            }
         }
+        return temp;
     }
-    return temp;
-}
 
 
     template <int dim>
     typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::getBoundaryNormal(const typename MeshBoundarySegment<dim>::FaceContainerType& fcs)
     {
-        assert(fcs.size() && "EMPY FACE CONTAINER");
+        if(fcs.size()==0)
+        {
+            throw std::runtime_error("EMPY FACE CONTAINER");
+        }
         typename MeshBoundarySegment<dim>::VectorDim temp(MeshBoundarySegment<dim>::VectorDim::Zero());
         for(const auto& face : fcs)
         {
@@ -46,7 +49,7 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
         const double tempNorm(temp.norm());
         return tempNorm>FLT_EPSILON? (temp/tempNorm).eval() : VectorDim::Zero();
     }
-    
+
     template <int dim>
     MeshBoundarySegment<dim>::MeshBoundarySegment(const typename MeshBoundarySegment<dim>::VectorDim& p0,
                                                   const typename MeshBoundarySegment<dim>::VectorDim& p1,
@@ -56,7 +59,7 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
     /* init */,outNormal(getBoundaryNormal(faces))
     {
     }
-    
+
     template <int dim>
     MeshBoundarySegment<dim>::MeshBoundarySegment(const typename MeshBoundarySegment<dim>::VectorDim& p0,
                                                   const typename MeshBoundarySegment<dim>::VectorDim& p1,
@@ -66,7 +69,7 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
     /* init */,outNormal(getBoundaryNormal(faces))
     {
     }
-        
+
     /**********************************************************************/
     template <int dim>
     void BoundingMeshSegments<dim>::emplace_unique(const VectorDim& P0,const VectorDim& P1,const PlanarMeshFace<dim>* const face)
@@ -88,7 +91,10 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
             }
             if (merged)
             {// P0->P1 was found to be not unique. Swap vectors
-                assert(merged==1 && "MORE THAN ONE SEGMENTS FOUND ON LINE P0 P1");
+                if(merged!=1)
+                {
+                    throw std::runtime_error("MORE THAN ONE SEGMENTS FOUND ON LINE P0 P1");
+                }
             }
             else
             {// P0->P1 was found to be unique, add it
@@ -96,13 +102,13 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
             }
         }
     }
-    
+
     template <int dim>
     void BoundingMeshSegments<dim>::computeFaceIntersections(const Plane<dim>& plane,
                                                              const std::shared_ptr<PlanarMeshFace<dim>>& face)
     {
         PlanePlaneIntersection<dim> ppi(plane,face->asPlane());
-                
+        
         if(ppi.type==PlanePlaneIntersection<dim>::INCIDENT)
         {// plane and mesh-face are incident
             
@@ -135,17 +141,17 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
             
             switch (roots.size())
             {
-                    case 0:
+                case 0:
                 {// no intersaction between plane and face
                     break;
                 }
                     
-                    case 1:
+                case 1:
                 {// single-point intersection, not a valid boundary segment, so don't consider it
                     break;
                 }
                     
-                    case 2:
+                case 2:
                 {// an intersection segment
                     const VectorDim& P0(*roots.begin());
                     const VectorDim& P1(*roots.rbegin());
@@ -165,7 +171,7 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
                     {
                         std::cout<<std::setprecision(15)<<std::scientific<<root.transpose()<<std::endl;
                     }
-                    assert(false && "FAILED TO FIND A BOUNDARY PERIMETER FOR PLANE");
+                    throw std::runtime_error("FAILED TO FIND A BOUNDARY PERIMETER FOR PLANE");
                     break;
                 }
             }
@@ -184,16 +190,150 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
             }
         }
     }
-    
+
     /**********************************************************************/
     template <int dim>
     BoundingMeshSegments<dim>::BoundingMeshSegments()
     {
         
     }
-    
-    
-    
+
+    template <int dim>
+    void BoundingMeshSegments<dim>::sortIntersections(const Plane<dim>& plane)
+    {
+        
+        // Compute convex hull and its center
+        ConvexHull<2,std::shared_ptr<MeshBoundarySegment<dim>>> finalHull;
+        for(const auto& pt : *this)
+        {
+            const auto x(plane.localPosition(0.5*(pt->P0+pt->P1)));
+            finalHull.emplace(std::array<double,2>{x[0],x[1]},&pt);
+            // THE PROBLEM HERE IS THAT IF COINCIDENT POINTS FROM DIFFERENCE FACES EXIST, THEN ONLY ONE OF THEM IS KEPT. E.G. A PLANE CUTTING AT THE INTERSECTION OF TWO FACES. IF WE HAD UNIQUE FACE EDGES WITH POINTERS TO THE ADJECENT FACES WE COULD SOLVE THIS
+        }
+        double xC(0.0);
+        double yC(0.0);
+        const auto hullPts=finalHull.getPoints();
+        for(const auto& hP : hullPts)
+        {
+            xC+=hP[0];
+            yC+=hP[1];
+        }
+        xC/=hullPts.size();
+        yC/=hullPts.size();
+        
+        // Sort boundary with angle from center
+        std::map<double,std::shared_ptr<MeshBoundarySegment<dim>>> segMap;
+        for(const auto& seg : *this)
+        {
+            const auto x(plane.localPosition(0.5*(seg->P0+seg->P1)));
+            const double dx(x(0)-xC);
+            const double dy(x(1)-yC);
+            const double angle(atan2(dy,dx));
+            segMap.emplace(angle,seg);
+        }
+        
+        BoundingMeshSegments<dim> sortedTemp;
+        for(auto seg=segMap.begin();seg!=segMap.end();++seg)
+        {
+            //            const auto& seg(*hullPts[k].t);
+            if(seg==segMap.begin())
+            {
+                auto seg1(seg);
+                seg1++;
+                
+                if((seg->second->P1-seg1->second->P0).norm()<FLT_EPSILON || (seg->second->P1-seg1->second->P1).norm()<FLT_EPSILON)
+                {// first segment is oriented in the right direction
+                    sortedTemp.push_back(seg->second);
+                }
+                else
+                {
+                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->second->P1,seg->second->P0,seg->second->faces));
+                }
+            }
+            else
+            {
+                if((sortedTemp.back()->P1-seg->second->P0).norm()<FLT_EPSILON)
+                {
+                    sortedTemp.push_back(seg->second);
+                }
+                else if((sortedTemp.back()->P1-seg->second->P1).norm()<FLT_EPSILON)
+                {
+                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->second->P1,seg->second->P0,seg->second->faces));
+                }
+                else
+                {
+                    std::cout<<(sortedTemp.back()->P1-seg->second->P0).norm()<<std::endl;
+                    std::cout<<(sortedTemp.back()->P1-seg->second->P1).norm()<<std::endl;
+                    for(const auto& pair : segMap)
+                    {
+                        const auto& segTemp(pair.second);
+                        
+                        std::cout<<segTemp->P0.transpose()<<" "<<segTemp->P1.transpose()<<std::endl;
+                    }
+                    throw std::runtime_error("DISCONNECTED FACE BOUNDARY");
+                }
+            }
+        }
+        
+        
+        //        BoundingMeshSegments<dim> sortedTemp;
+        //        for(size_t k=0;k<hullPts.size();++k)
+        //        {
+        //            const auto& seg(*hullPts[k].t);
+        //            if(k==0)
+        //            {
+        //                const auto& seg1(*hullPts[1].t);
+        //
+        //                if((seg->P1-seg1->P0).norm()<FLT_EPSILON || (seg->P1-seg1->P1).norm()<FLT_EPSILON)
+        //                {// first segment is oriented in the right direction
+        //                    sortedTemp.push_back(seg);
+        //                }
+        //                else
+        //                {
+        //                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->P1,seg->P0,seg->faces));
+        //                }
+        //            }
+        //            else
+        //            {
+        //                if((sortedTemp.back()->P1-seg->P0).norm()<FLT_EPSILON)
+        //                {
+        //                    sortedTemp.push_back(seg);
+        //                }
+        //                else if((sortedTemp.back()->P1-seg->P1).norm()<FLT_EPSILON)
+        //                {
+        //                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->P1,seg->P0,seg->faces));
+        //                }
+        //                else
+        //                {
+        //                    std::cout<<(sortedTemp.back()->P1-seg->P0).norm()<<std::endl;
+        //                    std::cout<<(sortedTemp.back()->P1-seg->P1).norm()<<std::endl;
+        //                    for(size_t k=0;k<hullPts.size();++k)
+        //                    {
+        //                        const auto& segTemp(*hullPts[k].t);
+        //
+        //                        std::cout<<segTemp->P0.transpose()<<" "<<segTemp->P1.transpose()<<std::endl;
+        //                    }
+        //                }
+        //            }
+        //        }
+        
+        
+        if(sortedTemp.size())
+        {
+            if((sortedTemp.back()->P1-sortedTemp.front()->P0).norm()>FLT_EPSILON)
+            {
+                throw std::runtime_error("BoundingMeshSegments:: OPEN FACE BOUNDARY");
+            }
+        }
+        
+        if(sortedTemp.size()!=this->size())
+        {
+            throw std::runtime_error("BoundingMeshSegments:: sortedTemp.size()!=this->size()");
+        }
+        
+        this->swap(sortedTemp);
+    }
+
     /**********************************************************************/
     template <int dim>
     BoundingMeshSegments<dim>::BoundingMeshSegments(const SimplicialMesh<dim>& mesh,
@@ -209,111 +349,22 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
                 }
             }
         }
+        sortIntersections(plane);
     }
-    
+
     /**********************************************************************/
     template <int dim>
     BoundingMeshSegments<dim>::BoundingMeshSegments(const SimplicialMesh<dim>& mesh,
                                                     const size_t& rID,
                                                     const Plane<dim>& plane)
     {
-        //            const MatrixDim R(plane.localRotationMatrix());
-        
         for(const auto& face : mesh.region(rID)->faces())
         {
             computeFaceIntersections(plane,face.second);
         }
-        
-
-        
-        // Now sort segments
-        ConvexHull<2,std::shared_ptr<MeshBoundarySegment<dim>>> finalHull;
-        //std::cout<<"unsorted hull"<<std::endl;
-        for(const auto& pt : *this)
-        {
-            const auto x(plane.localPosition(0.5*(pt->P0+pt->P1)));
-            //                VectorDim x(R*(0.5*(pt->P0+pt->P1)-plane.P));
-            finalHull.emplace(std::array<double,2>{x[0],x[1]},&pt);
-            // THE PROBLEM HERE IS THAT IF COINCIDENT POINTS FROM DIFFERENCE FACES EXIST, THEN ONLY ONE OF THEM IS KEPT. E.G. A PLANE CUTTING AT THE INTERSECTION OF TWO FACES. IF WE HAD UNIQUE FACE EDGES WITH POINTERS TO THE ADJECENT FACES WE COULD SOLVE THIS
-        }
-        
-
-        
-        const auto hullPts=finalHull.getPoints();
-        BoundingMeshSegments<dim> sortedTemp;
-        for(size_t k=0;k<hullPts.size();++k)
-        {
-            const auto& seg(*hullPts[k].t);
-            if(k==0)
-            {
-                const auto& seg1(*hullPts[1].t);
-                
-                if((seg->P1-seg1->P0).norm()<FLT_EPSILON || (seg->P1-seg1->P1).norm()<FLT_EPSILON)
-                {// first segment is oriented in the right direction
-                    sortedTemp.push_back(seg);
-                }
-                else
-                {
-                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->P1,seg->P0,seg->faces));
-                }
-            }
-            else
-            {
-                if((sortedTemp.back()->P1-seg->P0).norm()<FLT_EPSILON)
-                {
-                    sortedTemp.push_back(seg);
-                }
-                else if((sortedTemp.back()->P1-seg->P1).norm()<FLT_EPSILON)
-                {
-                    sortedTemp.emplace_back(new MeshBoundarySegment<dim>(seg->P1,seg->P0,seg->faces));
-                }
-                else
-                {
-                    std::cout<<(sortedTemp.back()->P1-seg->P0).norm()<<std::endl;
-                    std::cout<<(sortedTemp.back()->P1-seg->P1).norm()<<std::endl;
-                    for(size_t k=0;k<hullPts.size();++k)
-                    {
-                        const auto& segTemp(*hullPts[k].t);
-                        
-                        std::cout<<segTemp->P0.transpose()<<" "<<segTemp->P1.transpose()<<std::endl;
-                    }
-                    assert(false && "DISCONNECTED FACE BOUNDARY");
-                }
-            }
-        }
-
-        
-        if(sortedTemp.size())
-        {
-            
-            assert((sortedTemp.back()->P1-sortedTemp.front()->P0).norm()<FLT_EPSILON && "OPEN FACE BOUNDARY");
-
-            
-            //                VectorDim nA(VectorDim::Zero());
-            //                const VectorDim P0(sortedTemp.front().P0);
-            //                for(const auto& seg : sortedTemp)
-            //                {
-            //                    nA+= 0.5*(seg.P0-P0).cross(seg.P1-seg.P0);
-            //                }
-            //                if(!isRightHandedBoundary(sortedTemp,plane))
-            //                {// boundary makes a left-handed loop with respect to plane normal. We need a right-handed loop
-            //                    BoundingMeshSegments<dim> flippedTemp;
-            //                    for (auto it = sortedTemp.rbegin(); it != sortedTemp.rend(); ++it)
-            //                    {
-            //                        flippedTemp.emplace_back(it->P1,it->P0,it->faces);
-            //                    }
-            //                    sortedTemp.swap(flippedTemp);
-            //                }
-            //                assert(isRightHandedBoundary(sortedTemp,plane));
-        }
-        
-        
-        assert(sortedTemp.size()==this->size());
-
-        this->swap(sortedTemp);
-
+        sortIntersections(plane);
     }
-    
+
     /**********************************************************************/
     template <int dim>
     std::set<const MeshBoundarySegment<dim>*> BoundingMeshSegments<dim>::containingSegments(const VectorDim& P) const
@@ -329,46 +380,29 @@ typename MeshBoundarySegment<dim>::VectorDim MeshBoundarySegment<dim>::periodicS
         }
         return temp;
     }
-    
+
     /**********************************************************************/
     template <int dim>
     bool BoundingMeshSegments<dim>::contains(const VectorDim& P) const
     {
         return containingSegments(P).size();
     }
-    
+
     /**********************************************************************/
     template <int dim>
     const BoundingMeshSegments<dim>& BoundingMeshSegments<dim>::boundingBoxSegments() const
     {
         return *this;
     }
-    
+
     template <int dim>
     BoundingMeshSegments<dim>& BoundingMeshSegments<dim>::boundingBoxSegments()
     {
         return *this;
     }
-    
-    
-    //
-    //
-    //
-    //
-    //        /**********************************************************************/
-    //        template <class T>
-    //        friend T& operator << (T& os, const BoundingMeshSegments<dim>& bls)
-    //        {
-    //            for(const auto& seg : bls)
-    //            {
-    //                os<<*seg;
-    //            }
-    //            return os;
-    //        }
-    
+
     template class MeshBoundarySegment<3>;
     template struct BoundingMeshSegments<3>;
 
-    
 }
 #endif

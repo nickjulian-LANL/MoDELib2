@@ -17,7 +17,6 @@
 #include <LatticeModule.h>
 #include <SlipSystem.h>
 #include <PolycrystallineMaterialBase.h>
-#include <DislocationMobilityHEX.h>
 #include <RationalLatticeDirection.h>
 #include <SingleCrystalBase.h>
 #include <DislocationMobilitySelector.h>
@@ -47,14 +46,14 @@ namespace model
 
         HEXlattice(const MatrixDim& Q,const PolycrystallineMaterialBase& material,const std::string& polyFile);
         static Eigen::Matrix<double,dim,dim> getLatticeBasis();
-        std::vector<std::shared_ptr<LatticePlaneBase>> getPlaneNormals() const;
-        std::vector<std::shared_ptr<SlipSystem>> getSlipSystems(const PolycrystallineMaterialBase& material,const std::string& polyFile,const PlaneNormalContainerType& plN);
-        std::vector<std::shared_ptr<SecondPhase<dim>>> getSecondPhases(const PolycrystallineMaterialBase& material,const PlaneNormalContainerType& plN);
+        std::vector<std::shared_ptr<GlidePlaneBase>> getPlaneNormals(const PolycrystallineMaterialBase& material,const std::string& polyFile) const;
+        std::vector<std::shared_ptr<SlipSystem>> getSlipSystems(const PolycrystallineMaterialBase& material,const PlaneNormalContainerType& plN) const;
+        SecondPhaseContainerType getSecondPhases(const PolycrystallineMaterialBase& material,const PlaneNormalContainerType& planes) const ;
         
         const PlaneNormalContainerType& planeNormals() const override;
         const SlipSystemContainerType& slipSystems() const override;
         const SecondPhaseContainerType& secondPhases() const override;
-        
+
     };
     
 } // namespace model
