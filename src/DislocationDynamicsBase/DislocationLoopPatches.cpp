@@ -136,6 +136,7 @@ namespace model
                             const double e1Norm(e1.norm());
                             if(e1Norm>FLT_EPSILON)
                             {
+<<<<<<< HEAD
                                 e1/=e1Norm;
                                 VectorDim Y1(patch.second[k1]-x);
                                 const double Y1norm(Y1.norm());
@@ -154,6 +155,20 @@ namespace model
                                         const double s3A2=sqrt(std::pow(s3,2)+a2);
                                         temp+=2.0*s3/oneA2/s3A2*atan(s3A2*w/(oneA2-s.dot(e1)-s.dot(e2)*w));
                                     }
+=======
+                                Y1/=Y1norm;
+                                VectorDim e3(e1.cross(Y1));
+                                const double e3Norm(e3.norm());
+                                if(e3Norm>FLT_EPSILON)
+                                {// e1 and Y1 are not align. If they are the projection on the unit sphere is a point and therefore there is no contribution to solid angle
+                                    e3/=e3Norm; // normalize e3
+                                    const VectorDim e2(e3.cross(e1));
+                                    const double ydy(e1.dot(Y1));
+                                    const double w=sqrt((1.0-ydy)/(1.0+ydy));
+                                    const double s3(s.dot(e3));
+                                    const double s3A2=sqrt(std::pow(s3,2)+a2);
+                                    temp+=2.0*s3/oneA2/s3A2*atan(s3A2*w/(oneA2-s.dot(e1)-s.dot(e2)*w));
+>>>>>>> 44f223e ( - bypassed conflicts by simply copying files from repo into)
                                 }
                             }
                         }
@@ -164,6 +179,7 @@ namespace model
         return temp;
     }
 
+<<<<<<< HEAD
     template <int dim>
     int DislocationLoopPatches<dim>::windingNumber(const VectorDim& pt) const
     {/*!\param[in] pts,vector of positions about which to compute the winding number of this loop
@@ -183,6 +199,54 @@ namespace model
         }
         return wn;
     }
+=======
+template <int dim>
+int DislocationLoopPatches<dim>::windingNumber(const VectorDim& pt) const
+{/*!\param[in] pts,vector of positions about which to compute the winding number of this loop
+  
+  */
+    int wn(0);
+    for(const auto& pair : localPatches())
+    {
+        if(pair.first->glidePlane)
+        {
+            if(pair.first->glidePlane->contains(pt))
+            {
+                const auto localPt(pair.first->glidePlane->localPosition(pt));
+                wn+=Polygon2D::windingNumber(localPt,pair.second);
+            }
+        }
+    }
+    return wn;
+}
+
+template <int dim>
+int DislocationLoopPatches<dim>::windingNumber(const Eigen::Matrix<double,dim-1,1>& localPt,const std::shared_ptr<GlidePlane<dim>>& ptPlane) const
+{/*!\param[in] pts,vector of positions about which to compute the winding number of this loop
+  
+  */
+    int wn(0);
+    for(const auto& pair : localPatches())
+    {
+        if(pair.first->glidePlane)
+        {
+            if(pair.first->glidePlane==ptPlane)
+            {
+                //const auto localPt(pair.first->glidePlane->localPosition(pt));
+                wn+=Polygon2D::windingNumber(localPt,pair.second);
+            }
+        }
+    }
+    return wn;
+}
+
+template <int dim>
+template <typename T>
+int DislocationLoopPatches<dim>::sgn(const T& val)
+{
+    return (val > T(0)) - (val < T(0));
+}
+>>>>>>> 44f223e ( - bypassed conflicts by simply copying files from repo into)
 
     template <int dim>
     int DislocationLoopPatches<dim>::windingNumber(const Eigen::Matrix<double,dim-1,1>& localPt,const std::shared_ptr<GlidePlane<dim>>& ptPlane) const

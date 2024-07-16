@@ -49,7 +49,7 @@ namespace model
 
 /**********************************************************************/
 NetworkLoopActor::NetworkLoopActor(vtkGenericOpenGLRenderWindow* const renWin,vtkRenderer* const renderer,
-                                   const DDconfigFields<3>& configFields_in) :
+                                   const DefectiveCrystal<3>& defectiveCrystal_in) :
 /* init */ renderWindow(renWin)
 /* init */,mainLayout(new QGridLayout(this))
 /* init */,showLoops(new QCheckBox(this))
@@ -62,7 +62,8 @@ NetworkLoopActor::NetworkLoopActor(vtkGenericOpenGLRenderWindow* const renWin,vt
 /* init */,areaTriangleFilter(vtkSmartPointer<vtkTriangleFilter>::New())
 /* init */,areaMapper(vtkSmartPointer<vtkPolyDataMapper>::New())
 /* init */,areaActor(vtkSmartPointer<vtkActor>::New())
-/* init */,configFields(configFields_in)
+/* init */,defectiveCrystal(defectiveCrystal_in)
+/* init */,dislocationNetwork(defectiveCrystal.template getUniqueTypedMicrostructure<DislocationNetwork<3,0>>())
 {
     showLoops->setChecked(false);
     showLoops->setText("Loops");
@@ -146,88 +147,86 @@ void NetworkLoopActor::updateConfiguration()
 {
     std::cout<<"Updating loops..."<<std::flush;
     const auto t0= std::chrono::system_clock::now();
-    
-    //            std::map<size_t,std::map<size_t,size_t>> loop2linkMap; // loopID->pair(source,sink)
-    
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    std::map<size_t,size_t> loopNodesMap; // nodeID,nodePositionInDDauxIO
-    for(size_t k=0;k<configFields.configIO.loopNodes().size();++k)
+    if(dislocationNetwork)
     {
-        const auto& node(configFields.configIO.loopNodes()[k]);
-        loopNodesMap.emplace(node.sID,k);
-        
-        points->InsertNextPoint(node.P(0),
-                                node.P(1),
-                                node.P(2));
-    }
-    
-    vtkSmartPointer<vtkCellArray> cells(vtkSmartPointer<vtkCellArray>::New());
-    for(const auto& loopLink : configFields.configIO.loopLinks())
-    {
-        
-        const auto sourceIter(loopNodesMap.find(loopLink.sourceID));
-        if(sourceIter!=loopNodesMap.end())
+        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+//        std::map<size_t,size_t> loopNodesMap; // nodeID,nodePositionInDDauxIO
+//        size_t k=0;
+        for(const auto& weakNode : dislocationNetwork->loopNodes())
         {
-            const auto sinkIter(loopNodesMap.find(loopLink.sinkID));
-            if(sinkIter!=loopNodesMap.end())
-            {
-                vtkSmartPointer<vtkLine> line(vtkSmartPointer<vtkLine>::New());
-                line->GetPointIds()->SetId(0, sourceIter->second); // the second 0 is the index of the Origin in linesPolyData's points
-                line->GetPointIds()->SetId(1, sinkIter->second);
-                cells->InsertNextCell(line);
-                
-                //                        loop2linkMap[loopLink.loopID].emplace(loopLink.sourceID,loopLink.sinkID);
-                
-            }
-            else
-            {
-                throw std::runtime_error("Sink vertex not found in nodeMap");
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Source vertex not found in nodeMap");
+            const auto& loopNode(weakNode.second.lock());
+  //          loopNodesMap.emplace(loopNode->sID,k);
+            const auto& P(loopNode->get_P());
+            points->InsertNextPoint(P(0),P(1),P(2));
+  //          k++;
         }
         
-    }
-    loopPolyData->SetPoints(points);
-    loopPolyData->SetLines(cells);
-    loopPolyData->Modified();
-    
-    // Slipped area
-    vtkNew<vtkPoints> areaPoints;
-    vtkNew<vtkCellArray> areaPolygons;
-    
-    size_t areaPointID(0);
-    for(const auto& currentPatches : configFields.loopPatches())
-    {
-        for(const auto& pair : currentPatches.second.globalPatches())
+        vtkSmartPointer<vtkCellArray> cells(vtkSmartPointer<vtkCellArray>::New());
+        for(const auto& loopLink : dislocationNetwork->loopLinks())
         {
-            vtkNew<vtkPolygon> polygon;
-            for(const auto& globalPos : pair.second)
-            {
-                areaPoints->InsertNextPoint(globalPos(0),
-                                            globalPos(1),
-                                            globalPos(2));
-                polygon->GetPointIds()->InsertNextId(areaPointID);
-                areaPointID++;
-            }
-            areaPolygons->InsertNextCell(polygon);
+            vtkSmartPointer<vtkLine> line(vtkSmartPointer<vtkLine>::New());
+            line->GetPointIds()->SetId(0, loopLink.second.source->networkID()); // the second 0 is the index of the Origin in linesPolyData's points
+            line->GetPointIds()->SetId(1, loopLink.second.  sink->networkID());
+            cells->InsertNextCell(line);
+
+            
+//            const auto sourceIter(loopNodesMap.find(loopLink.first.first));
+//            if(sourceIter!=loopNodesMap.end())
+//            {
+//                const auto sinkIter(loopNodesMap.find(loopLink.first.second));
+//                if(sinkIter!=loopNodesMap.end())
+//                {
+//                    vtkSmartPointer<vtkLine> line(vtkSmartPointer<vtkLine>::New());
+//                    line->GetPointIds()->SetId(0, sourceIter->second); // the second 0 is the index of the Origin in linesPolyData's points
+//                    line->GetPointIds()->SetId(1, sinkIter->second);
+//                    cells->InsertNextCell(line);
+//                }
+//                else
+//                {
+//                    throw std::runtime_error("Sink vertex not found in nodeMap");
+//                }
+//            }
+//            else
+//            {
+//                throw std::runtime_error("Source vertex not found in nodeMap");
+//            }
         }
+        loopPolyData->SetPoints(points);
+        loopPolyData->SetLines(cells);
+        loopPolyData->Modified();
+        
+        // Slipped area
+        vtkNew<vtkPoints> areaPoints;
+        vtkNew<vtkCellArray> areaPolygons;
+        size_t areaPointID(0);
+        for(const auto& weakloop : dislocationNetwork->loops())
+        {
+            const auto& loop(weakloop.second.lock());
+            for(const auto& pair : loop->patches().globalPatches())
+            {
+                vtkNew<vtkPolygon> polygon;
+                for(const auto& globalPos : pair.second)
+                {
+                    areaPoints->InsertNextPoint(globalPos(0),
+                                                globalPos(1),
+                                                globalPos(2));
+                    polygon->GetPointIds()->InsertNextId(areaPointID);
+                    areaPointID++;
+                }
+                areaPolygons->InsertNextCell(polygon);
+            }
+        }
+        areaPolyData->SetPoints(areaPoints);
+        areaPolyData->SetPolys(areaPolygons);
+        areaTriangleFilter->Update();
     }
-    areaPolyData->SetPoints(areaPoints);
-    areaPolyData->SetPolys(areaPolygons);
-    areaTriangleFilter->Update();
-    
     std::cout<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
 }
 
 void NetworkLoopActor::modify()
-{
-    
+{    
     loopActor->SetVisibility(showLoops->isChecked());
     areaActor->SetVisibility(slippedAreaBox->isChecked());
-    //            sliderSlippedArea->setEnabled(slippedAreaBox->isChecked());
     areaActor->GetProperty()->SetOpacity(sliderSlippedArea->value()/10.0);
     
     renderWindow->Render();

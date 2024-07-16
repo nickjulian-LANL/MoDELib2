@@ -153,8 +153,10 @@ namespace model
             vtkSmartPointer<vtkPoints> periodicityPoints = vtkSmartPointer<vtkPoints>::New();
             vtkSmartPointer<vtkDoubleArray> periodicityVectors(vtkSmartPointer<vtkDoubleArray>::New());
             periodicityVectors->SetNumberOfComponents(3);
-            for(const auto& pShift : mesh.periodicBasis())
+            const auto periodicBasis(mesh.periodicBasis());
+            for(int cIdx=0; cIdx<periodicBasis.cols();++cIdx)
             {
+                Eigen::Vector3d pShift(periodicBasis.col(cIdx));
                 periodicityPoints->InsertNextPoint(mesh.xMin().data());
                 periodicityVectors->InsertNextTuple(pShift.data());
             }

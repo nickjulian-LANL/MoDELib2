@@ -34,7 +34,9 @@
 #include <vtkRenderer.h>
 #include <vtkDataSetMapper.h>
 
-#include <DDconfigFields.h>
+#include <DefectiveCrystal.h>
+#include <InclusionMicrostructure.h>
+
 
 // VTK documentation
 // http://vtk.1045678.n5.nabble.com/VTK-slow-to-display-300-vtkSphereSource-in-real-time-td5740730.html
@@ -75,11 +77,12 @@ namespace model
         vtkSmartPointer<vtkActor> polyhedronActor;
                 
     public:
-        const DDconfigFields<3>& configFields;
-        
+        const DefectiveCrystal<3>& defectiveCrystal;
+        const InclusionMicrostructure<3>* const inclusions;
+
         
     public:
-        InclusionActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const DDconfigFields<3>& configFields_in);
+        InclusionActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const DefectiveCrystal<3>& configFields_in);
         void updateConfiguration();
 
     };

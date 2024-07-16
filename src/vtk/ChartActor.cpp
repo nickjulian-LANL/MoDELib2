@@ -35,6 +35,12 @@ namespace model
         /* init */,yComboBox(new QComboBox(this))
         /* init */,xAxisLog(new QCheckBox(this))
         /* init */,yAxisLog(new QCheckBox(this))
+        /* init */,customScaleBoxX(new QGroupBox(tr("&Custom scale X")))
+        /* init */,minScaleX(new QLineEdit(tr("0")))
+        /* init */,maxScaleX(new QLineEdit(tr("1")))
+        /* init */,customScaleBoxY(new QGroupBox(tr("&Custom scale Y")))
+        /* init */,minScaleY(new QLineEdit(tr("0")))
+        /* init */,maxScaleY(new QLineEdit(tr("1")))
         /* init */,renderWindow(renderWindow_in)
         /* init */,renderer(renderer_in)
         /* init */,chart(vtkSmartPointer<vtkChartXY>::New())
@@ -96,13 +102,32 @@ namespace model
             {
                 std::cout<<"Unable to read "<<traitsIO.flabFile<<std::endl;
             }
+            
+            QGridLayout* autoscaleLayoutX = new QGridLayout();
+            customScaleBoxX->setCheckable(true);
+//            customScaleBoxX->setEnabled(false);
+            customScaleBoxX->setChecked(false);
+            autoscaleLayoutX->addWidget(minScaleX,0,0,1,1);
+            autoscaleLayoutX->addWidget(maxScaleX,0,1,1,1);
+            customScaleBoxX->setLayout(autoscaleLayoutX);
+
+            QGridLayout* autoscaleLayoutY = new QGridLayout();
+            customScaleBoxY->setCheckable(true);
+//            customScaleBoxY->setEnabled(false);
+            customScaleBoxY->setChecked(false);
+            autoscaleLayoutY->addWidget(minScaleY,0,0,1,1);
+            autoscaleLayoutY->addWidget(maxScaleY,0,1,1,1);
+            customScaleBoxY->setLayout(autoscaleLayoutY);
+
 
             mainLayout->addWidget(showChart,0,0,1,1);
             mainLayout->addWidget(chartUpdate,0,1,1,1);
             mainLayout->addWidget(xComboBox,1,0,1,1);
             mainLayout->addWidget(xAxisLog,1,1,1,1);
-            mainLayout->addWidget(yComboBox,2,0,1,1);
-            mainLayout->addWidget(yAxisLog,2,1,1,1);
+            mainLayout->addWidget(customScaleBoxX,2,0,1,2);
+            mainLayout->addWidget(yComboBox,3,0,1,1);
+            mainLayout->addWidget(yAxisLog,3,1,1,1);
+            mainLayout->addWidget(customScaleBoxY,4,0,1,2);
             mainLayout->setColumnStretch(0, 1);
             mainLayout->setColumnStretch(1, 12);
             this->setLayout(mainLayout);
@@ -221,7 +246,22 @@ void ChartActor::updatePlots()
         }
         
         chart->RecalculateBounds();
+        
+        
+        
         chart->Modified();
+//        if(customScaleBoxX->isChecked())
+//        {
+////            chart->GetAxis(0)->setMinimum();
+//        }
+//        else
+//        {
+//            chart->GetAxis(0)->AutoScale();
+//            std::cout<<"Min/Max="<<chart->GetAxis(0)->GetMinimum()<<", "<<chart->GetAxis(0)->GetMaximum()<<std::endl;
+//            minScaleX->setText(QString::fromStdString(std::to_string(chart->GetAxis(0)->GetMinimum())));
+//            maxScaleX->setText(QString::fromStdString(std::to_string(chart->GetAxis(0)->GetMaximum())));
+//        }
+
     }
 }
 
@@ -233,6 +273,9 @@ void ChartActor::updatePlots()
 
             xComboBox->setEnabled(showChart->isChecked());
             yComboBox->setEnabled(showChart->isChecked());
+            customScaleBoxX->setEnabled(showChart->isChecked());
+            customScaleBoxY->setEnabled(showChart->isChecked());
+
             xAxisLog->setEnabled(showChart->isChecked());
             yAxisLog->setEnabled(showChart->isChecked());
             chartUpdate->setEnabled(showChart->isChecked());
@@ -303,6 +346,9 @@ void ChartActor::updatePlots()
             
             chartActor->SetVisibility(showChart->isChecked());
             renderWindow->Render(); // this makes code crash if called before the app window is created
+            
+//            std::cout<<"Min/Max="<<chart->GetAxis(0)->GetMinimum()<<", "<<chart->GetAxis(0)->GetMaximum()<<std::endl;
+
         }
 
 

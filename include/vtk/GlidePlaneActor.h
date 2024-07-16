@@ -18,6 +18,7 @@
 #include <QCheckBox>
 #include <QLineEdit>
 #include <QComboBox>
+#include <QGroupBox>
 
 #include <vtkGenericOpenGLRenderWindow.h>
 #include <vtkVersion.h>
@@ -47,56 +48,67 @@
 #include <Polycrystal.h>
 #include <GlidePlaneFactory.h>
 #include <GlidePlaneNoise.h>
-
+//#include <ConfigurationFields.h>
+#include <DefectiveCrystal.h>
+#include <TriangularMesh.h>
+#include <CompareVectorsByComponent.h>
 
 namespace model
 {
+
+    struct SingleGlidePlaneActor
+    {
+        typedef CompareVectorsByComponent<double,2,float> CompareType;
+        
+        std::map<Eigen::Matrix<double,2,1>,int,CompareType> uniquePointsIDs;
+        std::vector<Eigen::Matrix<double,2,1>> points;
+        std::vector<Eigen::Matrix<int,2,1>> segments;
+        const GlidePlane<3>& glidePlane;
+        
+        SingleGlidePlaneActor(const GlidePlane<3>& glidePlane_in);
+        void appendClosedPolygon(const std::vector<Eigen::Matrix<double,2,1>>& newPoints);
+        
+    };
+
     struct GlidePlaneActor : public QWidget
     {
         
         Q_OBJECT
         private slots:
-            void modify();
-
-        private:
+        void modify();
+        
+    private:
         vtkGenericOpenGLRenderWindow* const renderWindow;
         vtkRenderer* const renderer;
-        const Polycrystal<3>& poly;
-
+        DefectiveCrystal<3>& defectiveCrystal;
+        const DislocationNetwork<3,0>* const dislocationNetwork;
         QGridLayout* mainLayout;
-        QCheckBox* showGlidePlanes;
-        QCheckBox* showGlidePlanesNoise;
+        QGroupBox* glidePlanesGroup;
+        QGroupBox* glidePlanesNoiseGroup;
         QComboBox* glidePlanesNoiseBox;
         QComboBox* slipSystemNoiseBox;
-        
         QLineEdit* ssNoiseMin;
         QLineEdit* ssNoiseMax;
         QLineEdit* sfNoiseMin;
         QLineEdit* sfNoiseMax;
-
-
+        QGroupBox* glidePlaneMeshGroup;
         vtkSmartPointer<vtkPolyData> glidePlanePolydata;
         vtkSmartPointer<vtkPolyDataMapper> glidePlaneMapper;
         vtkSmartPointer<vtkActor> glidePlaneActor;
-        
+        vtkSmartPointer<vtkPolyData> meshPolydata;
+        vtkSmartPointer<vtkPolyDataMapper> meshMapper;
+        vtkSmartPointer<vtkActor> meshActor;
         std::map<size_t,std::vector<vtkSmartPointer<vtkDataSetMapper>>> noiseMappers;
         std::map<size_t,std::vector<vtkSmartPointer<vtkActor>>> noiseActors;
-
-
-        GlidePlaneFactory<3> glidePlaneFactory;
-//        GlidePlaneNoise planeNoise;
-        
         Eigen::Array<double,2,2> noiseLimits;
-//        Eigen::Array<double,2,1> sfNoiseLimits;
-
-        public:
-                        
-        GlidePlaneActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,const Polycrystal<3>& poly,const DDtraitsIO& traitsIO);
-//        void updateConfiguration(const DDauxIO<3>& auxIO);
-        void updateConfiguration(const DDconfigIO<3>& configIO);
-
+        
+    public:
+        
+        
+        GlidePlaneActor(vtkGenericOpenGLRenderWindow* const,vtkRenderer* const,DefectiveCrystal<3>& defectiveCrystal_in);
+        void updateConfiguration();
         
     };
-    
+
 } // namespace model
 #endif
