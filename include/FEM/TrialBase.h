@@ -10,11 +10,14 @@
 #define model_TrialBase_H_
 
 //#include <TestExpression.h>
+#include <iostream> // std::is_same
 
 #include <type_traits> // std::is_same
 #include <map>
+#include <cfloat>
 #include <Eigen/Dense>
 #include <TypeTraits.h>
+#include <TerminalColors.h>
 
 namespace model
 {
@@ -189,8 +192,6 @@ namespace model
           * @param[in] constrainDof array of booleans indicating which dofs are to be constrained
           */
             
-            const auto t0= std::chrono::system_clock::now();
-            std::cout<<"Adding Dirichlet condition..."<<std::flush;
             // Check that at least one constrainDof is true
             bool isConstrained(false);
             for(int dof=0;dof<dofPerNode;++dof)
@@ -229,7 +230,6 @@ namespace model
                 }
             }
             
-            std::cout<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
         }
         
     };

@@ -47,66 +47,126 @@ namespace model
     {
         std::cout<<"Updating inclusions..."<<std::flush;
         const auto t0= std::chrono::system_clock::now();
-                
-        vtkSmartPointer<vtkPoints> points(vtkSmartPointer<vtkPoints>::New());
-        vtkSmartPointer<vtkFloatArray> diameters(vtkSmartPointer<vtkFloatArray>::New());
-        vtkSmartPointer<vtkFloatArray> colors(vtkSmartPointer<vtkFloatArray>::New());
-        
-        diameters->SetName("diameters");
-        colors->SetName("colors");
-        
-        for(const auto& inclusion : configFields.configIO.sphericalInclusions())
+
+        if(inclusions)
         {
-            points->InsertNextPoint(inclusion.C(0), inclusion.C(1), inclusion.C(2));
-            diameters->InsertNextValue(2.0*inclusion.a);  // origin of arrow
-            colors->InsertNextValue(inclusion.phaseID);
-        }
-        
-        grid->SetPoints(points);
-        grid->GetPointData()->AddArray(diameters);
-        grid->GetPointData()->SetActiveScalars("diameters"); // to set radius first
-        grid->GetPointData()->AddArray(colors);
-        
-        vtkNew<vtkUnstructuredGrid> ugrid;
-        vtkNew<vtkPoints> polyhedronPoints;
-        vtkIdType polyhedronPointsIDs[configFields.configIO.polyhedronInclusionNodes().size()];
-        long long k=0;
-        for(const auto& node : configFields.configIO.polyhedronInclusionNodes())
-        {
-            polyhedronPoints->InsertNextPoint(node.P.data());
-            polyhedronPointsIDs[k]=k;
-            k++;
-        }
-        ugrid->SetPoints(polyhedronPoints);
-        
-        std::map<size_t,std::map<size_t,std::vector<size_t>>> faces;
-        for(const auto& edge : configFields.configIO.polyhedronInclusionEdges())
-        {
-            const size_t& iID(edge.inclusionID);
-            const size_t& fID(edge.faceID);
-            const size_t& sourceID(edge.sourceID);
-            faces[iID][fID].push_back(sourceID);
-        }
-        
-        for(const auto& pair1 : faces)
-        {
-            vtkNew<vtkIdList> faces;
-            for(const auto& pair2 : pair1.second)
+            
+                    
+            vtkSmartPointer<vtkPoints> points(vtkSmartPointer<vtkPoints>::New());
+            vtkSmartPointer<vtkFloatArray> diameters(vtkSmartPointer<vtkFloatArray>::New());
+            vtkSmartPointer<vtkFloatArray> colors(vtkSmartPointer<vtkFloatArray>::New());
+            diameters->SetName("diameters");
+            colors->SetName("colors");
+            
+            vtkNew<vtkUnstructuredGrid> ugrid;
+            vtkNew<vtkPoints> polyhedronPoints;
+//            vtkIdType polyhedronPointsIDs[inclusions->polyhedronInclusionNodes().size()];
+            std::vector<vtkIdType> polyhedronPointsIDs(inclusions->polyhedronInclusionNodes().size());
+            long long k=0;
+            for(const auto& node : inclusions->polyhedronInclusionNodes())
             {
-                faces->InsertNextId(pair2.second.size());
-                for(const auto& nID : pair2.second)
+                polyhedronPoints->InsertNextPoint(node.second.P.data());
+                polyhedronPointsIDs[k]=k;
+                k++;
+            }
+            ugrid->SetPoints(polyhedronPoints);
+
+                        
+            for(const auto& inclusion : inclusions->eshelbyInclusions())
+            {
+                
+                auto* sphericalDerived = dynamic_cast<SphericalInclusion<dim>*>(inclusion.second.get());
+                if (sphericalDerived)
                 {
-                    faces->InsertNextId(nID);
+                    points->InsertNextPoint(sphericalDerived->C(0), sphericalDerived->C(1), sphericalDerived->C(2));
+                    diameters->InsertNextValue(2.0*sphericalDerived->a);  // origin of arrow
+                    colors->InsertNextValue(sphericalDerived->phaseID);
+                }
+                
+                auto* polyhedronDerived = dynamic_cast<PolyhedronInclusion<dim>*>(inclusion.second.get());
+                if (polyhedronDerived)
+                {
+//                    configIO.polyhedronInclusions().emplace_back(*polyhedronDerived);
+                    
+                    vtkNew<vtkIdList> faces;
+//                    for(const auto& pair2 : pair1.second)
+//                    {
+//                        faces->InsertNextId(pair2.second.size());
+//                        for(const auto& nID : pair2.second)
+//                        {
+//                            faces->InsertNextId(nID);
+//                        }
+//                    }
+//                    ugrid->InsertNextCell(VTK_POLYHEDRON, inclusions->polyhedronInclusionNodes().size(), polyhedronPointsIDs, pair1.second.size(), faces->GetPointer(0));
+                    
+                    for(const auto& facePair : polyhedronDerived->faces)
+                    {
+                        faces->InsertNextId(facePair.second.size());
+
+                        for(const auto& vertexPair : facePair.second)
+                        {
+                            faces->InsertNextId(vertexPair.first);
+                        }
+                    }
+                    ugrid->InsertNextCell(VTK_POLYHEDRON, inclusions->polyhedronInclusionNodes().size(), polyhedronPointsIDs.data(), polyhedronDerived->faces.size(), faces->GetPointer(0));
+
                 }
             }
-            ugrid->InsertNextCell(VTK_POLYHEDRON, configFields.configIO.polyhedronInclusionNodes().size(), polyhedronPointsIDs, pair1.second.size(), faces->GetPointer(0));
+            
+//            for(const auto& inclusion : configFields.configIO.sphericalInclusions())
+//            {
+//                points->InsertNextPoint(inclusion.C(0), inclusion.C(1), inclusion.C(2));
+//                diameters->InsertNextValue(2.0*inclusion.a);  // origin of arrow
+//                colors->InsertNextValue(inclusion.phaseID);
+//            }
+            
+            grid->SetPoints(points);
+            grid->GetPointData()->AddArray(diameters);
+            grid->GetPointData()->SetActiveScalars("diameters"); // to set radius first
+            grid->GetPointData()->AddArray(colors);
+            
+//            vtkNew<vtkUnstructuredGrid> ugrid;
+//            vtkNew<vtkPoints> polyhedronPoints;
+//            vtkIdType polyhedronPointsIDs[inclusions->polyhedronInclusionNodes().size()];
+//            long long k=0;
+//            for(const auto& node : inclusions->polyhedronInclusionNodes())
+//            {
+//                polyhedronPoints->InsertNextPoint(node.second.P.data());
+//                polyhedronPointsIDs[k]=k;
+//                k++;
+//            }
+//            ugrid->SetPoints(polyhedronPoints);
+            
+//            std::map<size_t,std::map<size_t,std::vector<size_t>>> faces;
+//            for(const auto& edge : inclusions->polyhedronInclusionEdges())
+//            {
+//                const size_t& iID(edge.inclusionID);
+//                const size_t& fID(edge.faceID);
+//                const size_t& sourceID(edge.sourceID);
+//                faces[iID][fID].push_back(sourceID);
+//            }
+//            
+//            for(const auto& pair1 : faces)
+//            {
+//                vtkNew<vtkIdList> faces;
+//                for(const auto& pair2 : pair1.second)
+//                {
+//                    faces->InsertNextId(pair2.second.size());
+//                    for(const auto& nID : pair2.second)
+//                    {
+//                        faces->InsertNextId(nID);
+//                    }
+//                }
+//                ugrid->InsertNextCell(VTK_POLYHEDRON, inclusions->polyhedronInclusionNodes().size(), polyhedronPointsIDs, pair1.second.size(), faces->GetPointer(0));
+//            }
+            
+            polyhedronMapper->SetInputData(ugrid);
+            
         }
-        
-        polyhedronMapper->SetInputData(ugrid);
         std::cout<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
     }
 
-    InclusionActor::InclusionActor(vtkGenericOpenGLRenderWindow* const renWin,vtkRenderer* const renderer,const DDconfigFields<3>& configFields_in) :
+    InclusionActor::InclusionActor(vtkGenericOpenGLRenderWindow* const renWin,vtkRenderer* const renderer,const DefectiveCrystal<3>& defectiveCrystal_in) :
     /* init */ renderWindow(renWin)
     /* init */,mainLayout(new QGridLayout(this))
     /* init */,showInclusions(new QCheckBox(this))
@@ -119,7 +179,8 @@ namespace model
     /* init */,lookUpColors(vtkSmartPointer<vtkLookupTable>::New())
     /* init */,polyhedronMapper(vtkSmartPointer<vtkDataSetMapper>::New())
     /* init */,polyhedronActor(vtkSmartPointer<vtkActor>::New())
-    /* init */,configFields(configFields_in)
+    /* init */,defectiveCrystal(defectiveCrystal_in)
+    /* init */,inclusions(defectiveCrystal.template getUniqueTypedMicrostructure<InclusionMicrostructure<3>>())
     {
         showInclusions->setChecked(true);
         showInclusions->setText("show inclusions");
@@ -158,6 +219,10 @@ namespace model
         actor->SetVisibility(showInclusions->isChecked());
         actor->GetProperty()->SetOpacity(sliderInclusionOpacity->value()/10.0);
 
+        polyhedronActor->SetVisibility(showInclusions->isChecked());
+        polyhedronActor->GetProperty()->SetOpacity(sliderInclusionOpacity->value()/10.0);
+
+        
         renderWindow->Render();
     }
 

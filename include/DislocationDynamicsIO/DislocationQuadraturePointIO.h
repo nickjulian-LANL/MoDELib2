@@ -32,7 +32,7 @@ namespace model
         VectorDim pkForce;
         VectorDim stackingFaultForce;
         VectorDim lineTensionForce;
-        VectorDim glideVelocity;
+        VectorDim velocity;
         double elasticEnergyPerLength;
         double coreEnergyPerLength;
 
@@ -48,7 +48,7 @@ namespace model
         /* init */,pkForce(VectorDim::Zero())
         /* init */,stackingFaultForce(VectorDim::Zero())
         /* init */,lineTensionForce(VectorDim::Zero())
-        /* init */,glideVelocity(VectorDim::Zero())
+        /* init */,velocity(VectorDim::Zero())
         /* init */,elasticEnergyPerLength(0.0)
         /* init */,coreEnergyPerLength(0.0)
         {
@@ -67,7 +67,7 @@ namespace model
         /* init */,pkForce(qPoint.pkForce)
         /* init */,stackingFaultForce(qPoint.stackingFaultForce)
         /* init */,lineTensionForce(qPoint.lineTensionForce)
-        /* init */,glideVelocity(qPoint.glideVelocity)
+        /* init */,velocity(qPoint.velocity)
         /* init */,elasticEnergyPerLength(qPoint.elasticEnergyPerLength)
         /* init */,coreEnergyPerLength(qPoint.coreEnergyPerLength)
         {
@@ -86,7 +86,7 @@ namespace model
         /* init */,pkForce(VectorDim::Zero())
         /* init */,stackingFaultForce(VectorDim::Zero())
         /* init */,lineTensionForce(VectorDim::Zero())
-        /* init */,glideVelocity(VectorDim::Zero())
+        /* init */,velocity(VectorDim::Zero())
         /* init */,elasticEnergyPerLength(0.0)
         /* init */,coreEnergyPerLength(0.0)
         {
@@ -124,7 +124,7 @@ namespace model
             }
             for(int d=0;d<dim;++d)
             {
-                ss>>glideVelocity(d);
+                ss>>velocity(d);
             }
             ss>>elasticEnergyPerLength;
             ss>>coreEnergyPerLength;
@@ -150,7 +150,7 @@ namespace model
             os  << ds.pkForce.transpose()<<"\t"
             /**/<< ds.stackingFaultForce.transpose()<<"\t"
             /**/<< ds.lineTensionForce.transpose()<<"\t"
-            /**/<< ds.glideVelocity.transpose()<<"\t"
+            /**/<< ds.velocity.transpose()<<"\t"
             /**/<< ds.elasticEnergyPerLength<<"\t"
             /**/<< ds.coreEnergyPerLength;
             return os;

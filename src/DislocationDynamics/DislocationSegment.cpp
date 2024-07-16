@@ -29,12 +29,28 @@ namespace model
     // /* init */,ConfinedDislocationObjectType(this->source->get_P(),this->sink->get_P())
     /* init */,Burgers(VectorDim::Zero())
     /* init */,BurgersNorm(Burgers.norm())
-    /* init */,straight(this->network().poly,this->source->get_P(),this->sink->get_P(),Burgers,this->chordLength(),this->unitDirection())
+    /* init */,straight(this->network().ddBase.poly,this->source->get_P(),this->sink->get_P(),Burgers,this->chordLength(),this->unitDirection(),this->network().ddBase.EwaldLength)
     /* init */,_slipSystem(nullptr)
     {
         VerboseDislocationSegment(1,"Constructing DislocationSegment "<<this->tag()<<std::endl);
     }
     
+template <int dim, short unsigned int corder>
+typename DislocationSegment<dim, corder>::VectorDim DislocationSegment<dim, corder>::climbDirection() const
+{
+    if(this->isBoundarySegment()
+       || this->isGrainBoundarySegment())
+    {
+        return VectorDim::Zero();
+    }
+    else
+    {
+        const VectorDim temp(this->burgers().cross(this->chord()));
+        const double tempNorm(temp.norm());
+        return tempNorm<FLT_EPSILON? VectorDim::Zero() : (temp/tempNorm).eval();
+    }
+}
+
        template <int dim, short unsigned int corder>
     void DislocationSegment<dim, corder>::updateSlipSystem()
     {
@@ -148,7 +164,7 @@ namespace model
         
         //assert(0 && "Following addGlidePlane is wrong, must consider shifts");
         
-        if(this->network().simulationParameters.isPeriodicSimulation())
+        if(this->network().ddBase.isPeriodicDomain)
         {
             const auto periodicPlanePatch(pL->periodicPlanePatch());
             if(periodicPlanePatch)
@@ -266,10 +282,10 @@ namespace model
         //        LinkType::alpha=TextFileParser(fileName).readScalar<double>("parametrizationExponent",true);
         //        assert((LinkType::alpha)>=0.0 && "parametrizationExponent MUST BE >= 0.0");
         //        assert((LinkType::alpha)<=1.0 && "parametrizationExponent MUST BE <= 1.0");
-        quadPerLength=TextFileParser(fileName).readScalar<double>("quadPerLength",true);
+        quadPerLength=TextFileParser(fileName).readScalar<double>("quadPerLength",false);
         //            assembleWithTangentProjection=TextFileParser(fileName).readScalar<int>("assembleWithTangentProjection",true);
         assert((NetworkLinkType::quadPerLength)>=0.0 && "quadPerLength MUST BE >= 0.0");
-        verboseDislocationSegment=TextFileParser(fileName).readScalar<int>("verboseDislocationSegment",true);
+        verboseDislocationSegment=TextFileParser(fileName).readScalar<int>("verboseDislocationSegment",false);
     }
     
     template <int dim, short unsigned int corder>
@@ -384,8 +400,9 @@ namespace model
                 }
                 c++;
             }
-            
-            const Eigen::MatrixXd tempKqq(Mseg.transpose()*Kqq*Mseg); // Create the temporaty stiffness matrix and push into triplets
+                    
+
+            const Eigen::MatrixXd tempKqq(Mseg.transpose()*this->nodalVelocityMatrix(*this)*Mseg); // Create the temporaty stiffness matrix and push into triplets
             size_t localI=0;
             for(const auto& pairI : h2posMap)
             {
@@ -410,67 +427,75 @@ namespace model
                 }
             }
             
-            const Eigen::VectorXd tempFq(Mseg.transpose()*Fq); // Create temporary force vector and add to global FQ
-            localI=0;
-            for(const auto& pairI : h2posMap)
+            if(this->quadraturePoints().size())
             {
-                for(int dI=0;dI<dim;++dI)
+                const Eigen::VectorXd tempFq(Mseg.transpose()*this->nodalVelocityVector(*this)); // Create temporary force vector and add to global FQ
+                localI=0;
+                for(const auto& pairI : h2posMap)
                 {
-                    const size_t globalI=pairI.first*dim+dI;
-                    
-                    FQ(globalI)+=tempFq(localI);
-                    
-                    localI++;
+                    for(int dI=0;dI<dim;++dI)
+                    {
+                        const size_t globalI=pairI.first*dim+dI;
+                        
+                        FQ(globalI)+=tempFq(localI);
+                        
+                        localI++;
+                    }
                 }
             }
-
         }
     }
     
     template <int dim, short unsigned int corder>
-    void DislocationSegment<dim,corder>::updateQuadraturePointsSeg()
+    void DislocationSegment<dim,corder>::createQuadraturePoints(const bool& isClimbStep)
     {
-        this->updateQuadraturePoints(*this,quadPerLength,false);
+        this->create(*this,quadPerLength,isClimbStep);
     }
 
     template <int dim, short unsigned int corder>
-    void DislocationSegment<dim,corder>::assembleGlide(const bool& computeForcesanVelocities)
+    void DislocationSegment<dim,corder>::updateQuadraturePoints(const bool& isClimbStep)
     {
-        VerboseDislocationSegment(2,"DislocationSegment "<<this->tag()<<", assembleGlide"<<std::endl;);
-        if (computeForcesanVelocities)
-        {
-            this->updateForcesAndVelocities(*this,quadPerLength,false);
-        }
-        Fq= this->quadraturePoints().size()? this->nodalVelocityVector(*this) : VectorNdof::Zero();
-        Kqq=this->nodalVelocityMatrix(*this);
-//        h2posMap.clear();
-//        switch (corder)
-//        {
-//            case 0:
-//            {
-//                h2posMap.emplace(this->source->networkID(),std::make_pair((VectorNcoeff()<<1.0,0.0).finished(),this->source->get_P()));
-//                h2posMap.emplace(this->  sink->networkID(),std::make_pair((VectorNcoeff()<<0.0,1.0).finished(),this->  sink->get_P()));
-//                break;
-//            }
-//
-//            default:
-//            {
-//                assert(0 && "IMPLEMENT THIS CASE FOR CURVED SEGMENTS");
-//                break;
-//            }
-//        }
-//        //        h2posMap=this->hermite2posMap();
-//        Mseg.setZero(Ncoeff*dim,h2posMap.size()*dim);
-//        size_t c=0;
-//        for(const auto& pair : h2posMap)
-//        {
-//            for(int r=0;r<Ncoeff;++r)
-//            {
-//                Mseg.template block<dim,dim>(r*dim,c*dim)=pair.second.first(r)*MatrixDim::Identity();
-//            }
-//            c++;
-//        }
+        this->update(*this,isClimbStep);
     }
+
+//    template <int dim, short unsigned int corder>
+//    void DislocationSegment<dim,corder>::assembleGlide(const bool& computeForcesanVelocities)
+//    {
+//        VerboseDislocationSegment(2,"DislocationSegment "<<this->tag()<<", assembleGlide"<<std::endl;);
+//        if (computeForcesanVelocities)
+//        {
+//            this->updateForcesAndVelocities(*this,quadPerLength,false);
+//        }
+//        Fq= this->quadraturePoints().size()? this->nodalVelocityVector(*this) : VectorNdof::Zero();
+//        Kqq=this->nodalVelocityMatrix(*this);
+////        h2posMap.clear();
+////        switch (corder)
+////        {
+////            case 0:
+////            {
+////                h2posMap.emplace(this->source->networkID(),std::make_pair((VectorNcoeff()<<1.0,0.0).finished(),this->source->get_P()));
+////                h2posMap.emplace(this->  sink->networkID(),std::make_pair((VectorNcoeff()<<0.0,1.0).finished(),this->  sink->get_P()));
+////                break;
+////            }
+////
+////            default:
+////            {
+////                assert(0 && "IMPLEMENT THIS CASE FOR CURVED SEGMENTS");
+////                break;
+////            }
+////        }
+////        //        h2posMap=this->hermite2posMap();
+////        Mseg.setZero(Ncoeff*dim,h2posMap.size()*dim);
+////        size_t c=0;
+////        for(const auto& pair : h2posMap)
+////        {
+////            for(int r=0;r<Ncoeff;++r)
+////            {
+////                Mseg.template block<dim,dim>(r*dim,c*dim)=pair.second.first(r)*MatrixDim::Identity();
+////            }
+////            c++;
+////        }
+//    }
 
     template <int dim, short unsigned int corder>
     int DislocationSegment<dim, corder>::velocityGroup(const double &maxVelocity, const std::set<int> &subcyclingBins) const
@@ -657,7 +682,10 @@ namespace model
             }
             else
             {
-                throw std::runtime_error("Cannot snap, glidePlanes dont intersect.");
+                std::cout<<"glidePlanes.size()="<<gps.size()<<std::endl;
+                std::cout<<"N="<<N<<std::endl;
+                std::cout<<"P="<<P<<std::endl;
+                throw std::runtime_error("DislocationSegment: cannot snap, glidePlanes dont intersect.");
                 return snapped.second;
             }
         }

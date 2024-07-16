@@ -37,10 +37,20 @@
 namespace model
 {
 
-    class VTKsegments : public std::vector<Eigen::Matrix<double,3,1>>
-    /*               */,public std::vector<StressStraight<3>>
-    /*               */,public std::vector<DislocationQuadraturePoint<3,0>>
-    {
+    class VTKsegments :    public std::deque<Eigen::Matrix<double, 3, 1>>
+            /*               */,
+                            public std::map<std::pair<int,int>,StressStraight<3>>
+            /*               */,
+                            public std::vector<DislocationQuadraturePoint<3, 0>>
+        {
+
+    
+    
+    
+//      public std::vector<Eigen::Matrix<double,3,1>>
+//     /*               */,public std::vector<StressStraight<3>>
+//     /*               */,public std::vector<DislocationQuadraturePoint<3,0>>
+    
 
         static constexpr int dim = 3; // 3D
         static constexpr int corder = 0; // linear segments
@@ -54,12 +64,13 @@ namespace model
 //        typedef Eigen::Matrix<double,3,1> VectorDim;
         typedef   QuadratureDynamic<1,UniformOpen,1,2,3,4,5,6,7,8,16,32,64,128,256,512,1024> QuadratureDynamicType;
 
-        
-        void updateQuadraturePoints(const std::string& vtkFilePrefix);
+        void readCAFile(const std::string& vtkFilePrefix);
+        void updateQuadraturePoints(const std::string& vtkFilePrefix, MatrixDim externalStress, std::map<std::pair<int,int>,std::pair<size_t,std::set<int>>> &segIDmap);
 
 //        VectorDimI getPbcFlags(const std::string& filename) const;
         
         MatrixDim cellMatrix;
+        double EwaldLength;
         VectorDimI pbcFlags;
         std::vector<VectorDim> periodicShifts;
         
@@ -71,18 +82,36 @@ namespace model
         TextFileParser perser;
         const PolycrystallineMaterialBase material;
         const double quadPerLength;
+        // const PolycrystallineMaterialBase material;
+        const MatrixDim C2G;
+        MatrixDim externalStress;
+        std::shared_ptr<StochasticForceGenerator> stochasticForceGenerator;
+        double latticeParameter() const;
+        void ExternalController();
 //        const VectorDimI pbcFlags;
         
         
-        void writeVTK(const std::string& vtkFilePrefix) const;
+        void writeVTK(const std::string& vtkFilePrefix,std::map<std::pair<int,int>,std::pair<size_t,std::set<int>>> &segIDmap) const;
         void readVTK(const std::string& vtkFilePrefix);
+
+        //wrong def
         
-        const std::vector<VectorDim>& nodes() const;
-        std::vector<VectorDim>& nodes();
-        const std::vector<StressStraight<3>>& segments() const;
-        std::vector<StressStraight<3>>& segments();
-        const std::vector<DislocationQuadraturePoint<3,0>>& quadraturePoints() const;
-        std::vector<DislocationQuadraturePoint<3,0>>& quadraturePoints();
+        // const std::vector<VectorDim>& nodes() const;
+        // std::vector<VectorDim>& nodes();
+        // const std::vector<StressStraight<3>>& segments() const;
+        // std::vector<StressStraight<3>>& segments();
+        // const std::vector<DislocationQuadraturePoint<3,0>>& quadraturePoints() const;
+        // std::vector<DislocationQuadraturePoint<3,0>>& quadraturePoints();
+
+
+        //legacy def
+
+        const std::deque<VectorDim> &nodes() const;
+        std::deque<VectorDim> &nodes();
+        const std::map<std::pair<int,int>,StressStraight<3>> &segments() const;
+        std::map<std::pair<int,int>,StressStraight<3>>&segments();
+        const std::vector<DislocationQuadraturePoint<3, 0>> &quadraturePoints() const;
+        std::vector<DislocationQuadraturePoint<3, 0>> &quadraturePoints();
 
 
     };

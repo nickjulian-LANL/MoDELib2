@@ -112,7 +112,11 @@ namespace model
             for (const auto& simpl : mesh.simplices())
             {
                 auto temp=ElementContainerType::emplace(simpl.first,ElementType(simpl.second,*this,*this,mesh2femIDmap()));
-                assert(temp.second && "UNABLE TO INSERT ELEMENT IN ELEMENT CONTAINER.");
+//                assert(temp.second && "UNABLE TO INSERT ELEMENT IN ELEMENT CONTAINER.");
+                if(!temp.second)
+                {
+                    throw std::runtime_error("UNABLE TO INSERT ELEMENT IN ELEMENT CONTAINER.");
+                }
                 
                 // Add element pointer to each of its nodes
                 for(int n=0;n<ElementType::nodesPerElement;++n)
@@ -130,6 +134,8 @@ namespace model
             {
                 if(mesh2femIDmap().size()!=mesh.template observer<0>().size())
                 {
+                    std::cout<<"mesh2femIDmap().size()="<<mesh2femIDmap().size()<<std::endl;
+                    std::cout<<"mesh.template observer<0>().size()="<<mesh.template observer<0>().size()<<std::endl;
                     throw std::runtime_error("mesh2femIDmap has wrong size.");
                 }
 //                assert((mesh2femIDmap().size()==mesh.template observer<0>().size()) && "mesh2femIDmap has wrong size.");
@@ -139,7 +145,11 @@ namespace model
             // Check that node[k].gID==k;
             for(size_t n=0;n<nodes().size();++n)
             {
-                assert(node(n).gID==n);
+                if(node(n).gID!=n)
+                {
+                    throw std::runtime_error("node(n).gID!=n");
+                }
+//                assert(node(n).gID==n);
             }
             
             // Compute _xMin and _xMax
@@ -301,7 +311,7 @@ namespace model
         }
         
         /**********************************************************************/
-        void  clearNodeLists()
+        void clearNodeLists()
         {
             return NodeListContainerType::clear();
         }

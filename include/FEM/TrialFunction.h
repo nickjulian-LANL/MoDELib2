@@ -116,9 +116,10 @@ namespace model
         }
         
         /**********************************************************************/
-        TrialFunctionType& setNodeDof(const Eigen::Matrix<double,_nComponents,1>& c)
+//        TrialFunctionType& setNodeDof(const Eigen::Matrix<double,_nComponents,1>& c)
+        TrialFunctionType& setConstant(const Eigen::Matrix<double,_nComponents,1>& c)
         {
-            for(int n=0; n< nodeSize();++n)
+            for(size_t n=0; n< nodeSize();++n)
             {
                 TrialBase<TrialFunctionType>::dofVector().template segment<_nComponents>(n*_nComponents)=c;
             }

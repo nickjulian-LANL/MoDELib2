@@ -1,6 +1,5 @@
-type=Irradiation;
+type=StackingFaultTetrahedra;
 style=individual;
-defect=SFT;
 tag=sft0;
 sftPlaneIDs=0 1; #[-] planeID of the SFTs basal planes (planes of Frank loop). Use -1 to disable
 sftIsInverted=0 1; #[-] 0 = "positive" Thompson tetrahedron, 1 = "negative" Thompson tetrahedron

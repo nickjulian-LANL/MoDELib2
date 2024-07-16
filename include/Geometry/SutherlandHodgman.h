@@ -12,6 +12,7 @@
 #include <cfloat>
 #include <tuple>
 #include <map>
+#include <vector>
 #include <Eigen/Dense>
 #include <assert.h>
 
@@ -20,7 +21,7 @@ namespace model
     
     class SutherlandHodgman
     {
-        
+        //! Clips a subject polygon with a convex clipping polygon
         
         template<typename PointType>
         static bool inside(const PointType& p, const PointType& p1, const PointType& p2)
@@ -51,7 +52,10 @@ namespace model
             
             //   const int   N = 99; // clipped (new) polygon size
             const int   N = subjectPolygon.size()+clipPolygon.size(); // clipped (new) polygon size
-            PointType cp1, cp2, s, e, inputPolygon[N], newPolygon[N];
+//            PointType cp1, cp2, s, e, inputPolygon[N], newPolygon[N];
+            PointType cp1, cp2, s, e;
+            std::vector<PointType> inputPolygon(N);
+            std::vector<PointType> newPolygon(N);
             
             // copy subject polygon to new polygon and set its size
             for(size_t i = 0; i < subjectPolygon.size(); i++)

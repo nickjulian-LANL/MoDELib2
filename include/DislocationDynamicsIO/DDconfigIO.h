@@ -27,7 +27,7 @@
 #include <PolyhedronInclusionEdgeIO.h>
 #include <PolyhedronInclusionNodeIO.h>
 #include <PolyhedronInclusionIO.h>
-
+#include <ClusterDynamicsParameters.h>
 
 //#include <DislocationNetwork.h>
 //#include <PeriodicLoopIO.h>
@@ -56,8 +56,11 @@ namespace model
         std::map<size_t,const size_t> _nodeMap;
         std::map<size_t, const size_t> _loopMap;
         
-        
-        
+        typedef  Eigen::Matrix<double,Eigen::Dynamic,ClusterDynamicsParameters<dim>::mSize+ClusterDynamicsParameters<dim>::iSize> CDMatrixType;
+        typedef Eigen::Matrix<double,Eigen::Dynamic,2*dim> DispMatrixType; // elastic and diffusive displacement
+        CDMatrixType _cdMatrix;
+        DispMatrixType _dispMatrix;
+
     public:
         
         DDconfigIO(const std::string& folderName,const std::string& suffix="");
@@ -86,6 +89,10 @@ namespace model
         std::map<size_t,const size_t>& loopNodeMap();
         const std::map<size_t, const size_t>& loopMap() const;
         std::map<size_t, const size_t>& loopMap();
+        const CDMatrixType& cdMatrix() const;
+        CDMatrixType& cdMatrix();
+        const DispMatrixType& displacementMatrix() const;
+        DispMatrixType& displacementMatrix();
         std::map<std::pair<size_t,size_t>,DislocationSegmentIO<dim> > segments() const;
         void write(const size_t& runID,const bool& outputBinary);
         void writeTxt(const size_t& runID);

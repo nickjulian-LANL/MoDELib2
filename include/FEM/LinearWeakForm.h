@@ -11,7 +11,9 @@
 
 #include <chrono>
 #include <vector>
-#include <Eigen/SparseCore>
+//#include <Eigen/SparseCore>
+#include <Eigen/Dense>
+
 
 //#include <EvalExpression.h>
 //#include <TestExpression.h>
@@ -58,7 +60,7 @@ namespace model
         /*init list */ linearForm(lF),
         /*init list */ domain(dom)
         {
-             std::cout<<greenColor<<"Creating LinearWeakForm 1"<<defaultColor<<std::endl;
+//             std::cout<<greenColor<<"Creating LinearWeakForm 1"<<defaultColor<<std::endl;
         }
         
         /**********************************************************************/
@@ -67,7 +69,7 @@ namespace model
         /*init list */ linearForm(std::move(lF)),
         /*init list */ domain(dom)
         {
-            std::cout<<greenColor<<"Creating LinearWeakForm 2"<<defaultColor<<std::endl;
+//            std::cout<<greenColor<<"Creating LinearWeakForm 2"<<defaultColor<<std::endl;
         }
         
 //        /**********************************************************************/

@@ -82,11 +82,23 @@ namespace model
     template <int dim, short unsigned int corder>
     class DislocationNetwork;
 
+    template <typename DislocationNetworkType>
+    struct DislocationVelocitySolverBase;
+
+    template <typename DislocationNetworkType>
+    struct DislocationGlideSolverBase;
+
+    template <typename DislocationNetworkType>
+    struct DislocationClimbSolverBase;
+
+    template <typename DislocationNetworkType>
+    struct DDtimeStepper;
+
     template <int dim>
     class DDconfigIO;
 
     template <int dim>
-    class DDauxIO;
+    struct DDauxIO;
 
 }
 
@@ -96,7 +108,7 @@ namespace model
 #include <GlidePlaneModule.h>
 #include <GlidePlane.h>
 #include <Grain.h>
-#include <ConfinedDislocationObject.h>
+//#include <ConfinedDislocationObject.h>
 #include <DislocationCrossSlip.h>
 #include <DislocationJunctionFormation.h>
 #include <DislocationNetwork.h>

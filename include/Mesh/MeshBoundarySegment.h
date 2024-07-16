@@ -77,6 +77,8 @@ namespace model
         void emplace_unique(const VectorDim& P0,const VectorDim& P1,const PlanarMeshFace<dim>* const face);
         void computeFaceIntersections(const Plane<dim>& plane,
                                       const std::shared_ptr<PlanarMeshFace<dim>>& face);
+        
+        void sortIntersections(const Plane<dim>& plane);
         BoundingMeshSegments();
         BoundingMeshSegments(const SimplicialMesh<dim>& mesh,
                              const Plane<dim>& plane);

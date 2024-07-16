@@ -15,12 +15,38 @@
 namespace model
 {
 
+template <int dim>
+double getEwaldLength(const std::vector<Eigen::Matrix<double,dim,1>>& periodicBasis,const double& EwaldLengthFactor)
+{
+    
+    if(periodicBasis.size())
+    {
+        // Compute generalized volume of periodic lattice cell
+        Eigen::MatrixXd B(Eigen::MatrixXd::Zero(3,periodicBasis.size()));
+        for(size_t k=0;k<periodicBasis.size();++k)
+        {
+            B.col(k)=periodicBasis[k];
+        }
+        const double vol(sqrt((B.transpose()*B).determinant())/CTM::factorial(periodicBasis.size()));
+//        std::cout<<"vol="<<vol<<std::endl;
+//        std::cout<<"edge="<<std::pow(vol,1.0/periodicBasis.size())<<std::endl;
+//        std::cout<<"elength="<<EwaldLengthFactor*std::pow(vol,1.0/periodicBasis.size())<<std::endl;
+        return EwaldLengthFactor*std::pow(vol,1.0/periodicBasis.size());
+    }
+    else
+    {
+        return 0.0;
+    }
+}
 
     VTKsegments::VTKsegments(const std::string& folderName) :
     ///* init */ traitsIO(folderName)
     /* init */ perser(folderName+"/inputFiles/vtkSegments.txt")
     /* init */,material(perser.readString("materialFile",true),perser.readScalar<double>("absoluteTemperature",true))
     /* init */,quadPerLength(perser.readScalar<double>("quadPerLength",true))
+    /* init */,externalStress(perser.readMatrix<double>("ExternalStress0",3,3,true))
+    /* init */,stochasticForceGenerator(nullptr)
+    /* init */,C2G(perser.readMatrix<double>("C2G",3,3,true))
     {
         
     }
@@ -41,28 +67,68 @@ namespace model
         return *this;
     }
 
-    const std::vector<StressStraight<3>>& VTKsegments::segments() const
+    // const std::vector<StressStraight<3>>& VTKsegments::segments() const
+    // {
+    //     return *this;
+    // }
+
+    // std::vector<StressStraight<3>>& VTKsegments::segments()
+    // {
+    //     return *this;
+    // }
+
+
+    const std::map<std::pair<int,int>,StressStraight<3>> &VTKsegments::segments() const
     {
         return *this;
     }
 
-    std::vector<StressStraight<3>>& VTKsegments::segments()
+    std::map<std::pair<int,int>,StressStraight<3>> &VTKsegments::segments()
     {
         return *this;
     }
 
-const std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes() const
+    // const std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes() const
+    // {
+    //     return *this;
+    // }
+
+    const std::deque<typename VTKsegments::VectorDim> &VTKsegments::nodes() const
+    {
+        return *this;
+    }
+
+
+    std::deque<typename VTKsegments::VectorDim> &VTKsegments::nodes()
+    {
+        return *this;
+    }
+
+double VTKsegments::latticeParameter() const
 {
-    return *this;
+    if(material.crystalStructure=="BCC")
+    {
+        return 2.0*material.b_SI/sqrt(3.0);
+    }
+    else if(material.crystalStructure=="FCC")
+    {
+        return 2.0*material.b_SI/sqrt(2.0);
+    }
+    else
+    {
+        std::cout<<"Unknown lattice parameter for "<<material.crystalStructure<<"'. Exiting."<<std::endl;
+        exit(EXIT_FAILURE);
+        return 0.0;
+    }
 }
 
-std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
-{
-    return *this;
-}
+// std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
+// {
+//     return *this;
+// }
 
 
-    void VTKsegments::writeVTK(const std::string& vtkFilePrefix) const
+    void VTKsegments::writeVTK(const std::string& vtkFilePrefix,std::map<std::pair<int,int>,std::pair<size_t,std::set<int>>> &segIDmap) const
     {
         const std::string quadFileName(vtkFilePrefix+"_quadrature.vtk");
         std::ofstream quadFile(quadFileName);
@@ -109,12 +175,85 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
             quadFile<<pair.first.second<<"\n";
         }
         
+         quadFile << "\nCELL_TYPES " + std::to_string(segments().size()) + "\n";
+        for (const auto &pair : qPointMap)
+        {
+            quadFile << 4 << "\n";
+        }
+        quadFile << "\nPOINT_DATA " + std::to_string(quadraturePoints().size() + nodes().size()) + "\n";
+        quadFile << "VECTORS PK_force double\n";
+        for (const auto &node : nodes())
+        {
+            quadFile << std::setprecision(15) << std::scientific << Eigen::Matrix<double, 1, 3>::Zero() << "\n";
+        }
+        for (const auto &outerPair : qPointMap)
+        {
+            for (const auto &innerPair : outerPair.second)
+            {
+                const auto &qp(quadraturePoints()[innerPair]);
+                quadFile << std::setprecision(15) << std::scientific << qp.pkForce.transpose() * material.b_SI * material.mu_SI * 10.0 / 160.21766208 << "\n";
+                //quadFile << std::setprecision(15) << std::scientific << qp.pkForce.transpose()  << "\n";
+            }
+        }
+        quadFile << "\nTENSORS stress double\n";
+
+        for (const auto &node : nodes())
+        {
+            quadFile << std::setprecision(15) << Eigen::Matrix<double, 3, 3>::Zero() << "\n\n";
+        }
+
+        for (const auto &outerPair : qPointMap)
+        {
+            for (const auto &innerPair : outerPair.second)
+            {
+                const auto &qp(quadraturePoints()[innerPair]);
+                quadFile << std::setprecision(15) << std::scientific << qp.stress * material.mu_SI * 1e-9 << "\n\n";
+            }
+        }
+        quadFile << "\nCELL_DATA " + std::to_string(qPointMap.size()) + "\n";
+        quadFile << "SCALARS dislocation_index int\n";
+        quadFile << "LOOKUP_TABLE default\n";
+        for (size_t k = 0; k < qPointMap.size(); ++k)
+        {
+            quadFile << k << "\n"; // not sure if this is the right number to write
+        }
+        //NEED TO ENABLE THIS SECTION
+        quadFile << "\nVECTORS burgers_vector_global double\n";
+
+        for (const auto &pair : segIDmap)
+        {
+        
+            const auto segID = pair.first;
+            const auto &seg(segments().at(segID));
+            std::cout<<"SegID: "<<segID.first<<"-> "<<segID.second <<"-> seg.b: "<<seg.b.transpose() * material.b_SI * 1.0e10<<std::endl;
+            quadFile << seg.b.transpose() * material.b_SI * 1.0e10 << "\n";
+        }
+
+        quadFile << "\nVECTORS burgers_vector_local double\n";
+        const auto G2C(C2G.inverse());
+        std::cout<<"C2G: "<<C2G<<std::endl;
+        std::cout<<"G2C: "<<G2C<<std::endl;
+
+        for (const auto &pair : segIDmap)
+        {
+        
+            const auto segID = pair.first;
+            const auto &seg(segments().at(segID));
+            
+            quadFile << (G2C * seg.b).transpose() * material.b_SI / latticeParameter() << "\n";
+        
+        }
+
+
     }
 
-
-    void VTKsegments::updateQuadraturePoints(const std::string& vtkFilePrefix)
+    void VTKsegments::ExternalController()
     {
-        
+       const auto externalStress=perser.readMatrix<double>("externalStress",3,3,true);
+    }
+
+    void VTKsegments::readCAFile(const std::string& vtkFilePrefix)
+    {
         VectorDimI pbcFlags;
         const std::string caFileName(vtkFilePrefix+".ca");
         std::ifstream caFile(caFileName); //access vtk file
@@ -136,6 +275,15 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
                         ss>>cellMatrix(d,0)>>cellMatrix(d,1)>>cellMatrix(d,2);//store nodal positions to x,y,z
                     }
                     std::cout<<"SIMULATION_CELL_MATRIX=\n"<<cellMatrix<<std::endl;
+                    
+                    std::vector<Eigen::Matrix<double,dim,1>> cellVectors;
+                    for(int d=0;d<3;++d)
+                    {
+                        cellVectors.emplace_back(cellMatrix.row(d)*1.0e-10/material.b_SI);
+                    }
+                    EwaldLength=getEwaldLength(cellVectors,perser.readScalar<double>("EwaldLengthFactor",true));
+                    std::cout<<"Ewald Length"<<std::endl;
+                    std::cout<<EwaldLength<<std::endl;
                 }
                 
                 if(line.find("PBC_FLAGS")!=std::string::npos) //if POINTS is read, read npos
@@ -164,11 +312,27 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
                 }
             }
             std::cout<<"periodicShifts.size()="<<periodicShifts.size()<<std::endl;
+            
+            //prints PBCvectors
+            std::cout<<"PBCvectors"<<std::endl;
+            for (const auto& matrix : periodicShifts) 
+            {
+            std::cout << matrix << std::endl;
+            }
+            
         }
         else
         {
             throw std::runtime_error("Cannot open file "+ caFileName);
         }
+        
+    }
+
+
+    void VTKsegments::updateQuadraturePoints(const std::string& vtkFilePrefix, MatrixDim externalStress, std::map<std::pair<int,int>,std::pair<size_t,std::set<int>>> &segIDmap )
+    {
+        
+        
         
         
         
@@ -191,13 +355,30 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
             {
                 for(const auto& shift : periodicShifts)
                 {
-                    qPoint.stress+=seg.stress(qPoint.r+shift);
+                    qPoint.stress+=seg.second.stress(qPoint.r+shift);
                 }
             }
         }
+        for (size_t q = 0; q < quadraturePoints().size(); ++q)
+        {
+            auto &qPoint(quadraturePoints()[q]);
+            qPoint.stress += externalStress;
+        }
+
+        for (const auto &pair : segIDmap)
+        {
+            const auto segID = pair.first;
+            const auto &seg(segments().at(segID));
+            for (const auto &qID : pair.second.second)
+            {
+                auto &qPoint(quadraturePoints()[qID]);
+                qPoint.pkForce = (qPoint.stress * seg.b).cross(qPoint.rl);
+            }
+        }
+
         std::cout<<magentaColor<<std::setprecision(3)<<std::scientific<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]."<<defaultColor<<std::endl;
-    
-        writeVTK(vtkFilePrefix);
+
+        writeVTK(vtkFilePrefix,segIDmap);
     }
 
     void VTKsegments::readVTK(const std::string& vtkFilePrefix)
@@ -208,7 +389,11 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
         
         const std::string vtkFileName(vtkFilePrefix+".vtk");
         std::ifstream vtkFile(vtkFileName); //access vtk file
+        std::map<std::pair<int,int>, std::pair<size_t,std::set<int>>> segIDmap; // key= [segID] value=[cellID, set of qID's]
         
+
+        readCAFile(vtkFilePrefix);
+
         if(vtkFile.is_open())
         {
 //            std::vector<VectorDim> rawPoints;
@@ -217,7 +402,7 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
             const auto sfCoeffs(SplineSegmentBase<3,0>::sfCoeffs(0.0)); // shape function coefficients for linear segments
             
             int loopsSize(0);
-            
+            std::vector<VectorDim> nAVector;
             std::string line;
             
             
@@ -304,37 +489,138 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
             
             if(rawBurgers.size()==cells.size())
             {
-                for(size_t k=0;k<cells.size();++k)
+
+                for (size_t k = 0; k < cells.size(); ++k)
                 {
                     const auto Burgers(rawBurgers[k]);
-                    
-                    for(size_t n=0;n<cells[k].size()-1;++n)
+                    VectorDim nA(VectorDim::Zero()); // right-handed loop normal
+                    const VectorDim P0(nodes()[0]); //sample point P0 from vtk file
+                   
+
+                    for(int n=0;n<cells[k].size();++n)//index over all nodes
+                    {
+                        const int n1(n<cells[k].size()-1? n+1 : 0);//index k1 to be one less than the current node number
+
+                        //std::cout<<"k1= "<<k1<<std::endl;// print the value of k1
+
+                        const size_t sourceID(cells[k][n]);
+                        const size_t sinkID(cells[k][n1]);
+                        const VectorDim &sourceP(nodes()[sourceID]);
+                        const VectorDim &sinkP(nodes()[sinkID]);
+                        //std::cout<<"sourcePos->sinkPos: "<<sourcePos<<" -> "<<sinkPos<<std::endl;
+
+                        const double linkNorm((sinkP-sourceP).norm());//returns the normal to the connection
+
+                        
+                        nA+=0.5*(sourceP-P0).cross(sinkP-sourceP);//modify the right handed loop normal
+                    }
+
+                    nAVector.push_back(nA.normalized()); //normalize the right handed loop normal
+
+                    for (size_t n = 0; n < cells[k].size() - 1; ++n)
                     {
                         const size_t sourceID(cells[k][n]);
-                        const size_t   sinkID(cells[k][n+1]);
-                        const VectorDim& sourceP(nodes()[sourceID]);
-                        const VectorDim& sinkP(nodes()[sinkID]);
+                        const size_t sinkID(cells[k][n + 1]);
+
                         
-                        segments().emplace_back(material,sourceP,sinkP,Burgers);
-                        const VectorDim chord(sinkP-sourceP);
-                        const double chordLength(chord.norm());
-                        const int qOrder=QuadratureDynamicType::lowerOrder(quadPerLength*chordLength);
-                        const MatrixNcoeffDim dofs((MatrixNcoeffDim()<< sourceP.transpose(),sinkP.transpose()).finished());
-                        
-                        for(int q=0;q<qOrder;++q)
+                        if (sinkID>sourceID)
                         {
-                            quadraturePoints().emplace_back(sourceID,sinkID,q,qOrder,sfCoeffs,dofs);
+                            const VectorDim &sourceP(nodes()[sourceID]);
+                            const VectorDim &sinkP(nodes()[sinkID]);
+                            const std::pair<int,int> sourceSink=std::make_pair(sourceID,sinkID);
+                            
+                            // std::cout<<"Ewald1"<<std::endl;
+                            // std::cout<<EwaldLength<<std::endl;
+
+                            const std::pair<std::pair<int,int>,StressStraight<3>> temp=std::make_pair(sourceSink,StressStraight<3>(material, sourceP, sinkP, Burgers, EwaldLength));
+                            segments().insert(temp
+                                        //std::piecewise_construct,
+                                        //std::make_tuple(sourceID,sinkID),
+                                        //std::make_tuple(material, sourceP, sinkP, Burgers)
+                                        );
+
+
+                            // segments().emplace(std::piecewise_construct,
+                            //             std::make_tuple(sourceID,sinkID),
+                            //             std::make_tuple(material, sourceP, sinkP, Burgers, EwaldLength)
+                            //             );
+
+                            // const VectorDim chord(sinkP - sourceP);
+                            // const double chordLength(chord.norm());
+                            // const int qOrder = QuadratureDynamicType::lowerOrder(quadPerLength * chordLength);
+                            // const MatrixNcoeffDim dofs((MatrixNcoeffDim() << sourceP.transpose(), sinkP.transpose()).finished());
+
+                            // for (int q = 0; q < qOrder; ++q)
+                            // {
+
+                            //     quadraturePoints().emplace_back(sourceID, sinkID, q, qOrder, sfCoeffs, dofs);
+                                
+                                segIDmap[std::make_pair(sourceID,sinkID)].first=k;
+                            //     segIDmap[std::make_pair(sourceID,sinkID)].second.insert(quadraturePoints().size() - 1);
+                            //     //   segIDmap[std::pair(k,std::make_pair(sourceID,sinkID))].insert(quadraturePoints().size() - 1);
+                            // }
+
                         }
+                        else
+                        {
+                            const VectorDim &sourceP(nodes()[sinkID]);
+                            const VectorDim &sinkP(nodes()[sourceID]);
+                            const std::pair<int,int> sourceSink=std::make_pair(sinkID,sourceID);
+                            // std::cout<<"Ewald2"<<std::endl;
+                            // std::cout<<EwaldLength<<std::endl;
+
+                            const std::pair<std::pair<int,int>,StressStraight<3>> temp=std::make_pair(sourceSink,StressStraight<3>(material, sourceP, sinkP, -Burgers, EwaldLength));
+                                segments().insert(temp
+                                        //std::piecewise_construct,
+                                        //std::make_tuple(sinkID,sourceID),
+                                        //std::make_tuple(material, sourceP, sinkP, -Burgers)
+                                        );
+
+
+
+                            //  segments().emplace(std::piecewise_construct,
+                            //             std::make_tuple(sinkID,sourceID),
+                            //             std::make_tuple(material, sourceP, sinkP, -Burgers, EwaldLength)
+                            //             );
+
+                             segIDmap[std::make_pair(sinkID,sourceID)].first=k;      
+                           
+                        }
+                        //const std::pair<int,int> key=std::make_pair(std::min(sourceID,sinkID),std::max(sourceID,sinkID));
+                        
+
+                        //segments().emplace_back(material, sourceP, sinkP, Burgers);
+                        
                     }
-                    
                 }
-                std::cout<<"segments().size()="<<segments().size()<<std::endl;
-                std::cout<<"quadraturePoints().size()="<<quadraturePoints().size()<<std::endl;
+                for (const auto& seg : segments())
+                {
+                    const double chordLength(seg.second.length);
+                    const int sourceID=seg.first.first;
+                    const int sinkID=seg.first.second;
+                    const VectorDim sourceP=seg.second.P0;
+                    const VectorDim sinkP=seg.second.P1;
+                    const int qOrder = QuadratureDynamicType::lowerOrder(quadPerLength * chordLength);
+                    const MatrixNcoeffDim dofs((MatrixNcoeffDim() << sourceP.transpose(), sinkP.transpose()).finished());
+
+                    for (int q = 0; q < qOrder; ++q)
+                    {
+
+                        quadraturePoints().emplace_back(sourceID, sinkID, q, qOrder, sfCoeffs, dofs);
+                        
+                        //segIDmap[std::make_pair(sourceID,sinkID)].first=k;
+                        segIDmap[std::make_pair(sourceID,sinkID)].second.insert(quadraturePoints().size() - 1);
+                        //segIDmap[std::pair(k,std::make_pair(sinkID,sourceID))].insert(quadraturePoints().size() - 1);
+                    }
+                }
+              
+                std::cout << "segments().size()=" << segments().size() << std::endl;
+                std::cout << "quadraturePoints().size()=" << quadraturePoints().size() << std::endl;
             }
             else
             {
-                std::cout<<"rawBurgers.size()="<<rawBurgers.size()<<std::endl;
-                std::cout<<"cells.size()="<<cells.size()<<std::endl;
+                std::cout << "rawBurgers.size()=" << rawBurgers.size() << std::endl;
+                std::cout << "cells.size()=" << cells.size() << std::endl;
                 throw std::runtime_error("rawBurgers.size() NOT EQUAL TO cells.size()");
             }
             
@@ -344,7 +630,7 @@ std::vector<typename VTKsegments::VectorDim>& VTKsegments::nodes()
             std::cout<<"Cannot open "<<vtkFileName<<std::endl;
         }
         
-        updateQuadraturePoints(vtkFilePrefix);
+        updateQuadraturePoints(vtkFilePrefix, externalStress, segIDmap);
         
     }
 

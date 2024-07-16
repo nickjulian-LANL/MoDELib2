@@ -65,7 +65,7 @@ namespace model
     template <typename DislocationNetworkType>
     DislocationCrossSlip<DislocationNetworkType>::DislocationCrossSlip(DislocationNetworkType& DN_in) :
     /* init */ DN(DN_in)
-    /* init */,verboseCrossSlip(TextFileParser(DN.simulationParameters.traitsIO.ddFile).readScalar<int>("verboseCrossSlip",true))
+    /* init */,verboseCrossSlip(TextFileParser(DN.ddBase.simulationParameters.traitsIO.ddFile).readScalar<int>("verboseCrossSlip",true))
     {
     }
 
@@ -127,6 +127,7 @@ namespace model
         
         if(DN.crossSlipModel)
         {
+                        
             const auto t0= std::chrono::system_clock::now();
             std::cout<<"CrossSlip: aligning branches"<<std::flush;
 //            std::cout<<"csNodes.size()="<<csNodes.size()<<std::endl;
@@ -205,9 +206,9 @@ namespace model
 
                         // Define the cross-slip plane through last NetworkNode in branch
                         GlidePlaneKey<dim> crossSlipPlaneKey(branch.first.back()->networkNode->get_P(), crosSlipSystem->n);
-                        const auto crossSlipPlane(DN.glidePlaneFactory.getFromKey(crossSlipPlaneKey));
+                        const auto crossSlipPlane(DN.ddBase.glidePlaneFactory.getFromKey(crossSlipPlaneKey));
                         auto crossSlipLoop(DN.loops().create(crosSlipSystem->s.cartesian(), crossSlipPlane));
-                        const auto periodicCrossSlipPlane(DN.periodicGlidePlaneFactory->get(crossSlipPlane->key));
+                        const auto periodicCrossSlipPlane(DN.ddBase.periodicGlidePlaneFactory.get(crossSlipPlane->key));
 //                        std::cout<<"Constructed crossSlipPlane="<<std::endl;
                         
                         std::vector<std::shared_ptr<LoopNodeType>> crossSlipLoopNodes;
@@ -223,7 +224,7 @@ namespace model
                         std::shared_ptr<PeriodicPlanePatch<dim>> crossSlipPatch(periodicCrossSlipPlane->getPatch(shift));
                         
                         // add a new cross-slip node at the end of the branch
-                        std::shared_ptr<NetworkNodeType> newNetNode(DN.networkNodes().create(currentLoopNode->networkNode->get_P(), VectorDim::Zero(), 1.0));
+                        std::shared_ptr<NetworkNodeType> newNetNode(DN.networkNodes().create(currentLoopNode->networkNode->get_P()));
                         
                         bool allContained(crossSlipPlane->contains(newNetNode->get_P()));
                         std::cout<<"crossSlipPlane->contains("<<newNetNode->tag()<<")? "<<crossSlipPlane->contains(newNetNode->get_P())<<std::endl;
@@ -294,7 +295,7 @@ namespace model
                                 if(currentLoopNode==branch.first.front().get())
                                 {
                                     // add a new cross-slip node at the beginning of the branch and break
-                                    newNetNode= (currentLoopNode->networkNode==branch.first.back()->networkNode? crossSlipLoopNodes.front()->networkNode : DN.networkNodes().create(currentLoopNode->networkNode->get_P(), VectorDim::Zero(), 1.0));
+                                    newNetNode= (currentLoopNode->networkNode==branch.first.back()->networkNode? crossSlipLoopNodes.front()->networkNode : DN.networkNodes().create(currentLoopNode->networkNode->get_P()));
                                     crossSlipLoopNodes.emplace_back(DN.loopNodes().create(crossSlipLoop, newNetNode, currentLoopNode->networkNode->get_P()-shift, crossSlipPatch, std::make_pair(nullptr,nullptr)));
                                     break;
                                 }
@@ -322,15 +323,15 @@ namespace model
                 {
                     if(link->networkLink())
                     {
-                        link->networkLink()->updateQuadraturePointsSeg();
+                        link->networkLink()->createQuadraturePoints(false);
                     }
                 }
-                loop->computeStackingFaultForces();
+//                loop->computeStackingFaultForces();
                 for(const auto& link : loop->loopLinks())
                 {
                     if(link->networkLink())
                     {
-                        link->networkLink()->assembleGlide(true);
+                        link->networkLink()->updateQuadraturePoints(false);
                     }
                 }
 

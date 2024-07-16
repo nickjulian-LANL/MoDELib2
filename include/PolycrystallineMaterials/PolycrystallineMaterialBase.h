@@ -49,14 +49,16 @@ namespace model
         const double C3;        // 1.0-2.0*nu;
         const double C4;        // 0.5*C2;
 
-        
-        const double dOmegav;
-        const double Ufv_SI;
-        const double Ufv;
-        const double Umv_SI;     // vacancy migration energy [eV]
-        const double Umv;        // vacancy migration energy [-]
-        const double D0v_SI;        // shear wave speed [-]
-        const double Dv;        // shear wave speed [-]
+        const std::set<std::string> enabledSlipSystems;
+        const std::set<std::string> enabledSecondPhases;
+
+//        const double dOmegav;
+//        const double Ufv_SI;
+//        const double Ufv;
+//        const double Umv_SI;     // vacancy migration energy [eV]
+//        const double Umv;        // vacancy migration energy [-]
+//        const double D0v_SI;        // shear wave speed [-]
+//        const double Dv;        // shear wave speed [-]
         
         static const std::string& getMaterialFile(const std::string& fileName);
         PolycrystallineMaterialBase(const std::string& fileName,const double& absoluteTemperature);

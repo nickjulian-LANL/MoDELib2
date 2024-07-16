@@ -206,13 +206,13 @@ namespace model
 Eigen::VectorXd GalerkinGlideSolver<DislocationNetworkType>::lumpedSolve() const
     {
         const auto t0= std::chrono::system_clock::now();
-        std::cout<<"GlideSolver (lumped) "<<std::flush;
+        std::cout<<", glideSolver "<<std::flush;
         TripletContainerType kqqT; // the vector of Eigen::Triplets corresponding to the matrix Kqq
         Eigen::VectorXd Fq;        // the vector of nodal forces
         const size_t Ndof = assembleNCtriplets(kqqT, Fq);
 
         
-            if (this->DN.simulationParameters.isPeriodicSimulation())
+            if (this->DN.ddBase.isPeriodicDomain)
             {
                 TripletContainerType zT;
 
@@ -272,212 +272,45 @@ Eigen::VectorXd GalerkinGlideSolver<DislocationNetworkType>::lumpedSolve() const
             }
             else
             {
-//
-//                // Zienkiewicz (See [1], section 16.2.4) discusses three methods for lumping the mass matrix
-//                TripletContainerType lumpedTriplets;
-//                for (const auto &t : kqqT)
-//                {
-//                    if (t.col() == t.row())
-//                    {
-//                        lumpedTriplets.push_back(t);
-//                    }
-//                    else
-//                    {
-//                        lumpedTriplets.emplace_back(t.col(), t.col(), 0.5 * t.value());
-//                        lumpedTriplets.emplace_back(t.row(), t.row(), 0.5 * t.value());
-//                    }
-//                }
-//
-//                SparseMatrixType kqq(Ndof, Ndof);
-//                kqq.setFromTriplets(lumpedTriplets.begin(), lumpedTriplets.end());
-//                Eigen::VectorXd Kd(kqq.diagonal());
-//                // std::cout<<"Kd "<<std::endl;
-//                // std::cout<<Kd<<std::endl;
-//                // std::cout << "Fq " << std::endl;
-//                // std::cout<<Fq<<std::endl;
-//                Eigen::VectorXd x(Eigen::VectorXd::Zero(Ndof));
-//
-//                if (outputKF)
-//                {
-//                    assert(0 && "RE-ENABLE OUTPUT");
-//                    std::ofstream fileK("K_" + std::to_string(runID) + "_" + std::to_string(NC.sID) + ".txt");
-//                    //                fileK<<Kd;
-//                    std::ofstream fileF("F_" + std::to_string(runID) + "_" + std::to_string(NC.sID) + ".txt");
-//                    //                fileF<<Fq;
-//                }
-//
-//                // Check diagonal and force
-//                for (int k = 0; k < Kd.size(); ++k)
-//                {
-//                    if (fabs(Kd(k)) > FLT_EPSILON)
-//                    { // stiffness not zero
-//                        x(k) = Fq(k) / Kd(k);
-//                    }
-//                    else
-//                    { // stiffness is zero
-//                        if(fabs(Fq(k)) > FLT_EPSILON)
-//                        {
-//                            std::cout<<"k="<<k<<std::endl;
-//                            std::cout<<"k%NdofXnode="<<k%NdofXnode<<std::endl;
-//                            typename NodeContainerType::iterator nodeIter(NC.nodeBegin());
-//                            std::advance(nodeIter,k/NdofXnode);
-//                            std::cout<<"node "<<nodeIter->second->sID<<std::endl;
-//                            std::cout<<"Kd(k)="<<Kd(k)<<std::endl;
-//                            std::cout<<"Fq(k)="<<Fq(k)<<std::endl;
-//
-//
-//                            assert(false && "if stiffness is zero also force must be zero.");
-//                        }
-//                        //                            assert(fabs(Fq(k)) < FLT_EPSILON && "if stiffness is zero also force must be zero.");
-//                    }
-//                }
-//                storeNodeSolution(x.segment(0, Ndof));
-                throw std::runtime_error("GlideSolver limited to periodic siomulations");
-                return Eigen::VectorXd();
+                TripletContainerType lumpedTriplets;
+                Eigen::VectorXd Kd(Eigen::VectorXd::Zero(Ndof));        // the vector of nodal forces
+                for(const auto& it : kqqT)
+                {
+                    if (it.row() == it.col())
+                    {
+                        Kd(it.row())+=it.value();
+                    }
+                    else
+                    {
+                        Kd(it.row())+=0.5*it.value();
+                        Kd(it.col())+=0.5*it.value();
+                    }
+                }
+                
+                Eigen::VectorXd x(Eigen::VectorXd::Zero(Ndof)); //Unconstrained Solution
+                for (int k = 0; k < Kd.size(); ++k)
+                {
+                    if (fabs(Kd(k)) > FLT_EPSILON)
+                    { // stiffness not zero
+                        x(k) = Fq(k) / Kd(k);
+                    }
+                    else
+                    { // stiffness is zero
+                        if(fabs(Fq(k)) > FLT_EPSILON)
+                        {
+                            std::cout<<"Kd(k)="<<Kd(k)<<std::endl;
+                            std::cout<<"Fqz(k)="<<Fq(k)<<std::endl;
+                            assert(false && "if stiffness is zero also force must be zero.");
+                        }
+                    }
+                }
+                return x;
             }
-//        }
         std::cout<<magentaColor<<std::setprecision(3)<<std::scientific<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]."<<defaultColor<<std::endl;
 
     }
 
     template class GalerkinGlideSolver<DislocationNetwork<3,0>>;
     
-
-
-//    template <typename DislocationNetworkType>
-//    void GalerkinGlideSolver<DislocationNetworkType>::storeNodeSolution(const Eigen::VectorXd& X)
-//    {
-//        size_t k=0;
-//        for (auto& networkNode : this->DN.networkNodes())
-//        {
-//        //    networkNode.second.lock()->set_V(X.segment(NdofXnode*k,NdofXnode).template cast<float>().template cast<double>()); // double cast to remove some numerical noise
-//            // std::cout<<"setting v for "<<networkNode.second.lock()->sID<<" "<<(X.segment(NdofXnode*k,NdofXnode)).transpose()<<std::endl;
-//            networkNode.second.lock()->set_V(X.segment(NdofXnode*k,NdofXnode)); // double cast to remove some numerical noise
-//            ++k;
-//        }
-//    }
-
-//     template <typename DislocationNetworkType>
-//     size_t GalerkinGlideSolver<DislocationNetworkType>::assembleConstraintsforPeriodicSimulationsNULL(TripletContainerType &zT) const
-//     {
-//         // std::map<const NetworkNodeType *const, std::set<std::tuple<const NetworkNodeType *const,const double, const NetworkNodeType *const,const double>>> networkNodeContainer;
-//         std::map<const NetworkNodeType *const, std::map<std::pair<const NetworkNodeType *const, const NetworkNodeType *const>, std::pair<const double, const double>>> networkNodeContainer;
-
-//         size_t constrainedI = 0;
-//         size_t unconstrainedNodes = 0;
-//         std::map<size_t, size_t> correctedJPosition;
-
-//         for (const auto &netNode : this->DN.networkNodes())
-//         {
-//             std::map<const LoopType *const, std::pair<std::pair<const LoopNodeType *const, const double>, std::pair<const LoopNodeType *const, const double>>> loopConnectivity;
-//             if (netNode.second.lock()->isBoundaryNode())
-//             {
-//                 for (const auto &loopNode : netNode.second.lock()->loopNodes())
-//                 {
-//                     if (loopNode->periodicPrev() && loopNode->periodicNext())
-//                     {
-//                         const auto periodicPrev(loopNode->periodicPrev());
-//                         const auto periodicNext(loopNode->periodicNext());
-//                         const double lij = (loopNode->get_P() - periodicPrev->get_P()).norm();
-//                         const double ljk = (loopNode->get_P() - periodicNext->get_P()).norm();
-
-//                         loopConnectivity.emplace(loopNode->loop().get(), std::make_pair(std::make_pair(periodicPrev, lij),
-//                                                                                         std::make_pair(periodicNext, ljk)));
-//                     }
-//                 }
-            
-//                 // std::cout<<"Current network node is "<<netNode.second.lock()->sID<<" [ "<<netNode.second.lock()->isBoundaryNode()<<" ]"<<std::endl;
-//                 // std::cout<<"Loop Connectivity size "<<loopConnectivity.size()<<std::endl;
-//                 assert((loopConnectivity.size() == 0 ||loopConnectivity.size() == 1|| loopConnectivity.size() == netNode.second.lock()->uniqueLoopNodes()) && "Junction Node at Boundary Not Defined Properly"); //Discuss this with Dr. Po
-// // loopConnectivity.size() == 1 for the case of self annihilation
-//                 if (loopConnectivity.size() == 0)
-//                 {
-//                     const size_t ntempsnID(netNode.second.lock()->networkID()); //Global position in the constraint matrix (j)
-//                     correctedJPosition.emplace(ntempsnID, ntempsnID - constrainedI);
-//                 }
-//                 else
-//                 {
-//                     constrainedI++;
-//                     std::map<std::pair<const NetworkNodeType *const, const NetworkNodeType *const>, std::pair<const double, const double>> innerMap;
-
-//                     for (const auto &loopConn : loopConnectivity)
-//                     {
-//                         const auto nodeI(std::min(loopConn.second.first.first->networkNode->sID, loopConn.second.second.first->networkNode->sID) == loopConn.second.first.first->networkNode->sID ? std::make_pair(loopConn.second.first.first->networkNode.get(), loopConn.second.first.second) : std::make_pair(loopConn.second.second.first->networkNode.get(), loopConn.second.second.second));
-
-//                         const auto nodeJ(std::max(loopConn.second.first.first->networkNode->sID, loopConn.second.second.first->networkNode->sID) == loopConn.second.first.first->networkNode->sID ? std::make_pair(loopConn.second.first.first->networkNode.get(), loopConn.second.first.second) : std::make_pair(loopConn.second.second.first->networkNode.get(), loopConn.second.second.second));
-
-//                         assert(nodeI.first != nodeJ.first && "I and J network nodes cannot be same");
-//                         innerMap.emplace(std::make_pair(nodeI.first, nodeJ.first), std::make_pair(nodeI.second, nodeJ.second));
-//                     }
-//                     networkNodeContainer.emplace(netNode.second.lock().get(), innerMap);
-//                 }
-//             }
-//             else
-//             {
-//                 const size_t ntempsnID(netNode.second.lock()->networkID()); //Global position in the constraint matrix (j)
-//                 correctedJPosition.emplace(ntempsnID, ntempsnID - constrainedI);
-//             }
-//         }
-
-//         for (const auto &netNode : this->DN.networkNodes())
-//         {
-//             const size_t ntempj(netNode.second.lock()->networkID()); //Global position in the constraint matrix (j)
-//             if (netNode.second.lock()->isBoundaryNode())
-//             {
-//                 const auto netNodeIter(networkNodeContainer.find(netNode.second.lock().get()));
-//                 if (netNodeIter != networkNodeContainer.end())
-//                 {
-//                     //Constraints exist in the network node container
-//                     for (const auto &innerMapIter : netNodeIter->second)
-//                     {
-//                         const double lij(innerMapIter.second.first );
-//                         const double ljk(innerMapIter.second.second);
-//                         const double lijk(lij + ljk);
-//                         size_t ntempi(innerMapIter.first.first->networkID());  //Global position in the constraint matrix corresponding to the original link (i)
-//                         size_t ntempk(innerMapIter.first.second->networkID()); //Global position in the constraint matrix corresponding to the neighbor link (k)
-
-//                         assert(correctedJPosition.find(ntempi) != correctedJPosition.end());
-//                         assert(correctedJPosition.find(ntempk) != correctedJPosition.end());
-
-//                         const size_t correctedI(correctedJPosition.find(ntempi)->second);
-//                         const size_t correctedK(correctedJPosition.find(ntempk)->second);
-
-//                         for (size_t d = 0; d < dim; ++d)
-//                         {
-//                             // zT.emplace_back(dim*ntempj+d,dim*ntempi+d,ljk/lijk);
-
-//                             zT.emplace_back(dim * ntempj + d, dim * correctedI + d, ljk / lijk);
-//                             zT.emplace_back(dim * ntempj + d, dim * correctedK + d, lij / lijk);
-//                         }
-//                     }
-//                 }
-//                 else
-//                 {
-//                     assert(correctedJPosition.find(netNode.second.lock()->networkID()) != correctedJPosition.end());
-
-//                     const size_t correctedJ(correctedJPosition.find(netNode.second.lock()->networkID())->second);
-//                     for (size_t d = 0; d < dim; ++d)
-//                     {
-//                         zT.emplace_back(dim * ntempj + d, dim * correctedJ + d, 1);
-//                     }
-//                     unconstrainedNodes++;
-//                 }
-//             }
-//             else
-//             {
-//                 //Constraints do not exist in the network node container
-//                 assert(correctedJPosition.find(netNode.second.lock()->networkID()) != correctedJPosition.end());
-
-//                 const size_t correctedJ(correctedJPosition.find(netNode.second.lock()->networkID())->second);
-//                 for (size_t d = 0; d < dim; ++d)
-//                 {
-//                     zT.emplace_back(dim * ntempj + d, dim * correctedJ + d, 1);
-//                 }
-//                 unconstrainedNodes++;
-//             }
-//         }
-//         return unconstrainedNodes;
-//     }
-
 }
 #endif

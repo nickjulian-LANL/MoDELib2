@@ -24,22 +24,36 @@ namespace model
 //    /* init */,N(get_N(poly,this->latticeBasis))
     {
         
-        assert(poly.grains.size() == 1 && "Periodic simulations only supported in single crystals");
-        const auto &grain(poly.grains.begin()->second);
-        const auto &meshRegion(grain.region);
+//        assert(poly.grains.size() == 1 && "Periodic simulations only supported in single crystals");
+//        const auto &grain(poly.grains.begin()->second);
+//        const auto &meshRegion(grain.region);
 
 //        std::vector<Eigen::Matrix<double,dim,1>> uniqueEdges;
-        for (const auto &face : meshRegion.faces())
+//        for (const auto &face : meshRegion.faces())
+//        {
+//            if(face.second->periodicFacePair.second)
+//            {
+//                std::cout<<"MeshFace "<<face.first<<" checking if periodicShift is a LatticeVector "<<std::flush;
+//                const auto lv(grain.singleCrystal->latticeVector(face.second->periodicFacePair.first));
+//                std::cout<<"LatticeVector"<<"="<<lv.transpose()<<std::endl;
+//            }
+//        }
+        
+        for(const auto& region : poly.mesh.regions())
         {
-            if(face.second->periodicFacePair.second)
+            for(const auto& face : region.second->faces())
             {
-                std::cout<<"MeshFace "<<face.first<<" checking if periodicShift is a LatticeVector "<<std::flush;
-                const auto lv(grain.singleCrystal->latticeVector(face.second->periodicFacePair.first));
-                std::cout<<"LatticeVector"<<"="<<lv.transpose()<<std::endl;
+                if(face.second->periodicFacePair.second)
+                {
+                    const auto& grain(poly.grains.at(region.second->regionID));
+                    std::cout<<"MeshFace "<<face.first<<" checking if periodicShift is a LatticeVector "<<std::flush;
+                    const auto lv(grain.singleCrystal->latticeVector(face.second->periodicFacePair.first));
+                    std::cout<<"LatticeVector"<<"="<<lv.transpose()<<std::endl;
+
+                }
             }
         }
 
-        
     }
     
     /**********************************************************************/

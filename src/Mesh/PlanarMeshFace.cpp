@@ -12,7 +12,6 @@
 #include <chrono>
 #include <sstream>
 #include <fstream>
-#include <assert.h>
 #include <utility>      // std::pair, std::make_pair
 #include <set>
 
@@ -31,7 +30,11 @@ namespace model
     /* init */,periodicFacePair(std::make_pair(VectorDim::Zero(),nullptr))
     {
         //            std::cout<<"Creating PlanarMeshFace "<<this->sID<<", n="<<outNormal().transpose()<<std::endl;
-        assert((n.norm()-1.0)<FLT_EPSILON);
+        if(std::fabs(n.norm()-1.0)>FLT_EPSILON)
+        {
+            throw std::runtime_error("PlanarMeshFace: n must have unit norm. n.norm()="+std::to_string(n.norm()));
+        }
+//        assert((n.norm()-1.0)<FLT_EPSILON);
         this->insert(pS);
     }
     
@@ -69,7 +72,7 @@ namespace model
         }
         n/=this->size();
         c/=this->size();
-        assert(fabs(n.norm()-1.0)<FLT_EPSILON);
+//        assert(fabs(n.norm()-1.0)<FLT_EPSILON);
         n.normalize();
         
         for(const auto& simplex : *this)
@@ -94,27 +97,27 @@ namespace model
         
         if(vertices.size())
         {
-            assert(dim==3 && "ALGORITHM ONLY VALID IN dim=3");
             
-            // Compute local rotation matrix
-            Eigen::Matrix<double,dim,dim> R;
-            R.col(0)=((*vertices.begin())->P0-center()).normalized();
-            R.col(2)=n;
-            R.col(1)=R.col(2).cross(R.col(0));
+//            assert(dim==3 && "ALGORITHM ONLY VALID IN dim=3");
             
+            const Plane<dim> plane(c,n);
             ConvexHull<2,Simplex<dim,0>> hull;
             for(const auto& v : vertices)
             {// compute local position in the plane as insert in ConvexHull
-                const Eigen::Matrix<double,dim,1> x(R.transpose()*(v->P0-center()));
+                const auto x(plane.localPosition(v->P0));
                 hull.emplace(std::array<double,2>{x[0],x[1]},v);
             }
-            
-            
+                        
             const auto hullPts=hull.getPoints();
             _hull.clear();
             for(const auto& hp : hullPts)
             {
                 _hull.push_back(hp.t);
+            }
+            if(_hull.size()<3)
+            {
+                std::cout<<"vertices.size()="<<vertices.size()<<std::endl;
+                throw std::runtime_error("PlanarMeshFace hull has size "+std::to_string(_hull.size()));
             }
         }
     }
