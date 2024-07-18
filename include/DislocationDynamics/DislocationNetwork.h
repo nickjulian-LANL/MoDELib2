@@ -84,7 +84,6 @@ namespace model
     {
         
     public:
-
         
         
         typedef TypeTraits<DislocationNetwork<dim,corder>> TraitsType;
@@ -119,7 +118,7 @@ namespace model
 
     private:
         
-        const InclusionMicrostructure<dim>* _inclusions;
+        std::shared_ptr<InclusionMicrostructure<dim>> _inclusions;
 
     public:
 
@@ -170,7 +169,7 @@ namespace model
         void updateGeometry();//
         std::tuple<double,double,double,double> networkLength() const;
         bool isClimbStep() const;
-        const InclusionMicrostructure<dim>* const inclusions() const;
+        const std::shared_ptr<InclusionMicrostructure<dim>>&  inclusions() const;
 
     };
     

@@ -15,7 +15,6 @@
 #include <vector>
 #include <Eigen/Dense>
 #include <assert.h>
-//#include <earcut.hpp>
 
 namespace model
 {

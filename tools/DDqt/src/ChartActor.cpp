@@ -69,11 +69,11 @@ namespace model
             yAxisLog->setText("log-scale");
             
             vtkColor3d color3d1 = colors->GetColor3d("black");
-            points->SetColor(color3d1.GetRed(), color3d1.GetGreen(), color3d1.GetBlue());
+            points->SetColorF(color3d1.GetRed(), color3d1.GetGreen(), color3d1.GetBlue());
             points->SetWidth(5.0);
 
             vtkColor3d color3d2 = colors->GetColor3d("magenta");
-            currentPoints->SetColor(color3d2.GetRed(), color3d2.GetGreen(), color3d2.GetBlue());
+            currentPoints->SetColorF(color3d2.GetRed(), color3d2.GetGreen(), color3d2.GetBlue());
             currentPoints->SetWidth(5.0);
 
             std::ifstream flabFile(traitsIO.flabFile);

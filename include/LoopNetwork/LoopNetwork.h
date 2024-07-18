@@ -126,6 +126,7 @@ namespace model
             return *this;
         }
         
+        
         LoopLinkContainerType& loopLinks()
         {
             return *this;
@@ -200,6 +201,7 @@ namespace model
             }
             return std::make_pair(SharedLoopNodePtrType(nullptr),SharedLoopNodePtrType(nullptr));
         }
+        
         
         void connect(const SharedLoopNodePtrType& n0,
                      const SharedLoopNodePtrType& n1,
@@ -326,6 +328,7 @@ namespace model
             }
         }
         
+       
 
         void removeLoopNode(const SharedLoopNodePtrType& node)
         {

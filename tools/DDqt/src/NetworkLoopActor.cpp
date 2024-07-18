@@ -253,7 +253,7 @@ void NetworkLoopActor::updateConfiguration()
                     {
                         meshPts->InsertNextPoint(point3d(0),point3d(1),point3d(2));
                     }
-                    for(const auto& tri : patchMesh.triangles())
+                    for(const auto& tri : patchMesh.triangles)
                     {
                         vtkSmartPointer<vtkTriangle> triangle = vtkSmartPointer<vtkTriangle>::New();
                         triangle->GetPointIds()->SetId (0,tri(0)+ptsIncrement);
