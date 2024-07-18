@@ -17,6 +17,8 @@ endif()
 add_executable(DDqt DDqt.cxx)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
+message("Qt6Widgets_INCLUDE_DIRS: ${Qt6Widgets_INCLUDE_DIRS}")
+include_directories(${Qt6Widgets_INCLUDE_DIRS})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src src)
 
 target_link_libraries(DDqt MoDELib ${FFTW3_LIBRARIES} ${VTK_LIBRARIES} Qt6::Widgets Qt6::OpenGL Qt6::Core)

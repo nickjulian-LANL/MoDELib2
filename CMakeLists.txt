@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.1.0)
 project(MoDELib VERSION 2.0.0 LANGUAGES CXX)
 
 option(USE_PYBIND11 "enables pybind11" ON)
-option(BUILD_TOOLS "builds tools" ON)
-set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
-list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
+option(BUILD_TOOLS "builds tools" OFF)
+#set(EIGEN3_INCLUDE_DIRS /opt/local/include/eigen3)
+#list(APPEND CMAKE_PREFIX_PATH "/Users/Giacomo/Applications/Qt/6.5.2/macos/lib/cmake")
 
 cmake_policy(SET CMP0057 NEW)
 set(CMAKE_BUILD_TYPE Release)
@@ -22,6 +22,8 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -march=native -fopenmp -Ofast -Wno-unused-var
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+
+find_package(Eigen3 REQUIRED NAMES Eigen3)
 
 ### Boost ### 
 find_package(Boost)
@@ -96,7 +98,7 @@ include_directories(${MoDELib_INCLUDE_DIR}/InclusionMicrostructure/)
 include_directories(${MoDELib_INCLUDE_DIR}/DislocationDynamics/)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/ src)
-target_link_libraries(MoDELib PUBLIC ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES})
+target_link_libraries(MoDELib PUBLIC ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES} Eigen3::Eigen)
 
 if(BUILD_TOOLS)
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools tools)

@@ -128,7 +128,7 @@ namespace model
                 //                                        if (is_null(d[k + 1]))
                 if (d(k + 1) == 0)
                 {
-                    assert(0 && "B(i) did not form the basis");
+                    throw std::runtime_error("B(i) did not form the basis");
                     //                                            return false; // B(i) did not form the basis
                 }
             }

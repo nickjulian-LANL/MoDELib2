@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <Plane.h>
+#include <deque>
 
 namespace model
 {

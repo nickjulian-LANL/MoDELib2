@@ -22,7 +22,10 @@ namespace model
         {
             
             a=TextFileParser(fileName).readScalar<double>("coreSize",false);
-            assert(a>0.0 && "coreSize MUST BE > 0.");
+            if (a <= 0.0)
+            {
+              throw std::runtime_error( "coreSize MUST BE > 0.");
+            }
             a2=a*a;
         }
 

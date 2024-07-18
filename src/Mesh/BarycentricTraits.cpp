@@ -29,7 +29,10 @@ namespace model
     {/*!\param[in] X vector of standard coordinates
       *\returns the barycentric coordinates corresponding to X
       */
-        assert(dim==1);
+        if (dim!=1)
+        {
+           throw std::runtime_error("dim!=1");
+        }
         return X2L* (VectorHigherDimD()<< X, 1.0).finished();
     }
 
