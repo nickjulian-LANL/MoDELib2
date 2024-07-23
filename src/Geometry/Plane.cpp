@@ -142,7 +142,7 @@ bool Plane<dim>::isBelow(const VectorDim& P0) const
             {
                throw std::runtime_error("std::fabs(z.norm()-1.0) >= FLT_EPSILON");
             }
-            if (fabs(x.dot(z) >= FLT_EPSILON));
+            if (fabs(x.dot(z) >= FLT_EPSILON))
             {
                throw std::runtime_error("fabs(x.dot(z) >= FLT_EPSILON)");
             }
