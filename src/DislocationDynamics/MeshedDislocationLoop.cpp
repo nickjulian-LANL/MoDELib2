@@ -11,6 +11,7 @@
 #define model_MeshedDislocationLoop_cpp_
 
 #include <numbers>
+#include <deque>
 #include <MeshedDislocationLoop.h>
 #include <TriangularMesh.h>
 
