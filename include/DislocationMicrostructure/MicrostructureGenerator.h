@@ -40,28 +40,28 @@
 #include <Plane.h>
 #include <MicrostructureGeneratorBase.h>
 
+#include <ShearLoopDensitySpecification.h>
+#include <ShearLoopIndividualSpecification.h>
+#include <PeriodicDipoleDensitySpecification.h>
+#include <PeriodicDipoleIndividualSpecification.h>
+#include <PrismaticLoopDensitySpecification.h>
+#include <PrismaticLoopIndividualSpecification.h>
+#include <FrankLoopsDensitySpecification.h>
+#include <FrankLoopsIndividualSpecification.h>
 
 namespace model
 {
-
-    
-
-    class MicrostructureGenerator : public std::map<std::string,MicrostructureGeneratorBase* const>
+    class MicrostructureGenerator
     {
         constexpr static int dim=MicrostructureGeneratorBase::dim;
         typedef typename  MicrostructureGeneratorBase::VectorDimD VectorDimD;
-//        typedef typename  MicrostructureGeneratorBase::VectorDimI VectorDimI;
         typedef typename  MicrostructureGeneratorBase::DislocationLoopType DislocationLoopType;
-
-
-//        DDtraitsIO traitsIO;
-        DDconfigIO<3> configIO;
-        DDauxIO<3> auxIO;
 
     public:
         
-//        const TextFileParser parser;
         DislocationDynamicsBase<3>& ddBase;
+        DDconfigIO<3> configIO;
+        DDauxIO<3> auxIO;
         const bool outputBinary;
         const double minSize;
         const double maxSize;
@@ -70,6 +70,18 @@ namespace model
         MicrostructureGenerator(DislocationDynamicsBase<3>& ddBase_in);
         
         void readMicrostructureFile();
+        
+        void addShearLoopDensity(const ShearLoopDensitySpecification& spec);
+        void addShearLoopIndividual(const ShearLoopIndividualSpecification& spec);
+        void addPeriodicDipoleDensity(const PeriodicDipoleDensitySpecification& spec);
+        void addPeriodicDipoleIndividual(const PeriodicDipoleIndividualSpecification& spec);
+        void addPrismaticLoopDensity(const PrismaticLoopDensitySpecification& spec);
+        void addPrismaticLoopIndividual(const PrismaticLoopIndividualSpecification& spec);
+        void addFrankLoopsDensity(const FrankLoopsDensitySpecification& spec);
+        void addFrankLoopsIndividual(const FrankLoopsIndividualSpecification& spec);
+
+        
+        
         const DDtraitsIO& traits() const;
         const DDconfigIO<3>& config() const;
         const DDauxIO<3>& aux() const;

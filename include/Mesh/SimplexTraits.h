@@ -25,7 +25,6 @@ namespace model
     template<short int dim,short int order>
     class SimplexChild;
     
-    
     template<short int nVertices>
     struct SimplexID : public std::array<size_t,nVertices>
     {
@@ -65,7 +64,7 @@ namespace model
             return this->operator[](k);
         }
         
-        /**********************************************************************/
+        
         template <class T>
         friend T& operator << (T& os, const SimplexID& xID)
         {
@@ -75,15 +74,11 @@ namespace model
             }
             return os;
         }
-        
     };
     
-    /**************************************************************************/
-    /**************************************************************************/
     template<short int dim, short int order>
     struct SimplexTraits
     {
-        
         static_assert(dim>0,"dim must be > 0");
         static_assert(order>0,"order must be >= 0");
         static_assert(order<=dim,"order must be <= dim");
@@ -100,31 +95,24 @@ namespace model
         typedef typename SimplexID<nVertices>::ScalarIDType ScalarIDType;
         typedef SimplexID<nVertices> SimplexIDType;
         
-        /**********************************************************************/
         static SimplexIDType sortID(const SimplexIDType& vIN)
         {
             std::set<size_t> set;
             for (int k=0;k<nVertices;++k)
             {
                 set.insert(vIN(k));
-//
-//                const bool couldInsert(set.insert(vIN(k)).second);
-//                assert(couldInsert && "VERTEX IDs ARE NOT UNIQUE.");
             }
             return SimplexIDType(set);
         }
         
-        /**********************************************************************/
+        
         static typename SimplexTraits<dim,order-1>::SimplexIDType faceID(const SimplexIDType& xID,
                                                                          const size_t& j)
         {/*!@param[in] xID the ID of the parent Simplex
           * @param[in] j the j-th face of the parent Simplex
           * \returns the ID of the child Simplex which is the j-th face of xID
           */
-            if (j >= nVertices)
-            {
-              throw std::runtime_error( "REQUESTING NON-EXISTING FACE");
-            }
+            assert(j<nVertices && "REQUESTING NON-EXISTING FACE");
             std::set<size_t> set;
             for (size_t k=0;k<nVertices;++k)
             {
@@ -136,7 +124,6 @@ namespace model
             return typename SimplexTraits<dim,order-1>::SimplexIDType(set);
         }
         
-        /**********************************************************************/
         static std::array<std::shared_ptr<typename SimplexTraits<dim,order-1>::SimplexIDType>,nFaces> faceIDs(const SimplexIDType& xID)
         {
             std::array<std::shared_ptr<typename SimplexTraits<dim,order-1>::SimplexIDType>,nFaces> temp;
@@ -147,7 +134,6 @@ namespace model
             return temp;
         }
         
-        /**************************************************************************/
         static size_t faceOrder(const SimplexIDType& parentID,
                                 const typename SimplexTraits<dim,order-1>::SimplexIDType& childID)
         {
@@ -162,17 +148,12 @@ namespace model
                     break;
                 }
             }
-            if (temp < 0)
-            {
-               throw std::runtime_error( "FACE NOT FOUND");
-            }
+            assert(temp>=0 && "FACE NOT FOUND");
             return temp;
         }
         
     };
     
-    /**************************************************************************/
-    /**************************************************************************/
     template<short int dim>
     struct SimplexTraits<dim,0>
     {
@@ -186,14 +167,10 @@ namespace model
         typedef typename SimplexID<nVertices>::ScalarIDType ScalarIDType;
         typedef SimplexID<nVertices> SimplexIDType;
 
-        /**********************************************************************/
         static SimplexIDType sortID(const SimplexIDType& vIN)
         {
             return vIN;
         }
-        
     };
-    
-    
 }
 #endif

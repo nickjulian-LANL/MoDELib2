@@ -40,21 +40,18 @@ namespace model
 		//! The static ID of this
 		const  size_t sID;
 		
-        /**********************************************************************/
 		StaticID() : sID(count)
         {
             count_used=true;
             count+=increment;
 		}
 		
-        /**********************************************************************/
 		StaticID(const StaticID&) : sID(count)
         {
             count_used=true;
             count+=increment;
 		}
         
-        /**********************************************************************/
         static size_t nextID()
         {
             return count;
@@ -65,7 +62,6 @@ namespace model
             return count;
         }
 		
-        /**********************************************************************/
 		static void set_count(const size_t& newCount)
         {
 //			model_checkInput(newCount>=count && "YOU ARE TRYING TO SET THE COUNTER TO A LOWER VALUE THAN THE CURRENT ONE.");
@@ -83,13 +79,12 @@ namespace model
             count_used=false;
         }
 		
-        /**********************************************************************/
 		static void set_increment(const size_t& newIncrement)
         {
 //			model_checkInput(newIncrement>=1 && "newIncrement MUST BE >=1.");
-            if (newIncrement < 1)
+            if(newIncrement<1)
             {
-               throw std::runtime_error("newIncrement MUST BE >=1.");
+                throw std::runtime_error("StaticID::set_count newIncrement<1");
             }
             if(count_used)
             {
@@ -98,10 +93,8 @@ namespace model
             }
             increment = newIncrement;
 		}
-		
 	};
 	
-	/* Static data members  *****************************/
 	template<typename Derived>
 	size_t StaticID<Derived>::increment = 1;
 
