@@ -134,6 +134,31 @@ namespace model
         return periodicLatticeReciprocalBasis.transpose()*dx;
     }
 
+    template <int _dim>
+    void DislocationDynamicsBase<_dim>::set_evl_folder(const std::string& evlFolderPath)
+    {
+       simulationParameters.traitsIO.evlFolder = evlFolderPath;
+       return;
+    }
+
+    template <int _dim>
+    void DislocationDynamicsBase<_dim>::set_aux_folder(const std::string& auxFolderPath)
+    {
+       simulationParameters.traitsIO.auxFolder = auxFolderPath;
+       return;
+    }
+
+    template <int _dim>
+    void DislocationDynamicsBase<_dim>::set_f_folder(const std::string& fFolderPath)
+    {
+       simulationParameters.traitsIO.fFolder = fFolderPath;
+       std::string fFilePath( fFolderPath + "/F_0.txt");
+       simulationParameters.traitsIO.fFile = fFilePath;
+       std::string flabFilePath( fFolderPath + "/F_labels.txt");
+       simulationParameters.traitsIO.flabFile = flabFilePath;
+       return;
+    }
+
     template struct DislocationDynamicsBase<3>;
 
 } // namespace model

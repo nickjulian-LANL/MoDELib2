@@ -28,7 +28,7 @@
 
 namespace model
 {
-    struct MeshedDislocationLoop //: public TriangularMesh
+    struct MeshedDislocationLoop
     {
         typedef Eigen::Matrix<double,3,1> VectorDim;
         typedef CompareVectorsByComponent<double,2,float> CompareType;
@@ -36,10 +36,9 @@ namespace model
 
         VectorDim burgers;
         std::vector<VectorDim> periodicShifts;
-        //Plane<3> plane;
-        std::deque<VectorDim> points;
-        std::deque<VectorDim> displacements;
-
+        VectorDim planeNormal;
+        std::vector<VectorDim> points;
+        std::vector<VectorDim> displacements;
         std::deque<Eigen::Vector3i> triangles;
         
     //    MeshedDislocationLoop(const VectorDim& burgers_in,const DislocationDynamicsBase<3>& ddBase,const GlidePlane<3>& plane_in,const std::vector<Eigen::Matrix<double,3,1>>& globalBndPts,const double& meshSize,const double& localMeshSize);
