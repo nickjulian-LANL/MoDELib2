@@ -25,7 +25,7 @@ namespace model
     struct DefectiveCrystalParameters
     {
         
-        const DDtraitsIO traitsIO;
+        DDtraitsIO traitsIO;
         const int useFEM;
         const bool useElasticDeformation;
         const bool useDislocations;

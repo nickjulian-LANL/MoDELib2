@@ -58,6 +58,9 @@ namespace model
 
         Eigen::VectorXd periodicCoordinates(const VectorDim& x) const;
 
+        void set_evl_folder( const std::string& evlFolderPath);
+        void set_aux_folder( const std::string& auxFolderPath);
+        void set_f_folder( const std::string& fFolderPath);
     };
 } // namespace model
 #endif

@@ -24,14 +24,15 @@
 
 namespace model
 {
-    struct MeshedDislocationLoop //: public TriangularMesh
+    struct MeshedDislocationLoop
     {
         typedef Eigen::Matrix<double,3,1> VectorDim;
         
         VectorDim burgers;
         std::vector<VectorDim> periodicShifts;
-        //Plane<3> plane;
-        std::deque<VectorDim> points;
+        VectorDim planeNormal;
+        std::vector<VectorDim> points;
+        std::vector<VectorDim> displacements;
         std::deque<Eigen::Vector3i> triangles;
         
         MeshedDislocationLoop(const VectorDim& burgers_in,const std::vector<VectorDim>& periodicShifts_in,const Plane<3>& plane_in,const std::vector<Eigen::Matrix<double,3,1>>& globalBndPts,const double& meshSize);

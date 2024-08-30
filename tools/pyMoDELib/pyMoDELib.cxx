@@ -120,6 +120,18 @@ PYBIND11_MODULE(pyMoDELib,m)
 //        .def("getMesh", &DislocationDynamicsBase<3>::getMesh)
         .def_readonly("poly", &DislocationDynamicsBase<3>::poly)
 //        .def_readonly("mesh", &DislocationDynamicsBase<3>::mesh)
+        .def("set_evl_folder",
+              &DislocationDynamicsBase<3>::set_evl_folder,
+              py::arg("evlFolderPath").none(false)
+              )
+        .def("set_aux_folder",
+              &DislocationDynamicsBase<3>::set_aux_folder,
+              py::arg("auxFolderPath").none(false)
+              )
+        .def("set_f_folder",
+              &DislocationDynamicsBase<3>::set_f_folder,
+              py::arg("fFolderPath").none(false)
+              )
     ;
     
     py::class_<MicrostructureBase<3>>(m,"MicrostructureBase")
@@ -347,9 +359,9 @@ PYBIND11_MODULE(pyMoDELib,m)
 #endif
 
 
-int main(int argc, char** argv)
-{
-    return 0;
-}
+//int main(int argc, char** argv)
+//{
+//    return 0;
+//}
 
 #endif

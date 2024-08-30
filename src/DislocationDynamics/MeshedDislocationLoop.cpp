@@ -19,17 +19,17 @@
 namespace model
 {
     
-MeshedDislocationLoop::MeshedDislocationLoop(const VectorDim& burgers_in,const std::vector<VectorDim>& periodicShifts_in,const Plane<3>& plane,const std::vector<Eigen::Matrix<double,3,1>>& globalBndPts,const double& meshSize):
+MeshedDislocationLoop::MeshedDislocationLoop(const VectorDim& burgers_in,const std::vector<VectorDim>& periodicShifts_in,const Plane<3>& plane_in,const std::vector<Eigen::Matrix<double,3,1>>& globalBndPts,const double& meshSize):
 /* init */ burgers(burgers_in)
 /* init */,periodicShifts(periodicShifts_in)
-///* init */,plane(plane_in)
+/* init */,planeNormal(plane_in.unitNormal)
 {
     
     std::deque<Eigen::Matrix<double,2,1>> localBndPts;
     std::deque<Eigen::Matrix<double,2,1>> internalPts;
     for(const auto& gpt : globalBndPts)
     {
-        localBndPts.push_back(plane.localPosition(gpt));
+        localBndPts.push_back(plane_in.localPosition(gpt));
     }
     TriangularMesh triMesh;
     triMesh.reMesh(localBndPts,internalPts,meshSize);
@@ -37,8 +37,9 @@ MeshedDislocationLoop::MeshedDislocationLoop(const VectorDim& burgers_in,const s
     
     for(const auto& v : triMesh.vertices())
     {
-        points.push_back(plane.globalPosition(v));
+        points.push_back(plane_in.globalPosition(v));
     }
+    displacements.assign( points.size(), Eigen::Matrix<double,3,1>::Zero());
 }
 
 typename MeshedDislocationLoop::VectorDim MeshedDislocationLoop::triangleAreaVector(const Eigen::Vector3i& tri) const
@@ -111,6 +112,7 @@ double MeshedDislocationLoop::solidAngle(const VectorDim& x) const
 
 typename MeshedDislocationLoop::VectorDim MeshedDislocationLoop::plasticDisplacementKernel(const Eigen::Ref<const VectorDim>& x) const
 {
+    // TODO: rotate burgers vector by the same angle as the triangle's normal has been rotated from the slip system planeNormal
     VectorDim temp(VectorDim::Zero());
     for(const auto& shift : periodicShifts)
     {

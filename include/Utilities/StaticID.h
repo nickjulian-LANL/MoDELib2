@@ -65,10 +65,10 @@ namespace model
 		static void set_count(const size_t& newCount)
         {
 //			model_checkInput(newCount>=count && "YOU ARE TRYING TO SET THE COUNTER TO A LOWER VALUE THAN THE CURRENT ONE.");
-            if (newCount < count)
-            {
-               throw std::runtime_error("YOU ARE TRYING TO SET THE COUNTER TO A LOWER VALUE THAN THE CURRENT ONE.");
-            }
+            //if (newCount < count)
+            //{
+            //   throw std::runtime_error("YOU ARE TRYING TO SET THE COUNTER TO A LOWER VALUE THAN THE CURRENT ONE.");
+            //}
 			count =  newCount;
             count_used=false;
 		}
