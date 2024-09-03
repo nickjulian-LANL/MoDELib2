@@ -38,11 +38,36 @@ namespace model
 
     template struct FluxMatrix<3>;
 
+template<int dim>
+InvDscaling<dim>::InvDscaling(const ClusterDynamicsParameters<dim>& cdp_in) :
+/* init */cdp(cdp_in)
+{
+    
+}
+
+template<int dim>
+const typename InvDscaling<dim>::MatrixType InvDscaling<dim>::operator() (const ElementType& elem, const BaryType&) const
+{
+    const size_t grainID(elem.simplex.region->regionID);
+    MatrixType InvDscaling(MatrixType::Zero());
+    for(size_t k=0;k<mSize;++k)
+    {
+        InvDscaling(k,k)=3.0/(cdp.D.at(grainID)[k].trace()/cdp.omega);
+//        InvDscaling(k,k)=(cdp.D.at(grainID)[k].trace()/cdp.omega)/3.0;
+//        InvDscaling(k,k)=1.0;
+
+    }
+    return InvDscaling;
+}
+
+template struct InvDscaling<3>;
+
 
     template<int dim>
     ClusterDynamicsFEM<dim>::ClusterDynamicsFEM(const DislocationDynamicsBase<dim>& ddBase_in,const ClusterDynamicsParameters<dim>& cdp_in) :
     /* init */ ddBase(ddBase_in)
     /* init */,cdp(cdp_in)
+    /* init */,iDs(cdp)
     /* init */,mobileClusters(ddBase.fe->template trial<'m',mSize>())
     /* init */,mobileGrad(grad(mobileClusters))
     /* init */,mobileFlux(FluxMatrix<dim>(cdp)*mobileGrad)
@@ -50,11 +75,13 @@ namespace model
     /* init */,nodeListInternalExternal(ddBase.isPeriodicDomain ? -1 : ddBase.fe->template createNodeList<ExternalAndInternalBoundary>())
     /* init */,mobileClustersIncrement(ddBase.fe->template trial<'d',mSize>())
     /* init */,dV(ddBase.fe->template domain<EntireDomain,dVorder,GaussLegendre>())
-    /* init */,mBWF((test(this->mobileGrad),-ddBase.poly.Omega*this->mobileFlux)*dV)
-    /* init */,dmBWF((test(grad(mobileClustersIncrement)),-ddBase.poly.Omega*(FluxMatrix<dim>(this->cdp)*grad(mobileClustersIncrement)))*dV)
+//    /* init */,mBWF((test(this->mobileGrad),-ddBase.poly.Omega*this->mobileFlux)*dV)
+    /* init */,mBWF((test(grad(iDs*mobileClusters)),-ddBase.poly.Omega*this->mobileFlux)*dV)
+    /* init */,dmBWF((test(grad(iDs*mobileClustersIncrement)),-ddBase.poly.Omega*(FluxMatrix<dim>(this->cdp)*grad(mobileClustersIncrement)))*dV)
     /* init */,mSolver(true,FLT_EPSILON)
     /* init */,solverInitialized(false)
-    /* init */,cascadeGlobalProduction(((test(this->mobileClusters),make_constant(this->cdp.G))*dV).globalVector())
+//    /* init */,cascadeGlobalProduction(((test(this->mobileClusters),make_constant(this->cdp.G))*dV).globalVector())
+    /* init */,cascadeGlobalProduction(((test(iDs*this->mobileClusters),make_constant(this->cdp.G))*dV).globalVector())
     {
         mobileClustersIncrement.setConstant(Eigen::Matrix<double,mSize,1>::Zero());
         mobileClusters.setConstant(cdp.equilibriumMobileConcentration(0.0).matrix().transpose());
@@ -64,11 +91,7 @@ namespace model
     template<int dim>
     void ClusterDynamicsFEM<dim>::solveMobileClusters()
     {
-        
-        // Find new mobileConcentration
-        //    std::cout<<" mobile BCs,"<<std::flush;
-        //    applyBoundaryConditions();
-        std::cout<<" mobile solver,"<<std::flush;
+        std::cout<<", mobile solver "<<std::flush;
         mobileClusters=mSolver.solve(cascadeGlobalProduction);
         
         if(this->cdp.computeReactions)
@@ -78,12 +101,12 @@ namespace model
             while(cError>cTol)
             {
                 const auto R1((this->cdp.R1cd).eval());
-                auto bWF_R1((test(mobileClustersIncrement),R1*(-1.0*mobileClustersIncrement))*dV); // THIS SHOULD BE STORED SINCE IT IS ALWAYS THE SAME
-                auto lWF_R1((test(mobileClustersIncrement),eval(R1*mobileClusters))*dV);
+                auto bWF_R1((test(iDs*mobileClustersIncrement),R1*(-1.0*mobileClustersIncrement))*dV); // THIS SHOULD BE STORED SINCE IT IS ALWAYS THE SAME
+                auto lWF_R1((test(iDs*mobileClustersIncrement),eval(R1*mobileClusters))*dV);
                 
                 SecondOrderReaction<MobileTrialType> R2(mobileClusters,this->cdp);
-                auto bWF_R2((test(mobileClustersIncrement),R2*(-1.0*mobileClustersIncrement))*dV);
-                auto lWF_R2((test(mobileClustersIncrement),eval(R2*(0.5*mobileClusters)))*dV);
+                auto bWF_R2((test(iDs*mobileClustersIncrement),R2*(-1.0*mobileClustersIncrement))*dV);
+                auto lWF_R2((test(iDs*mobileClustersIncrement),eval(R2*(0.5*mobileClusters)))*dV);
                 
                 // Missing immobile sinks
                 
@@ -92,7 +115,7 @@ namespace model
                 std::vector<Eigen::Triplet<double>> globalTripletsR((bWF_R1+bWF_R2).globalTriplets());
                 AcIR.setFromTriplets(globalTripletsR.begin(),globalTripletsR.end());
                 
-                FixedDirichletSolver rSolver(false,FLT_EPSILON);
+                MobileReactionSolverType rSolver(false,FLT_EPSILON);
                 rSolver.compute(dmBWF+bWF_R1+bWF_R2);
                 mobileClustersIncrement=rSolver.solve(cascadeGlobalProduction-mSolver.getA()*mobileClusters.dofVector()+(lWF_R1+lWF_R2).globalVector());
                 
@@ -104,15 +127,18 @@ namespace model
                 cNew.resize(mSize,mobileClusters.gSize()/mSize);
                 
                 const Eigen::VectorXd absErr((cNew-cOld).rowwise().norm());
-                const Eigen::VectorXd cNewNorm((cNew.rowwise().norm().array()+1.e-20).matrix());
+                const Eigen::VectorXd cNewNorm((cNew.rowwise().norm().array()+1.e-50).matrix());
                 const Eigen::VectorXd relErr((absErr.array()/cNewNorm.array()).matrix());
                 
                 cError=relErr.maxCoeff();//aError/cInorm;
-                std::cout<<"max values="<<cNew.rowwise().maxCoeff().transpose()<<std::endl;
-                std::cout<<"min values="<<cNew.rowwise().minCoeff().transpose()<<std::endl;
-                std::cout<<"absolute errors="<<absErr.transpose()<<std::endl;
-                std::cout<<"solution norms="<<cNewNorm.transpose()<<std::endl;
-                std::cout<<"relative error="<<relErr.transpose()<<std::endl;
+                if(false)
+                {
+                    std::cout<<"max values="<<cNew.rowwise().maxCoeff().transpose()<<std::endl;
+                    std::cout<<"min values="<<cNew.rowwise().minCoeff().transpose()<<std::endl;
+                    std::cout<<"absolute errors="<<absErr.transpose()<<std::endl;
+                    std::cout<<"solution norms="<<cNewNorm.transpose()<<std::endl;
+                    std::cout<<"relative error="<<relErr.transpose()<<std::endl;
+                }
                 std::cout<<"convergenceError="<<cError<<std::endl;
             }
         }
@@ -139,6 +165,7 @@ namespace model
     template<int dim>
     void ClusterDynamicsFEM<dim>::initializeSolver()
     {
+        std::cout<<" decomposing"<<std::flush;
         std::array<bool,mSize> allComps;
         for(int k=0;k<mSize;++k)
         {

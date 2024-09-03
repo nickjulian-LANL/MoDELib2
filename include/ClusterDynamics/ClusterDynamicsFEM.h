@@ -9,6 +9,13 @@
 #ifndef model_ClusterDynamicsFEM_H_
 #define model_ClusterDynamicsFEM_H_
 
+#ifdef MODELIB_CHOLMOD // SuiteSparse Cholmod module
+#include <Eigen/CholmodSupport>
+#endif
+
+#ifdef MODELIB_UMFPACK // SuiteSparse UMFPACK module
+#include <Eigen/UmfPackSupport>
+#endif
 
 #include <ClusterDynamicsParameters.h>
 #include <DislocationDynamicsBase.h>
@@ -18,6 +25,7 @@
 #include <MicrostructureBase.h>
 #include <SecondOrderReaction.h>
 #include <MicrostructureContainer.h>
+
 namespace model
 {
 
@@ -34,6 +42,22 @@ namespace model
         const ClusterDynamicsParameters<dim>& cdp;
         
         FluxMatrix(const ClusterDynamicsParameters<dim>& cdp_in);
+        const MatrixType operator() (const ElementType& elem, const BaryType& bary) const;
+    };
+
+    template <int dim>
+    struct InvDscaling : public EvalFunction<InvDscaling<dim>>
+    {
+        typedef typename DislocationDynamicsBase<dim>::ElementType ElementType;
+        typedef Eigen::Matrix<double,dim+1,1> BaryType;
+        constexpr static int mSize=ClusterDynamicsParameters<dim>::mSize;
+        constexpr static int rows=mSize;
+        constexpr static int cols=rows;
+        typedef Eigen::Matrix<double,rows,cols> MatrixType;
+
+        const ClusterDynamicsParameters<dim>& cdp;
+        
+        InvDscaling(const ClusterDynamicsParameters<dim>& cdp_in);
         const MatrixType operator() (const ElementType& elem, const BaryType& bary) const;
     };
 
@@ -56,29 +80,43 @@ namespace model
 //        typedef TrialFunction<'z',dim,FiniteElementType> DiffusiveTrialType;
         typedef TrialGrad<MobileTrialType> MobileGradType;
         typedef TrialProd<FluxMatrix<dim>,MobileGradType> MobileFluxType;
-        typedef BilinearForm<MobileGradType,TrialProd<Constant<double,1,1>,MobileFluxType>> MobileBilinearFormType;
+        
+        typedef TrialProd<InvDscaling<dim>,MobileTrialType> MobileTestType;
+        typedef TrialGrad<MobileTestType> MobileTestGradType;
+        typedef BilinearForm<MobileTestGradType,TrialProd<Constant<double,1,1>,MobileFluxType>> MobileBilinearFormType;
+
+//        typedef BilinearForm<MobileGradType,TrialProd<Constant<double,1,1>,MobileFluxType>> MobileBilinearFormType;
         typedef BilinearWeakForm<MobileBilinearFormType,VolumeIntegrationDomainType> MobileBilinearWeakFormType;
 
         typedef TrialFunction<'d',mSize,FiniteElementType> MobileIncrementTrialType;
+        typedef TrialProd<InvDscaling<dim>,MobileIncrementTrialType> MobileIncrementTestType;
+        typedef TrialGrad<MobileIncrementTestType> MobileIncrementTestGradType;
+
         typedef TrialGrad<MobileIncrementTrialType> MobileIncrementGradType;
         typedef TrialProd<FluxMatrix<dim>,MobileIncrementGradType> MobileIncrementFluxType;
-        typedef BilinearForm<MobileIncrementGradType,TrialProd<Constant<double,1,1>,MobileIncrementFluxType>> MobileIncrementBilinearFormType;
+        typedef BilinearForm<MobileIncrementTestGradType,TrialProd<Constant<double,1,1>,MobileIncrementFluxType>> MobileIncrementBilinearFormType;
         typedef BilinearWeakForm<MobileIncrementBilinearFormType,VolumeIntegrationDomainType> MobileIncrementBilinearWeakFormType;
-
-        typedef Eigen::SparseMatrix<double> SparseMatrixType;
-    #ifdef _MODEL_PARDISO_SOLVER_
-        typedef Eigen::PardisoLLT<SparseMatrixType> DirectSPDSolverType;
-        typedef Eigen::PardisoLU<SparseMatrixType> DirectSquareSolverType;
-    #else
-        typedef Eigen::SimplicialLLT<SparseMatrixType> DirectSPDSolverType;
-        typedef Eigen::SparseLU<SparseMatrixType> DirectSquareSolverType;
-    #endif
-        typedef Eigen::ConjugateGradient<SparseMatrixType> IterativeSPDSolverType;
-        typedef Eigen::BiCGSTAB<SparseMatrixType> IterativeSquareSolverType;
-
+        typedef Eigen::SparseMatrix<double,Eigen::RowMajor> SparseMatrixType;
+#ifdef CHOLMOD_H // SuiteSparse Cholmod (LLT) module
+    typedef Eigen::CholmodSupernodalLLT<SparseMatrixType> LltSolverType;
+#else
+    typedef Eigen::SimplicialLLT<SparseMatrixType> LltSolverType;
+#endif
+        
+#ifdef UMFPACK_H // SuiteSparse Umfpack (LU) module
+    typedef Eigen::UmfPackLU<SparseMatrixType> LuSolverType;
+#else
+    typedef Eigen::SparseLU<SparseMatrixType> LuSolverType;
+#endif
+                
+        typedef FixedDirichletSolver<LltSolverType,Eigen::ConjugateGradient<SparseMatrixType>> MobileSolverType;
+        typedef FixedDirichletSolver<LuSolverType,Eigen::BiCGSTAB<SparseMatrixType>> MobileReactionSolverType;
 
         const DislocationDynamicsBase<dim>& ddBase;
         const ClusterDynamicsParameters<dim>& cdp;
+        const InvDscaling<dim> iDs;
+        
+        const Eigen::Matrix<double,mSize,mSize> invTrD;
         
         MobileTrialType mobileClusters;
         MobileGradType mobileGrad;
@@ -91,16 +129,10 @@ namespace model
         MobileBilinearWeakFormType mBWF;
         MobileIncrementBilinearWeakFormType dmBWF;
 
-//        FixedDirichletSolver<MobileBilinearWeakFormType> mSolver;
-        FixedDirichletSolver mSolver;
+        MobileSolverType mSolver;
         bool solverInitialized;
 
         const Eigen::VectorXd cascadeGlobalProduction;
-
-
-
-                
-
 
         ClusterDynamicsFEM(const DislocationDynamicsBase<dim>& ddBase_in,const ClusterDynamicsParameters<dim>& cdp_in);
         void solveMobileClusters();

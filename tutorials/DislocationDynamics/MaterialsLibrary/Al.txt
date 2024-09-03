@@ -1,5 +1,6 @@
 materialName=Al;
 crystalStructure=FCC;
+atomsPerUnitCell=1;
 b_SI=0.286e-9; 		# [m] 		Burgers vector magnitude 
 enabledSlipSystems=full; # types of slip systems enabled e.g. enabledSlipSystems=full Shockley Kear;
 mu0_SI=27e9;		# [Pa] 		temperature-independent shear modulus coeff in mu=mu0+mu1*T
@@ -28,7 +29,7 @@ stackingFaultNoiseMode=0; # 0=no noise
 enabledSecondPhases=;
 
 # ClusterDynamics
-doseRate_dpaPerSec=1.0e-7; 		# [dpa/s] irradiation dose rate
+doseRate_dpaPerSec=0.0e-7; 		# [dpa/s] irradiation dose rate
 mobileSpeciesVector=-1;			# single vacancies
 mobileSpeciesSurvivingEfficiency = 0.01; # Surviving efficiency
 mobileSpeciesRelRelaxVol= 0.405; 	# [-] relative vacancy relaxation volume

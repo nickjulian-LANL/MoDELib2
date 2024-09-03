@@ -173,10 +173,10 @@ PYBIND11_MODULE(pyMoDELib,m)
     
     py::class_<MeshedDislocationLoop
     /*      */ >(m,"MeshedDislocationLoop")
-        .def(py::init<const VectorDim&,
-             const std::vector<VectorDim>&,
-             const Plane<3>&,const std::vector<Eigen::Matrix<double,3,1>>&,
-             const double&>())
+//        .def(py::init<const VectorDim&,
+//             const DislocationDynamicsBase<3>&,
+//             const GlidePlane<3>&,const std::vector<Eigen::Matrix<double,3,1>>&,
+//             const double&,const double&>())
         .def("solidAngle",&MeshedDislocationLoop::solidAngle)
         .def("plasticDisplacement",&MeshedDislocationLoop::plasticDisplacement)
         .def("plasticDisplacementKernel",&MeshedDislocationLoop::plasticDisplacementKernel)
@@ -224,6 +224,8 @@ PYBIND11_MODULE(pyMoDELib,m)
         .def("addPrismaticLoopIndividual", &MicrostructureGenerator::addPrismaticLoopIndividual)
         .def("addFrankLoopsDensity", &MicrostructureGenerator::addFrankLoopsDensity)
         .def("addFrankLoopsIndividual", &MicrostructureGenerator::addFrankLoopsIndividual)
+        .def("addStackingFaultTetrahedraDensity", &MicrostructureGenerator::addStackingFaultTetrahedraDensity)
+        .def("addStackingFaultTetrahedraIndividual", &MicrostructureGenerator::addStackingFaultTetrahedraIndividual)
         .def("writeConfigFiles", &MicrostructureGenerator::writeConfigFiles)
     ;
     
@@ -341,6 +343,34 @@ PYBIND11_MODULE(pyMoDELib,m)
                 )
         .def_readwrite("loopSides", &FrankLoopsIndividualSpecification::loopSides)
         .def_readwrite("isVacancyLoop", &FrankLoopsIndividualSpecification::isVacancyLoop)
+    ;
+    
+    py::class_<StackingFaultTetrahedraDensitySpecification
+    /*      */>(m,"StackingFaultTetrahedraDensitySpecification")
+        .def(py::init<>())
+        .def(py::init<const std::string&>())
+        .def_readwrite("targetDensity", &StackingFaultTetrahedraDensitySpecification::targetDensity)
+        .def_readwrite("sizeDistributionMean", &StackingFaultTetrahedraDensitySpecification::sizeDistributionMean)
+        .def_readwrite("sizeDistributionStd", &StackingFaultTetrahedraDensitySpecification::sizeDistributionStd)
+    ;
+
+    py::class_<StackingFaultTetrahedraIndividualSpecification
+    /*      */>(m,"StackingFaultTetrahedraIndividualSpecification")
+        .def(py::init<>())
+        .def(py::init<const std::string&>())
+        .def_readwrite("planeIDs", &StackingFaultTetrahedraIndividualSpecification::planeIDs)
+        .def_readwrite("areInverted", &StackingFaultTetrahedraIndividualSpecification::areInverted)
+        .def_readwrite("sizes", &StackingFaultTetrahedraIndividualSpecification::sizes)
+        .def_property( "basePoints",
+                    [](const StackingFaultTetrahedraIndividualSpecification& self )
+                    {// Getter
+                        return self.basePoints;
+                    },
+                    []( StackingFaultTetrahedraIndividualSpecification& self, const Eigen::Ref<const Eigen::Matrix<double,Eigen::Dynamic,3>>& val )
+                    {// Setter
+                        self.basePoints = val;
+                    }
+                )
     ;
     
 }

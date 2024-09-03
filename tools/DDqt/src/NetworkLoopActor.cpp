@@ -67,6 +67,8 @@ NetworkLoopActor::NetworkLoopActor(vtkGenericOpenGLRenderWindow* const renWin,vt
 /* init */,meshPolydata(vtkSmartPointer<vtkPolyData>::New())
 /* init */,meshMapper(vtkSmartPointer<vtkPolyDataMapper>::New())
 /* init */,meshActor(vtkSmartPointer<vtkActor>::New())
+/* init */,globalMeshSizeEdit(new QLineEdit("100000000"))
+/* init */,localMeshSizeEdit(new QLineEdit("1.0"))
 /* init */,defectiveCrystal(defectiveCrystal_in)
 /* init */,dislocationNetwork(defectiveCrystal.template getUniqueTypedMicrostructure<DislocationNetwork<3,0>>())
 {
@@ -109,7 +111,11 @@ NetworkLoopActor::NetworkLoopActor(vtkGenericOpenGLRenderWindow* const renWin,vt
     //                groupBox->setCheckable(true);
     //                groupBox->setChecked(true);
     
-    
+    QGridLayout *meshAreaLayout = new QGridLayout();
+    meshAreaLayout->addWidget(globalMeshSizeEdit,0,0,1,1);
+    meshAreaLayout->addWidget(localMeshSizeEdit,1,0,1,1);
+    meshAreaBox->setLayout(meshAreaLayout);
+
     mainLayout->addWidget(showLoops,0,0,1,1);
     mainLayout->addWidget(slippedAreaBox,1,0,1,1);
     mainLayout->addWidget(meshAreaBox,2,0,1,1);
@@ -125,6 +131,9 @@ NetworkLoopActor::NetworkLoopActor(vtkGenericOpenGLRenderWindow* const renWin,vt
     connect(slippedAreaBox,SIGNAL(toggled(bool)), this, SLOT(modify()));
     
     connect(sliderSlippedArea,SIGNAL(valueChanged(int)), this, SLOT(modify()));
+//    connect(globalMeshSizeEdit,SIGNAL(returnPressed()), this, SLOT(updateConfiguration()));
+//    connect(localMeshSizeEdit,SIGNAL(returnPressed()), this, SLOT(updateConfiguration()));
+
     
     loopMapper->SetInputData(loopPolyData);
     loopActor->SetMapper(loopMapper);
@@ -242,12 +251,13 @@ void NetworkLoopActor::updateConfiguration()
             vtkSmartPointer<vtkUnsignedCharArray> meshColors(vtkSmartPointer<vtkUnsignedCharArray>::New());
             meshColors->SetNumberOfComponents(3);
 
-            double meshSize(1000);
+            const double meshSize(std::atof(globalMeshSizeEdit->text() .toStdString().c_str()));
+            const double localMeshSize(std::atof(localMeshSizeEdit->text() .toStdString().c_str()));
             size_t ptsIncrement(0);
             for(const auto& weakloop : dislocationNetwork->loops())
             {
                 const auto& loop(weakloop.second.lock());
-                for(const auto& patchMesh : loop->meshed(meshSize))
+                for(const auto& patchMesh : loop->meshed(meshSize,localMeshSize))
                 {
                     for(const auto& point3d : patchMesh.points)
                     {
@@ -262,9 +272,10 @@ void NetworkLoopActor::updateConfiguration()
                         meshTriangles->InsertNextCell ( triangle );
                         const auto triColor(Eigen::Matrix<int,1,3>::Random()*255);
                         meshColors->InsertNextTuple3(triColor(0),triColor(1),triColor(2)); // use this to assig color to each vertex
+//                        meshColors->InsertNextTuple3(153,153,255); // use this to assig color to each vertex
+
                     }
                     ptsIncrement+=patchMesh.points.size();
-
                 }
             }
             meshPolydata->SetPoints ( meshPts );
@@ -276,7 +287,7 @@ void NetworkLoopActor::updateConfiguration()
 
             
         }
-        
+//        renderWindow->Render();
     }
     std::cout<<magentaColor<<" ["<<(std::chrono::duration<double>(std::chrono::system_clock::now()-t0)).count()<<" sec]"<<defaultColor<<std::endl;
 }
