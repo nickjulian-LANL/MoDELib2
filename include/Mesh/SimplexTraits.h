@@ -112,7 +112,10 @@ namespace model
           * @param[in] j the j-th face of the parent Simplex
           * \returns the ID of the child Simplex which is the j-th face of xID
           */
-            assert(j<nVertices && "REQUESTING NON-EXISTING FACE");
+            if ( j >= nVertices)
+            {
+               throw std::runtime_error("REQUESTING NON-EXISTING FACE");
+            }
             std::set<size_t> set;
             for (size_t k=0;k<nVertices;++k)
             {
@@ -148,7 +151,10 @@ namespace model
                     break;
                 }
             }
-            assert(temp>=0 && "FACE NOT FOUND");
+            if (temp < 0)
+            {
+              throw std::runtime_error( "FACE NOT FOUND");
+            }
             return temp;
         }
         
