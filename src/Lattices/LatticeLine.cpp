@@ -48,7 +48,7 @@ namespace model
         VectorDimD dc(d.cartesian());
         const VectorDimD Pc(P.cartesian());
         const double dNorm(dc.norm());
-        if (dNorm <= FLT_EPSILON);
+        if (dNorm <= FLT_EPSILON)
         {
            throw std::runtime_error("dNorm <= FLT_EPSILON");
         }
