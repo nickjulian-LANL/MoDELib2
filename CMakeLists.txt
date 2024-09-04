@@ -11,8 +11,8 @@ cmake_minimum_required(VERSION 3.1.0)
 project(MoDELib VERSION 2.0.0 LANGUAGES CXX)
 
 option(USE_PYBIND11 "enables pybind11" OFF)
-#option(BUILD_TOOLS "builds tools" OFF)
-option(BUILD_TOOLS "builds tools" ON)
+option(BUILD_TOOLS "builds tools" OFF)
+#option(BUILD_TOOLS "builds tools" ON)
 
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 if(Eigen3_FOUND)

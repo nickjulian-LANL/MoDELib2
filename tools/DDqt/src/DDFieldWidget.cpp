@@ -738,7 +738,7 @@ DDLineField::DDLineField(vtkGenericOpenGLRenderWindow* const renWin_in,
     connect(groupBox,SIGNAL(toggled(bool)), this, SLOT(modify()));
     
     vtkColor3d color3d1 = colors->GetColor3d("Peacock");
-    points->SetColorF(color3d1.GetRed(), color3d1.GetGreen(), color3d1.GetBlue());
+    points->SetColor(color3d1.GetRed(), color3d1.GetGreen(), color3d1.GetBlue());
     points->SetWidth(5.0);
     
     chart->GetAxis(0)->SetNumberOfTicks(10);

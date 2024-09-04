@@ -23,12 +23,12 @@ namespace model
         
         const std::string simulationFolder;
         const std::string inputFilesFolder;
-        const std::string evlFolder;
-        const std::string auxFolder;
-        const std::string fFolder;
+        std::string evlFolder;
+        std::string auxFolder;
+        std::string fFolder;
         const std::string ddFile;
-        const std::string fFile;
-        const std::string flabFile;
+        std::string fFile;
+        std::string flabFile;
         const std::string polyFile;
         const std::string materialFile;
         const std::string microstructureFile;
