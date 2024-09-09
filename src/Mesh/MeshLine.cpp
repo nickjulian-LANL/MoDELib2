@@ -84,7 +84,6 @@ MeshLine<dim>::MeshLine(const SimplicialMesh<dim>& mesh,
 }
     
     template struct MeshLine<3>;
-    template struct MeshLine<2>;
 
 }
 #endif
