@@ -1,8 +1,7 @@
-/* This file is part of MODEL, the Mechanics Of Defect Evolution Library.
+/* This file is part of MoDELib, the Mechanics Of Defects Evolution Library.
  *
- * Copyright (C) 2011 by Giacomo Po <gpo@ucla.edu>.
  *
- * model is distributed without any warranty under the 
+ * MoDELib is distributed without any warranty under the 
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
  */
 
@@ -69,6 +68,7 @@ namespace model
             {
                 throw std::runtime_error("StaticID::set_count newCount<count");
             }
+//            assert(newCount>=count && "YOU ARE TRYING TO SET THE COUNTER TO A LOWER VALUE THAN THE CURRENT ONE.");
 			count =  newCount;
             count_used=false;
 		}
@@ -82,6 +82,7 @@ namespace model
 		static void set_increment(const size_t& newIncrement)
         {
 //			model_checkInput(newIncrement>=1 && "newIncrement MUST BE >=1.");
+//            assert(newIncrement>=1 && "newIncrement MUST BE >=1.");
             if(newIncrement<1)
             {
                 throw std::runtime_error("StaticID::set_count newIncrement<1");

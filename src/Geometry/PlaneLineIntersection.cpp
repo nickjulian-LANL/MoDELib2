@@ -1,8 +1,7 @@
-/* This file is part of MODEL, the Mechanics Of Defect Evolution Library.
+/* This file is part of MoDELib, the Mechanics Of Defects Evolution Library.
  *
- * Copyright (C) 2011 by Giacomo Po <gpo@ucla.edu>.
  *
- * model is distributed without any warranty under the
+ * MoDELib is distributed without any warranty under the
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
  */
 
@@ -29,7 +28,7 @@ namespace model
         
         const double normN(N.norm());
         if (normN <= FLT_EPSILON)
-        { 
+        {
            throw std::runtime_error("PLANE MUST HAVE NON-ZERO NORMAL");
         }
         const VectorDimD n(N/normN); // unit plane normal

@@ -1,8 +1,7 @@
-/* This file is part of MODEL, the Mechanics Of Defect Evolution Library.
+/* This file is part of MoDELib, the Mechanics Of Defects Evolution Library.
  *
- * Copyright (C) 2011 by Giacomo Po <gpo@ucla.edu>.
  *
- * model is distributed without any warranty under the
+ * MoDELib is distributed without any warranty under the
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
  */
 
@@ -134,8 +133,11 @@ namespace model
                 }
                 else if(lli.type==LineLineIntersection<dim>::COINCIDENT)
                 {// a coincident line was found, which means that the glide planes intersec on a boundary face
-                    roots.insert(P0);
-                    roots.insert(P1);
+                    if(plane.contains(P0) && plane.contains(P1))
+                    {
+                        roots.insert(P0);
+                        roots.insert(P1);
+                    }
                 }
             }
             
