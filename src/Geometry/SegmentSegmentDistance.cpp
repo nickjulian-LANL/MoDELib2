@@ -1,8 +1,7 @@
-/* This file is part of MODEL, the Mechanics Of Defect Evolution Library.
+/* This file is part of MoDELib, the Mechanics Of Defects Evolution Library.
  *
- * Copyright (C) 2011 by Giacomo Po <gpo@ucla.edu>.
  *
- * model is distributed without any warranty under the
+ * MoDELib is distributed without any warranty under the
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
  */
 
@@ -94,7 +93,7 @@ namespace model
         }
         else
         {                        // both segments are not degenerate
-            if (fabs(den) > tol) // MAY NEED fabs(den)>tol*D1*D2
+            if (std::fabs(den) > tol) // MAY NEED fabs(den)>tol*D1*D2
             {                    // Step 1d: skew segments
                 return step2();
             }
@@ -164,7 +163,7 @@ namespace model
             else
             { // both segments are not degenerate
 
-                if (fabs(den) > tol * D1 * D2)
+                if (std::fabs(den) > tol * D1 * D2)
                 { // Step 1d: skew segments
                     temp.emplace_back(0.5 * (x0 + x1), t, u);
                 }

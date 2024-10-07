@@ -1,6 +1,5 @@
-/* This file is part of MODEL, the Mechanics Of Defect Evolution Library.
+/* This file is part of MoDELib, the Mechanics Of Defects Evolution Library.
  *
- * Copyright (C) 2015 by Giacomo Po <gpo@ucla.edu>
  *
  * MODEL is distributed without any warranty under the
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
@@ -15,13 +14,13 @@
 
 namespace model
 {
- 
+
     LatticeLine::LatticeLine(const LatticeVectorType& P_in,const LatticeVectorType& d_in) :
     /* init */ P(P_in),
     /* init */ d(d_in)
     {
         if (&P.lattice != &d.lattice)
-        { 
+        {
            throw std::runtime_error("LatticeVectors have different bases.");
         }
 

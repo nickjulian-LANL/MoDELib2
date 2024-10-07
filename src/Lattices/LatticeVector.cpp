@@ -1,6 +1,5 @@
 /* This file is part of PIL, the Particle Interaction Library.
  *
- * Copyright (C) 2015 by Giacomo Po <gpo@ucla.edu>
  *
  * MODEL is distributed without any warranty under the
  * GNU General Public License (GPL) v2 <http://www.gnu.org/licenses/>.
@@ -116,7 +115,7 @@ namespace model
     typename LatticeVector<dim>::LatticeVectorType LatticeVector<dim>::operator-(const LatticeVectorType &other) const
     {
         if (&lattice != &other.lattice)
-        { 
+        {
            throw std::runtime_error("LatticeVectors belong to different Lattices.");
         }
         return LatticeVectorType(static_cast<VectorDimI>(*this) - static_cast<VectorDimI>(other), lattice);

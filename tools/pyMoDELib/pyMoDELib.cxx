@@ -240,7 +240,7 @@ PYBIND11_MODULE(pyMoDELib,m)
         .def("addStackingFaultTetrahedraIndividual", &MicrostructureGenerator::addStackingFaultTetrahedraIndividual)
         .def("writeConfigFiles", &MicrostructureGenerator::writeConfigFiles)
     ;
-    
+
     py::class_<ShearLoopDensitySpecification
     /*      */>(m,"ShearLoopDensitySpecification")
         .def(py::init<>())
