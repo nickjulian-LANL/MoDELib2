@@ -118,7 +118,8 @@ namespace model
                                 
                                 bool oldPointIncluded=false;
                                 size_t oldPointID=0;
-                                for(int n=0;n<np+1;++n)
+                                //for(int n=0;n<np+1;++n)
+                                for(int n=1;n<np;++n)
                                 {
                                     const double u(double(n)/np);
                                     const Eigen::Matrix<double,2,1> P(p0+u*chord);
@@ -152,7 +153,24 @@ namespace model
         }
         
         TriangularMesh triMesh;
-        triMesh.reMesh(localBndPts,segments,meshSize,"pazq");
+        std::cout << "calling reMesh() with meshSize: " << meshSize << ", segments.size(): " << segments.size() << ", localBndPts.size(): " << localBndPts.size() << std::endl; // debug
+
+        // debug
+        //std::ofstream debugOutputFileNodes("debugOutputNodes.txt");
+        //std::ofstream debugOutputFileSegments("debugOutputSegments.txt");
+        //for( const auto& bndpnt: localBndPts)
+        //{
+        //   debugOutputFileNodes << bndpnt.transpose() << std::endl;
+        //}
+        //
+        //for( const auto& bndseg: segments)
+        //{
+        //   debugOutputFileSegments << bndseg.transpose() << std::endl;
+        //}
+        // end debug
+
+        triMesh.reMesh(localBndPts,segments,meshSize,"pazqVVV");
+        //triMesh.reMesh(localBndPts,segments,meshSize,"pazq");
         triangles=triMesh.triangles();
         
         for(const auto& v : triMesh.vertices())
@@ -182,19 +200,27 @@ namespace model
         defGradients.resize(triangles.size(),MatrixDim::Identity());
     }
 
-void MeshedDislocationLoop::update()
+void MeshedDislocationLoop::updateDefGradients()
 {
-    for(size_t k=0;k<points.size();++k)
-    {
-        points[k]+=displacements[k];
-    }
+    //for(size_t k=0;k<points.size();++k)
+    //{
+    //    points[k]+=displacements[k];
+    //}
+    //
+    //for(size_t k=0;k<heightPoints.size();++k)
+    //{
+    //    heightPoints[k]+=heightDisplacements[k];
+    //}
     
-    for(size_t k=0;k<heightPoints.size();++k)
-    {
-        heightPoints[k]+=heightDisplacements[k];
-    }
-    
+    std::cout << "updating defGradients, triangles.size: " << triangles.size() << std::endl; // debug
     MatrixDim vertexMatrix(MatrixDim::Zero());
+    //for(size_t k=0;k<triangles.size();++k) // debug
+    //{ // debug
+    //    std::cout << "defGradients[" << k << "]: " << std::endl << defGradients[k] << std::endl; // debug
+    //} // debug
+    #ifdef _OPENMP
+    #pragma omp parallel for
+    #endif
     for(size_t k=0;k<triangles.size();++k)
     {
         const auto& tri(triangles[k]);
@@ -208,6 +234,10 @@ void MeshedDislocationLoop::update()
         vertexMatrix.col(2)=v2-h;
         defGradients[k]=vertexMatrix*invVertexMatrix[k];
     }
+    //for(size_t k=0;k<triangles.size();++k) // debug
+    //{ // debug
+    //    std::cout << "defGradients[" << k << "]: " << std::endl << defGradients[k] << std::endl; // debug
+    //} // debug
 }
 
 
@@ -291,7 +321,7 @@ void MeshedDislocationLoop::update()
             {
                 for(size_t triID=0;triID<triangles.size();++triID)
                 {
-                    temp-=solidAngle(x+shift,triID)/4.0/std::numbers::pi*defGradients[applyDefGradient]*burgers;
+                    temp-=solidAngle(x+shift,triID)/4.0/std::numbers::pi*defGradients[triID]*burgers;
                 }
             }
         }
