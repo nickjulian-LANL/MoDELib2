@@ -60,6 +60,7 @@ namespace model
         void set_evl_folder( const std::string& evlFolderPath);
         void set_aux_folder( const std::string& auxFolderPath);
         void set_f_folder( const std::string& fFolderPath);
+        void set_Nsteps( const long int& Nsteps_in);
     };
 } // namespace model
 #endif

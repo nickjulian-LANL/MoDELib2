@@ -132,6 +132,10 @@ PYBIND11_MODULE(pyMoDELib,m)
               &DislocationDynamicsBase<3>::set_f_folder,
               py::arg("fFolderPath").none(false)
               )
+        .def("set_Nsteps",
+              &DislocationDynamicsBase<3>::set_Nsteps,
+              py::arg("Nsteps").none(false)
+            )
     ;
     
     py::class_<MicrostructureBase<3>>(m,"MicrostructureBase")
@@ -216,6 +220,7 @@ PYBIND11_MODULE(pyMoDELib,m)
     /*      */>(m,"DefectiveCrystal")
         .def(py::init<DislocationDynamicsBase<3>&>())
         .def("initializeConfiguration", static_cast<void (DefectiveCrystal<3>::*)(const DDconfigIO<3>&)>(&DefectiveCrystal<3>::initializeConfiguration))
+        .def("runSteps", &DefectiveCrystal<3>::runSteps)
         .def("dislocationNetwork", &DefectiveCrystal<3>::dislocationNetwork,pybind11::return_value_policy::reference)
     ;
 

@@ -30,7 +30,7 @@ namespace model
         const bool useClusterDynamics;
         const bool useCracks;
         const bool useInclusions;
-        const long int Nsteps;
+        long int Nsteps;
         const int useSubCycling;
         const std::set<int> subcyclingBins; 
         const bool use_stochasticForce;
