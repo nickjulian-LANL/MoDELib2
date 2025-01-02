@@ -136,6 +136,10 @@ PYBIND11_MODULE(pyMoDELib,m)
               &DislocationDynamicsBase<3>::set_Nsteps,
               py::arg("Nsteps").none(false)
             )
+        .def("increment_Nsteps",
+              &DislocationDynamicsBase<3>::increment_Nsteps,
+              py::arg("Nsteps").none(false)
+            )
     ;
     
     py::class_<MicrostructureBase<3>>(m,"MicrostructureBase")
@@ -390,6 +394,7 @@ PYBIND11_MODULE(pyMoDELib,m)
                 )
     ;
     
+    // TODO: create interface for applying loads
 }
 #endif
 

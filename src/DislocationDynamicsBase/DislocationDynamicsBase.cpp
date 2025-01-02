@@ -164,6 +164,13 @@ namespace model
        return;
     }
 
+    template <int _dim>
+    void DislocationDynamicsBase<_dim>::increment_Nsteps(const long int& Nsteps_in)
+    {
+       simulationParameters.Nsteps += Nsteps_in;
+       return;
+    }
+
     template struct DislocationDynamicsBase<3>;
 
 } // namespace model
