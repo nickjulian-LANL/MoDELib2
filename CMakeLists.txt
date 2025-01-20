@@ -78,7 +78,13 @@ endif()
 
 ### pybind11 ###
 if(USE_PYBIND11)
-	find_package(Python COMPONENTS Interpreter Development)
+	####
+	execute_process(COMMAND "python3" "--version" OUTPUT_VARIABLE PYTHON_VERSION_STRING)
+	string(STRIP ${PYTHON_VERSION_STRING} PYTHON_VERSION_STRING)
+	string(REGEX REPLACE "^Python " "" PYTHON_VERSION_NUMBER_FOUND ${PYTHON_VERSION_STRING})
+	message(STATUS "Python version found: " ${PYTHON_VERSION_NUMBER_FOUND})
+	####
+	find_package(Python ${PYTHON_VERSION_NUMBER_FOUND} EXACT COMPONENTS Interpreter Development)
 	if(Python_FOUND)
 		message(STATUS "Python_VERSION:" ${Python_VERSION})
 		find_package(pybind11 CONFIG REQUIRED)
@@ -128,6 +134,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/ src)
 target_link_libraries(MoDELib PUBLIC ${FFTW3_LIBRARIES} ${pybind11_LIBRARIES} ${CHOLMOD_LIBRARIES} ${UMFPACK_LIBRARIES} Eigen3::Eigen)
 
 if(BUILD_TOOLS)
+	find_package(Qt6 COMPONENTS Widgets OpenGL REQUIRED)
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tools tools)
 else()
 endif()
