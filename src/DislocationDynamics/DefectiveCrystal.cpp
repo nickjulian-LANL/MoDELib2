@@ -136,6 +136,13 @@ namespace model
     }
 
     template <int _dim>
+    void DefectiveCrystal<_dim>::runSpecifiedSteps( const long int& Nsteps_in)
+    {
+       this->ddBase.increment_Nsteps( Nsteps_in);
+       this->runSteps();
+    }
+
+    template <int _dim>
     const DislocationNetwork<_dim,0>& DefectiveCrystal<_dim>::dislocationNetwork() const
     {
         const auto ptrDN(this->template getUniqueTypedMicrostructure<DislocationNetwork<_dim,0>>());

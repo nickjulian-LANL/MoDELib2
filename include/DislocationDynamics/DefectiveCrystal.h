@@ -43,6 +43,7 @@ namespace model
         using MicrostructureContainer<_dim>::initializeConfiguration;
         void initializeConfiguration(const DDconfigIO<dim>& configIO);
         void runSteps();
+        void runSpecifiedSteps( const long int& Nsteps_in);
         void runSingleStep();
         
         const DislocationNetwork<_dim,0>& dislocationNetwork() const;
