@@ -38,6 +38,14 @@ namespace model
         BaseContainerType& microstructures();
         void initializeConfiguration(const DDconfigIO<dim>& configIO,const std::ofstream& f_file,const std::ofstream& F_labels) override;
         void solve() override;
+        void replaceUniformLoadController(
+              // TODO: VoigtTraits typedefs not yet recognized by pybind11 without further work, so I'm using the underlying Eigen types.
+              const Eigen::Matrix<double,6,1>& f0, // stress0,
+              const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+              const Eigen::Matrix<double,6,1>& g0, // strain0,
+              const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+              const Eigen::Matrix<double,6,1>& stiffnessRatio
+              ) override;
         double getDt() const override;
         void output(DDconfigIO<dim>& configIO,DDauxIO<dim>& auxIO,std::ofstream& f_file,std::ofstream& F_labels) const override;
         void updateConfiguration() override;

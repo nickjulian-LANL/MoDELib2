@@ -48,7 +48,6 @@ namespace model
         /* init */,MF(A*MG)
         /* init */,gs(VectorVoigt::Zero())
         {
-
 //            std::cout<<"A=\n"<<A<<std::endl;
 //            std::cout<<"D=\n"<<D<<std::endl;
 //            std::cout<<"MG=\n"<<MG<<std::endl;

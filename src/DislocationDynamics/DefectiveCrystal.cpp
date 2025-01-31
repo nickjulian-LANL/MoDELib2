@@ -138,7 +138,9 @@ namespace model
     template <int _dim>
     void DefectiveCrystal<_dim>::runSpecifiedSteps( const long int& Nsteps_in)
     {
-       this->ddBase.increment_Nsteps( Nsteps_in);
+       this->ddBase.set_Nsteps(
+             this->ddBase.simulationParameters.runID + Nsteps_in
+             );
        this->runSteps();
     }
 
@@ -156,7 +158,6 @@ namespace model
             return *ptrDN;
         }
     }
-
 
     template class DefectiveCrystal<3>;
 }

@@ -138,6 +138,17 @@ namespace model
     }
 
     template<int dim>
+    void InclusionMicrostructure<dim>::replaceUniformLoadController(
+          const Eigen::Matrix<double,6,1>& f0, // stress0,
+          const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+          const Eigen::Matrix<double,6,1>& g0, // strain0,
+          const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+          const Eigen::Matrix<double,6,1>& stiffnessRatio)
+    {
+
+    }
+
+    template<int dim>
     void InclusionMicrostructure<dim>::updateConfiguration()
     {
         this->lastUpdateTime=this->ddBase.simulationParameters.totalTime;

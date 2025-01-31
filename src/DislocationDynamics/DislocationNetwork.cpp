@@ -676,6 +676,18 @@ else
     }
 
     template <int dim, short unsigned int corder>
+    void DislocationNetwork<dim,corder>::replaceUniformLoadController(
+          const Eigen::Matrix<double,6,1>& f0, // stress0,
+          const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+          const Eigen::Matrix<double,6,1>& g0, // strain0,
+          const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+          const Eigen::Matrix<double,6,1>& stiffnessRatio
+          )
+    {
+
+    }
+
+    template <int dim, short unsigned int corder>
     void DislocationNetwork<dim,corder>::moveNodes(const double & dt_in)
     {/*! Moves all nodes in the DislocationNetwork using the stored glide velocity and current dt
       */

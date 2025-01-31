@@ -46,13 +46,20 @@ namespace model
         MicrostructureContainerType& microstructures;
         
         double lastUpdateTime;
-        
+
         double timeSinceLastUpdate() const;
         std::set<const Grain<dim>*> pointGrains(const VectorDim& x, const NodeType* const node, const ElementType* const ele,const SimplexDim* const guess) const;
 
 
         virtual void initializeConfiguration(const DDconfigIO<dim>& configIO,const std::ofstream& f_file,const std::ofstream& F_labels) = 0;
         virtual void solve() = 0;
+        virtual void replaceUniformLoadController(
+              const Eigen::Matrix<double,6,1>& f0, // stress0,
+              const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+              const Eigen::Matrix<double,6,1>& g0, // strain0,
+              const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+              const Eigen::Matrix<double,6,1>& stiffnessRatio
+              ) = 0;
         virtual double getDt() const = 0;
         virtual void output(DDconfigIO<dim>& configIO,DDauxIO<dim>& auxIO,std::ofstream& f_file,std::ofstream& F_labels) const = 0;
         virtual void updateConfiguration() = 0;

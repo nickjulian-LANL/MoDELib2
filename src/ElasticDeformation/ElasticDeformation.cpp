@@ -70,8 +70,8 @@ namespace model
     /* init */,ndA(this->microstructures.ddBase.fe? this->microstructures.ddBase.fe->template boundary<ExternalBoundary,imageTractionIntegrationOrder,GaussLegendre>() : TractionIntegrationDomainType())
     /* init */,tractionList(ndA.template integrationList<FEMfaceEvaluation<ElementType,dim,dim>>())
     /* init */,solverInitialized(false)
-{
-        
+    {
+
     }
 
     template<int dim>
@@ -228,6 +228,52 @@ namespace model
             {
                 zDot.template segment<dim>(dim*node.gID)=this->microstructures.inelasticDisplacementRate(node.P0,&node,nullptr,nullptr);
             }
+        }
+    }
+
+    template<int dim>
+    void ElasticDeformation<dim>::replaceUniformLoadController(
+          const Eigen::Matrix<double,6,1>& f0, // stress0,
+          const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+          const Eigen::Matrix<double,6,1>& g0, // strain0,
+          const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+          const Eigen::Matrix<double,6,1>& stiffnessRatio
+          )
+    {
+        // following ElasticDeformation<dim>::getUniformEDcontroller(), but without reading text files
+        if(uniformLoadController)
+        {
+           std::cout << "inside ElasticDeformation<dim>::replaceUniformLoadController(), uniformLoadController != nullptr" << std::endl;
+           std::cout << "uniformLoadController->A initial: " << uniformLoadController->A << std::endl; 
+           typedef UniformController<SymmetricVoigtTraits<3>::voigtSize> UniformControllerType;
+
+           const double t0(0.0);
+           // Build stiffness matrix C
+           const double mu( this->microstructures.ddBase.poly.mu);
+           const double nu( this->microstructures.ddBase.poly.nu);
+           const double lam( 2.0+nu*mu/(1.0-2.0*nu));
+           UniformControllerType::MatrixVoigt C( UniformControllerType::MatrixVoigt::Zero());
+           auto kd = [](const int& i, const int& j){return i==j;};
+           for(int vI=0;vI<SymmetricVoigtTraits<3>::voigtSize;++vI)
+           {
+               const auto& i(this->microstructures.ddBase.voigtTraits.tensorIndex(vI,0));
+               const auto& j(this->microstructures.ddBase.voigtTraits.tensorIndex(vI,1));
+               for(int vJ=0;vJ<SymmetricVoigtTraits<3>::voigtSize;++vJ)
+               {
+                   const auto& k(this->microstructures.ddBase.voigtTraits.tensorIndex(vJ,0));
+                   const auto& l(this->microstructures.ddBase.voigtTraits.tensorIndex(vJ,1));
+                   C(vI,vJ)= lam*kd(i,j)*kd(k,l)+mu*(kd(i,k)*kd(j,l)+kd(i,l)*kd(j,k));
+               }
+           }
+
+           uniformLoadController.reset(
+               new UniformControllerType(t0,C,stiffnessRatio,g0,g0Dot,f0,f0Dot)
+                 );
+           solverInitialized = false; // TODO: Is this needed here?
+        }
+        else
+        {
+           throw std::runtime_error("error inside ElasticDeformation<dim>::replaceUniformLoadController(), uniformLoadController == nullptr");
         }
     }
 

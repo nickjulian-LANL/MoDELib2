@@ -232,6 +232,14 @@ PYBIND11_MODULE(pyMoDELib,m)
               &DefectiveCrystal<3>::runSpecifiedSteps,
               py::arg("Nsteps").none(false)
             )
+        .def("setExternalLoad",
+              &MicrostructureContainer<3>::replaceUniformLoadController,
+              py::arg("ExternalStress0Voigt").none(false),
+              py::arg("ExternalStressRateVoigt").none(false),
+              py::arg("ExternalStain0Voigt").none(false),
+              py::arg("ExternalStainRateVoigt").none(false),
+              py::arg("StiffnessRatioVoigt").none(false)
+              )
     ;
 
     py::class_<DDconfigIO<3>
@@ -399,8 +407,6 @@ PYBIND11_MODULE(pyMoDELib,m)
                     }
                 )
     ;
-    
-    // TODO: create interface for applying loads
 }
 #endif
 

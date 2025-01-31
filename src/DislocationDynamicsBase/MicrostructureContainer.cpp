@@ -63,6 +63,36 @@ namespace model
     }
 
     template <int dim>
+    void MicrostructureContainer<dim>::replaceUniformLoadController(
+          const Eigen::Matrix<double,6,1>& f0, // stress0,
+          const Eigen::Matrix<double,6,1>& f0Dot, // stressRate,
+          const Eigen::Matrix<double,6,1>& g0, // strain0,
+          const Eigen::Matrix<double,6,1>& g0Dot, // strainRate,
+          const Eigen::Matrix<double,6,1>& stiffnessRatio
+          )
+    {
+        // currently only able to work with MicrostructureContainter of type ElasticDeformation
+        bool foundElasticDeformation(false);
+        for(auto& pair : microstructures())
+        {
+           if ( pair->tag.compare("ElasticDeformation") == 0)
+           {
+              foundElasticDeformation = true;
+              std::cout<<"replacing uniformLoadController within MicrostructureContainer having tag "<<pair->tag<<std::flush;
+              pair->replaceUniformLoadController(
+                 f0, f0Dot,
+                 g0, g0Dot,
+                 stiffnessRatio
+                 );
+           }
+        }
+        if ( not foundElasticDeformation)
+        {
+           throw std::runtime_error("failed to find member of MicrostructureContainer having tag 'ElasticDeformation'");
+        }
+    }
+
+    template <int dim>
     double MicrostructureContainer<dim>::getDt() const
     {
         const auto t0= std::chrono::system_clock::now();
